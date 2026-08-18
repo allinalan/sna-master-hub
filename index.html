@@ -1437,14 +1437,19 @@ let REV = Number(localStorage.getItem(STORE_KEY + ":rev") || 0);
 let REMOTE = {rev:0, by:"", updated:""};
 let PUSH_TIMER = null, PUSHING = false, PENDING = false;
 
-/* who's editing — asked once, only used to label changes */
-function whoAmI(){
-  let w = localStorage.getItem(STORE_KEY + ":who");
-  if(!w){
-    w = (prompt("Who's using this hub? (so edits are labelled)\n\nType Alan or Ben:", "") || "").trim();
-    if(w) localStorage.setItem(STORE_KEY + ":who", w);
-  }
-  return w || "someone";
+/* Who's editing — only ever used to label a change. This must never block or
+   throw: it sits in the save path, and a browser that suppresses dialogs (or a
+   person who hits Cancel) would otherwise kill the save outright. */
+function whoAmI(){ return (localStorage.getItem(STORE_KEY + ":who") || "").trim() || "someone"; }
+
+/* Asking happens once at boot, well away from any save. */
+function askWho(force){
+  if(!force && localStorage.getItem(STORE_KEY + ":who")) return;
+  try{
+    const w = (prompt("Who's using this hub? (so edits get labelled)\n\nType Alan or Ben:",
+                      localStorage.getItem(STORE_KEY + ":who") || "") || "").trim();
+    if(w){ localStorage.setItem(STORE_KEY + ":who", w); syncStatus("shared · you're " + w); }
+  }catch(e){ /* dialogs blocked — changes just get labelled "someone" */ }
 }
 function setRev(n){ REV = n; localStorage.setItem(STORE_KEY + ":rev", String(n)); }
 
@@ -1496,7 +1501,7 @@ function scheduleSync(){
   PENDING = true;
   syncStatus("saving…", "warn");
   clearTimeout(PUSH_TIMER);
-  PUSH_TIMER = setTimeout(push, 1200);
+  PUSH_TIMER = setTimeout(() => push(), 1200);   // no bare `push` — setTimeout would pass the timer id as `attempt`
 }
 async function push(attempt){
   if(!syncOn() || PUSHING) return;
@@ -1955,6 +1960,10 @@ render();
 /* shared mode: pull once on load, then keep an eye on the shared copy */
 if(syncOn()){
   syncStatus("connecting…");
+  askWho();                                    // once, at boot — never from inside a save
+  $("#saveLabel").style.cursor = "pointer";
+  $("#saveLabel").title = "Click to change the name your edits are labelled with";
+  $("#saveLabel").addEventListener("click", () => askWho(true));
   pull(true);
   setInterval(() => { if(document.visibilityState === "visible") pull(); }, SYNC.pollMs);
   document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") pull(); });

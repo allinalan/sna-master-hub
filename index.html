@@ -1050,12 +1050,12 @@ function renderTeam(){
         <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
             <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
         <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
-        <td>${esc(r.CareerSales || "")}${r.Goal ? `<div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">goal: ${esc(r.Goal)}</div>` : ""}</td>
+        <td>${r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`}${r.Goal ? `<div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">goal: ${esc(r.Goal)}</div>` : ""}</td>
         <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--red,#b3261e)">no phone</span>`}
             <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
-        <td style="font-size:12px">${esc(r.Manager || "")}
-            <div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div></td>
-        <td class="dt" style="font-size:12px">${esc(String(r.Joined || "").slice(0,10))}</td>
+        <td style="font-size:12px">${r.Manager ? esc(r.Manager) : `<span style="color:var(--ink-faint)">&ndash;</span>`}
+            ${r.ManagerPhone || r.ManagerEmail ? `<div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div>` : ""}</td>
+        <td class="dt" style="font-size:12px">${String(r.Joined || "").trim() ? esc(String(r.Joined).slice(0,10)) : `<span style="color:var(--ink-faint)">&ndash;</span>`}</td>
         <td><select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
           <option value=""${coach ? "" : " selected"}>—</option>
           ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}

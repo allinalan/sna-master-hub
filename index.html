@@ -58,12 +58,27 @@ header{border-bottom:1px solid var(--line);background:var(--paper);position:stic
 
 /* ═══════════ tab bar ═══════════ */
 nav.tabs{border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:67px;z-index:35}
-.tabs-inner{display:flex;gap:2px;max-width:1180px;margin:0 auto;padding:0 24px;overflow-x:auto;scrollbar-width:none}
-.tabs-inner::-webkit-scrollbar{display:none}
-.tab{font-family:"Geist Mono",ui-monospace,monospace;font-size:12.5px;letter-spacing:.02em;padding:13px 16px;border:none;background:none;cursor:pointer;color:var(--ink-soft);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
-.tab:hover{color:var(--ink)}
-.tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
-.tab .ct{color:var(--ink-faint);font-size:11px;margin-left:5px}
+.tabs-inner{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* the two that matter, side by side */
+.tabs-primary{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.tabs-primary::-webkit-scrollbar{display:none}
+.tab-primary{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;letter-spacing:-.01em;
+  padding:14px 4px;margin-right:14px;border:none;background:none;cursor:pointer;color:var(--ink-faint);
+  border-bottom:3px solid transparent;white-space:nowrap;margin-bottom:-1px;display:flex;align-items:baseline;gap:7px}
+.tab-primary:hover{color:var(--ink-soft)}
+.tab-primary.on{color:var(--ink);border-bottom-color:var(--accent)}
+.tab-primary .ct{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;font-weight:400;color:var(--ink-faint)}
+
+/* everything that lives under Campaign Calendar */
+.tabs-sub{display:flex;gap:2px;border-top:1px solid var(--line-soft);overflow-x:auto;scrollbar-width:none}
+.tabs-sub::-webkit-scrollbar{display:none}
+.tab-sub{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.03em;
+  padding:9px 12px;border:none;background:none;cursor:pointer;color:var(--ink-faint);
+  border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.tab-sub:hover{color:var(--ink)}
+.tab-sub.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.tab-sub .ct{color:var(--ink-faint);font-size:10.5px;margin-left:4px;font-weight:400}
 
 /* ═══════════ page title + toolbar ═══════════ */
 .page-head{padding:26px 0 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
@@ -222,6 +237,7 @@ footer{border-top:1px solid var(--line);margin-top:44px;padding-top:18px;font-si
   .head-inner{padding:12px 16px}
   .wrap,.tabs-inner{padding:0 16px}
   nav.tabs{top:63px}
+  .tab-primary{font-size:15px;margin-right:10px}
 }
 
 /* ═══════════ print / PNG export ═══════════ */
@@ -911,31 +927,56 @@ function paintSaveState(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TAB REGISTRY — add a tab here and everything else wires itself up.
+   NAV REGISTRY — two levels.
+
+   SECTIONS are the bold tabs across the top. TABS are the pages; each one names
+   the section it belongs to. A section with more than one page grows a row of
+   sub-tabs underneath it automatically.
+
+   TO ADD A PAGE:
+     1. Add your data under a new key in SEED (top of this script).
+     2. Write a render function that returns an HTML string.
+     3. Add ONE line to TABS:
+          {id:"money", label:"Money", section:"business", count:()=>…, render:renderMoney}
+        Give it `section:"calendar"` or `section:"business"` to nest it, or add a
+        new entry to SECTIONS to give it a bold tab of its own.
+
+   Routing, the tab bar, edit mode, saving, PNG export and printing all follow.
    ═══════════════════════════════════════════════════════════════════════════ */
+const SECTIONS = [
+  {id:"calendar", label:"Campaign Calendar",
+   count:()=>{ const y = DATA.calendar.filter(r => Number(r.date.slice(0,4)) === UI.year);
+               return y.filter(isPlanned).length + "/" + y.length; }},
+  {id:"business", label:"Orders of Business",
+   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"}
+];
+
 const TABS = [
-  {id:"calendar", label:"Campaign Calendar", printable:true,
+  {id:"calendar", label:"Campaign Calendar", sub:"The Calendar", section:"calendar", printable:true,
    count:()=>{ const y = DATA.calendar.filter(r => Number(r.date.slice(0,4)) === UI.year);
                return y.filter(isPlanned).length + "/" + y.length; },
    render:renderCalendar},
 
-  {id:"bank",     label:"Topic Bank", printable:true,
+  {id:"bank", label:"Topic Bank", sub:"Topic Bank", section:"calendar", printable:true,
    count:()=>Object.values(DATA.topicBank).reduce((n,a)=>n+a.length,0),
    render:renderBank},
 
-  {id:"archive",  label:"Call Archive", printable:true,
+  {id:"archive", label:"Call Archive", sub:"Call Archive", section:"calendar", printable:true,
    count:()=>DATA.archive.length,
    render:renderArchive},
 
-  {id:"business", label:"Orders of Business", printable:true,
-   count:()=>{ const all = Object.values(DATA.business).flat();
-               return all.filter(i => !i.done).length + " open"; },
-   render:renderBusiness},
-
-  {id:"speakers", label:"Guest Speakers", printable:true,
+  {id:"speakers", label:"Guest Speakers", sub:"Guest Speakers", section:"calendar", printable:true,
    count:()=>DATA.speakers.length,
-   render:renderSpeakers}
+   render:renderSpeakers},
+
+  {id:"business", label:"Orders of Business", sub:"", section:"business", printable:true,
+   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open",
+   render:renderBusiness}
 ];
+
+const tabsIn     = sec => TABS.filter(t => t.section === sec);
+const sectionOf  = id  => (TABS.find(t => t.id === id) || TABS[0]).section;
+const homeTabOf  = sec => tabsIn(sec)[0].id;
 
 /* ═══════════ shared bits every tab can use ═══════════ */
 
@@ -1560,9 +1601,18 @@ function showConflict(body){
 function currentTab(){ return TABS.find(t => t.id === TAB) || TABS[0]; }
 
 function paintTabs(){
-  $("#tabBar").innerHTML = TABS.map(t =>
-    `<button class="tab ${t.id===TAB?"on":""}" data-tab="${t.id}">${esc(t.label)}<span class="ct">${
-      t.count ? esc(t.count()) : ""}</span></button>`).join("");
+  const active = sectionOf(TAB);
+  const primary = SECTIONS.map(sec =>
+    `<button class="tab-primary ${sec.id===active?"on":""}" data-section="${sec.id}">${esc(sec.label)}
+       <span class="ct">${sec.count ? esc(sec.count()) : ""}</span></button>`).join("");
+
+  const siblings = tabsIn(active);
+  const sub = siblings.length < 2 ? "" :
+    `<div class="tabs-sub">` + siblings.map(t =>
+      `<button class="tab-sub ${t.id===TAB?"on":""}" data-tab="${t.id}">${esc(t.sub || t.label)}
+         <span class="ct">${t.count ? esc(t.count()) : ""}</span></button>`).join("") + `</div>`;
+
+  $("#tabBar").innerHTML = `<div class="tabs-primary">${primary}</div>${sub}`;
 }
 
 /* Clicking straight from one field to the next used to swallow the second click:
@@ -1700,6 +1750,13 @@ document.addEventListener("click", e => {
   const t = e.target.closest("button");
   if(!t) return;
 
+  if(t.dataset.section){                               // a bold tab — go to that section's first page
+    const home = homeTabOf(t.dataset.section);
+    if(sectionOf(TAB) !== t.dataset.section || TAB !== home){
+      TAB = home; location.hash = TAB; UI.q = ""; UI.presenter = "all"; render(); window.scrollTo(0,0);
+    }
+    return;
+  }
   if(t.dataset.tab){ TAB = t.dataset.tab; location.hash = TAB; UI.q = ""; UI.presenter = "all"; render(); window.scrollTo(0,0); return; }
   if(t.dataset.seg){
     UI[t.dataset.seg] = t.dataset.seg === "year" ? Number(t.dataset.val) : t.dataset.val;

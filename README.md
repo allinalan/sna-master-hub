@@ -9,13 +9,19 @@ Built to be printed: plan the calls, then export a clean image.
 
 ## What's in it
 
+Two things matter most, so they're the bold tabs across the top:
+
+**Campaign Calendar** · **Orders of Business**
+
+Everything else lives as a sub-tab under Campaign Calendar.
+
 | Tab | What it's for |
 |---|---|
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
-| **Topic Bank** | All 71 topics we can teach, by category. Each one is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
-| **Call Archive** | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
 | **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date. Overdue goes red, due-within-a-fortnight goes amber. |
-| **Guest Speakers** | The bench, what they'd teach, when we last asked. |
+| ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
+| ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
+| ↳ Guest Speakers | The bench, what they'd teach, when we last asked. |
 
 Source: the Google Sheet **Group Calls 2026**.
 
@@ -113,14 +119,19 @@ trade for a free, no-login, works-anywhere setup. If you'd rather not take it, l
 
 1. Add your data under a new key in `SEED` (near the top of the `<script>`).
 2. Write a render function that returns an HTML string.
-3. Add one line to the `TABS` array:
+3. Add one line to the `TABS` array, naming the section it belongs under:
 
 ```js
-{id:"money", label:"Money", count:()=>DATA.money.length, render:renderMoney, printable:true}
+{id:"money", label:"Money", sub:"Money", section:"business", count:()=>DATA.money.length, render:renderMoney}
 ```
 
-The tab bar, routing, edit mode, saving, PNG export and printing all pick it up
-automatically. Use the `ed("path.to.field", value)` helper to make a field editable.
+Use `section:"calendar"` or `section:"business"` to nest it as a sub-tab, or add an
+entry to `SECTIONS` to give it a bold tab of its own. A section with more than one page
+grows its sub-tab row automatically.
+
+The tab bar, routing, edit mode, saving, PNG export and printing all pick it up. Use
+`ed("path.to.field", value)` to make a field editable, or `edLive(...)` for a field that
+stays editable with Edit mode off.
 
 ---
 

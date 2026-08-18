@@ -1,0 +1,1296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sharp Ninja Academy — Master Hub</title>
+<meta name="description" content="One place for the Sharp Ninja Academy program: campaign calendar, topic bank, call archive, and guest speakers.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23F7F5F0' stroke='%2316140F' stroke-width='4'/%3E%3Ctext x='32' y='43' font-size='30' text-anchor='middle' font-family='Hiragino Mincho ProN,Yu Mincho,serif' fill='%2316140F'%3E忍%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════ tokens — same palette as the SNA mentee dashboard ═══════════ */
+:root{
+  --paper:#F7F5F0; --ink:#16140F; --ink-soft:#5A554B; --ink-faint:#8B8579;
+  --line:#DED9CE; --line-soft:#EBE7DD;
+  --accent:#B4451F; --accent-soft:#F0E2D8;
+  --good:#3E6B4B; --good-bg:#DFEAE0;
+  --warn:#C99700; --warn-bg:#F7ECCF;
+  --bad:#B4451F;  --bad-bg:#F3DBD2;
+  --alan:#2F5D8C; --alan-bg:#DEE8F2;
+  --ben:#7A4A8C;  --ben-bg:#EADEF2;
+  --card:#FFFFFF;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:"Geist",-apple-system,"Helvetica Neue",sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:0 0 90px}
+.mono{font-family:"Geist Mono",ui-monospace,monospace}
+.serif{font-family:"Fraunces",Georgia,serif}
+::selection{background:var(--accent-soft)}
+a{color:var(--accent);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);font-weight:500}
+
+/* ═══════════ header ═══════════ */
+header{border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:40}
+.head-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1180px;margin:0 auto;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:14px}
+.mark{width:38px;height:38px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:20px;flex:none;line-height:1}
+.brand h1{font-family:"Fraunces",Georgia,serif;font-size:19px;font-weight:600;letter-spacing:-.01em;line-height:1.15}
+.brand .sub{font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+.head-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.status{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none}
+.dot.edited{background:var(--warn)}
+
+/* ═══════════ buttons ═══════════ */
+.btn{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;padding:8px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{border-color:var(--ink-faint);background:var(--line-soft)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.primary:hover{background:#000}
+.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.on:hover{background:#9d3b1a}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:5px 10px;font-size:11px}
+
+/* ═══════════ tab bar ═══════════ */
+nav.tabs{border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:67px;z-index:35}
+.tabs-inner{display:flex;gap:2px;max-width:1180px;margin:0 auto;padding:0 24px;overflow-x:auto;scrollbar-width:none}
+.tabs-inner::-webkit-scrollbar{display:none}
+.tab{font-family:"Geist Mono",ui-monospace,monospace;font-size:12.5px;letter-spacing:.02em;padding:13px 16px;border:none;background:none;cursor:pointer;color:var(--ink-soft);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab .ct{color:var(--ink-faint);font-size:11px;margin-left:5px}
+
+/* ═══════════ page title + toolbar ═══════════ */
+.page-head{padding:26px 0 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.page-head .big{font-family:"Fraunces",Georgia,serif;font-size:clamp(26px,4.4vw,38px);font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.page-head .lede{font-size:13px;color:var(--ink-soft);margin-top:7px;max-width:62ch}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:18px 0 6px;border-bottom:1px solid var(--line-soft);margin-bottom:18px}
+.toolbar .grow{flex:1}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card)}
+.seg button{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;padding:7px 13px;border:none;background:none;cursor:pointer;color:var(--ink-soft);letter-spacing:.03em}
+.seg button.on{background:var(--ink);color:var(--paper)}
+input.search{font-family:"Geist",sans-serif;font-size:13px;padding:8px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);min-width:200px}
+input.search::placeholder{color:var(--ink-faint)}
+
+/* ═══════════ stat strip ═══════════ */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:22px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px}
+.stat .lab{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.stat .val{font-family:"Fraunces",Georgia,serif;font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:5px;line-height:1}
+.stat .meta{font-size:11px;color:var(--ink-faint);margin-top:4px}
+.stat.alert .val{color:var(--accent)}
+
+/* ═══════════ campaign sections ═══════════ */
+.season{margin-bottom:34px;break-inside:avoid}
+.season-head{display:flex;align-items:baseline;gap:12px;padding:0 0 10px;border-bottom:1.5px solid var(--ink);margin-bottom:2px;flex-wrap:wrap}
+.season-head h3{font-family:"Fraunces",Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.season-head .roman{font-family:"Geist Mono",monospace;font-size:11px;color:var(--paper);background:var(--ink);padding:3px 8px;border-radius:999px;letter-spacing:.08em}
+.season-head .range{font-size:12px;color:var(--ink-soft)}
+.season-head .fill{margin-left:auto;font-size:11.5px;color:var(--ink-soft);font-family:"Geist Mono",monospace}
+
+/* ═══════════ week rows ═══════════ */
+.week{display:grid;grid-template-columns:92px 1fr 150px;gap:16px;padding:13px 4px;border-bottom:1px solid var(--line-soft);align-items:start;break-inside:avoid;position:relative}
+.week:hover{background:rgba(255,255,255,.55)}
+.week.open{background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(180,69,31,.035) 9px,rgba(180,69,31,.035) 18px)}
+.week.blocked{opacity:.62}
+.wk-date{font-family:"Geist Mono",monospace;font-size:12px;color:var(--ink-soft);padding-top:2px;line-height:1.45}
+.wk-date b{display:block;color:var(--ink);font-size:14px;font-weight:600}
+.wk-date .wknum{font-size:10px;color:var(--ink-faint);letter-spacing:.06em}
+.wk-main{min-width:0}
+.wk-topic{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+.wk-topic.empty{font-family:"Geist Mono",monospace;font-size:12.5px;font-weight:400;color:var(--accent);letter-spacing:.03em}
+.wk-detail{font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.5;max-width:74ch}
+.wk-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.wk-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;padding-top:1px}
+
+/* ═══════════ chips ═══════════ */
+.chip{font-family:"Geist Mono",monospace;font-size:10.5px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);white-space:nowrap}
+.chip.track{background:var(--accent-soft);border-color:transparent;color:#7d3115}
+.chip.note{background:var(--warn-bg);border-color:transparent;color:#7a5c00}
+.chip.alan{background:var(--alan-bg);border-color:transparent;color:var(--alan);font-weight:600}
+.chip.ben{background:var(--ben-bg);border-color:transparent;color:var(--ben);font-weight:600}
+.chip.both{background:linear-gradient(100deg,var(--alan-bg) 50%,var(--ben-bg) 50%);border-color:transparent;color:var(--ink);font-weight:600}
+.chip.tbd{border-style:dashed;color:var(--ink-faint)}
+.chip.second{background:var(--good-bg);border-color:transparent;color:var(--good)}
+.chip.big{font-size:11.5px;padding:5px 11px}
+.chip.count{background:var(--line-soft);border-color:transparent}
+
+/* second call / proposed / alt lines under a week */
+.wk-sub{display:flex;gap:8px;align-items:baseline;margin-top:9px;padding-left:11px;border-left:2px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+.wk-sub .tag{font-family:"Geist Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);flex:none;padding-top:2px}
+.wk-sub.proposed{border-left-color:var(--accent);color:var(--accent)}
+.wk-sub.alt{border-left-style:dashed}
+
+/* ═══════════ generic cards / columns ═══════════ */
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 17px;break-inside:avoid}
+.card h4{font-family:"Fraunces",Georgia,serif;font-size:15.5px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:9px;border-bottom:1px solid var(--line-soft);margin-bottom:10px}
+.card h4 .n{font-family:"Geist Mono",monospace;font-size:11px;color:var(--ink-faint);font-weight:400}
+.card ul{list-style:none}
+.card li{font-size:13px;line-height:1.45;padding:6px 0 6px 15px;position:relative;border-bottom:1px solid var(--line-soft)}
+.card li:last-child{border-bottom:none}
+.card li::before{content:"";position:absolute;left:2px;top:13px;width:4px;height:4px;border-radius:50%;background:var(--ink-faint)}
+.card li.used::before{background:var(--good)}
+.card li .when{font-family:"Geist Mono",monospace;font-size:10px;color:var(--good);margin-left:6px;white-space:nowrap}
+.card li.sched::before{background:var(--accent)}
+.card li .when.sched{color:var(--accent)}
+
+/* ═══════════ tables ═══════════ */
+table.grid{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+table.grid th{text-align:left;font-family:"Geist Mono",monospace;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;padding:11px 13px;border-bottom:1px solid var(--line);background:var(--line-soft);white-space:nowrap}
+table.grid td{padding:10px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.grid tr:last-child td{border-bottom:none}
+table.grid tbody tr:hover{background:var(--line-soft)}
+table.grid td.num{font-family:"Geist Mono",monospace;color:var(--ink-faint);font-size:11.5px;width:34px}
+table.grid td.dt{font-family:"Geist Mono",monospace;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;width:96px}
+table.grid tr.nocall td{color:var(--ink-faint);font-style:italic}
+.sec-title{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;margin:26px 0 11px;display:flex;align-items:baseline;gap:9px}
+.sec-title .n{font-family:"Geist Mono",monospace;font-size:11px;color:var(--ink-faint);font-weight:400}
+.empty-note{font-size:13px;color:var(--ink-faint);padding:26px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius)}
+
+/* ═══════════ editing ═══════════ */
+[data-edit]{border-radius:4px;transition:background .1s,box-shadow .1s}
+body.editing [data-edit]{cursor:text;box-shadow:inset 0 -1px 0 var(--line);min-height:1.2em;display:inline-block;min-width:44px}
+body.editing [data-edit]:hover{background:var(--warn-bg)}
+body.editing [data-edit]:focus{background:#fff;box-shadow:0 0 0 2px var(--accent);outline:none}
+body.editing .wk-topic.empty{color:var(--ink-faint)}
+.edit-banner{display:none;background:var(--warn-bg);border:1px solid #E4CE8E;border-radius:var(--radius);padding:11px 15px;font-size:12.5px;color:#6d5300;margin-bottom:16px;align-items:center;gap:12px;flex-wrap:wrap}
+body.editing .edit-banner{display:flex}
+.edit-banner b{font-weight:600}
+.edit-banner .grow{flex:1}
+
+/* ═══════════ modal ═══════════ */
+.scrim{position:fixed;inset:0;background:rgba(22,20,15,.45);z-index:60;display:none;align-items:center;justify-content:center;padding:24px}
+.scrim.on{display:flex}
+.modal{background:var(--card);border-radius:18px;max-width:640px;width:100%;max-height:82vh;overflow:auto;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.24)}
+.modal h3{font-family:"Fraunces",Georgia,serif;font-size:20px;font-weight:600;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6}
+.modal textarea{width:100%;height:240px;font-family:"Geist Mono",monospace;font-size:11px;line-height:1.5;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper);color:var(--ink);resize:vertical}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);font-family:"Geist Mono",monospace;font-size:12px;padding:11px 20px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;z-index:80;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+footer{border-top:1px solid var(--line);margin-top:44px;padding-top:18px;font-size:11.5px;color:var(--ink-faint);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+
+/* ═══════════ responsive ═══════════ */
+@media (max-width:760px){
+  .week{grid-template-columns:74px 1fr;gap:12px}
+  .wk-right{grid-column:2;flex-direction:row;align-items:center;flex-wrap:wrap;padding-top:0}
+  .head-inner{padding:12px 16px}
+  .wrap,.tabs-inner{padding:0 16px}
+  nav.tabs{top:63px}
+}
+
+/* ═══════════ print / PNG export ═══════════ */
+.export-frame{background:var(--paper)}
+body.exporting .no-export,body.exporting nav.tabs,body.exporting header{display:none!important}
+body.exporting .week:hover{background:none}
+@media print{
+  @page{size:letter portrait;margin:12mm}
+  body{padding:0;background:#fff}
+  header,nav.tabs,.toolbar,.no-print,.edit-banner,footer .no-print,.scrim,.toast{display:none!important}
+  .wrap{max-width:100%;padding:0}
+  .week,.season,.card,tr{break-inside:avoid}
+  .season-head{break-after:avoid}
+  a{text-decoration:none;color:var(--ink)}
+  .print-head{display:block!important}
+  .week.open{background:none;border-left:3px solid var(--accent);padding-left:8px}
+  .stat,.card,table.grid{box-shadow:none}
+}
+.print-head{display:none;padding-bottom:14px;margin-bottom:18px;border-bottom:1.5px solid var(--ink)}
+.print-head .t{font-family:"Fraunces",Georgia,serif;font-size:24px;font-weight:600}
+.print-head .s{font-size:11.5px;color:var(--ink-soft);margin-top:4px;font-family:"Geist Mono",monospace}
+body.exporting .print-head{display:block}
+</style>
+</head>
+<body>
+<header class="no-export">
+  <div class="head-inner">
+    <div class="brand">
+      <div class="mark">忍</div>
+      <div>
+        <h1>Sharp Ninja Academy</h1>
+        <div class="sub">Master Hub · Alan &amp; Ben</div>
+      </div>
+    </div>
+    <div class="head-right">
+      <div class="status"><span class="dot" id="saveDot"></span><span id="saveLabel">seed data</span></div>
+      <button class="btn" id="editBtn" title="Turn on click-to-edit for every field on this page">Edit</button>
+      <button class="btn" id="syncBtn" title="Export or import the hub's data as JSON">Data</button>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs no-export"><div class="tabs-inner" id="tabBar"></div></nav>
+
+<main class="wrap" id="view"></main>
+
+<div class="wrap no-export">
+  <footer>
+    <span>Source of truth: <a href="#" id="sheetLink" target="_blank" rel="noopener">Group Calls 2026</a> · mentee performance: <a href="#" id="dashLink" target="_blank" rel="noopener">SNA Dashboard</a></span>
+    <span class="mono" id="stamp"></span>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="modal">
+    <h3 id="mTitle">Data</h3>
+    <p id="mBody"></p>
+    <textarea id="mText" spellcheck="false"></textarea>
+    <div class="modal-actions" id="mActions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   SEED DATA — mirrored from the Google Sheet "Group Calls 2026"
+   https://docs.google.com/spreadsheets/d/1-GS8NfuURZFTqLI9qSjT6TcBj4VeTFr79j1gPYt8HsA
+   Owner: sharpninjaben@gmail.com · snapshot taken 2026-08-18
+
+   This is the fallback / starting point. Once you edit inside the hub, your
+   copy lives in localStorage and this seed is only used on a fresh browser
+   or after you hit "Reset to seed".
+   ══════════════════════════════════════════════════════════════════════════ */
+const SEED = {
+  meta: {
+    title: "Sharp Ninja Academy",
+    subtitle: "Master Hub",
+    sheetName: "Group Calls 2026",
+    sheetUrl: "https://docs.google.com/spreadsheets/d/1-GS8NfuURZFTqLI9qSjT6TcBj4VeTFr79j1gPYt8HsA/edit",
+    dashboardUrl: "https://allinalan.github.io/sna-dashboard/",
+    snapshot: "2026-08-18"
+  },
+
+  /* ── Tab 1: the 2026 group-call calendar ──────────────────────────────
+     one row per Tuesday. `alt` = the earlier 2026 draft that lives at the
+     bottom of the archive tab, kept alongside so both plans are visible. */
+  calendar: [
+    {date:"2026-01-06", topic:"Standards Reset", track:"2026 Plan", presenter:"Alan", alt:"Spring Reset: Standards, Schedule, Scorecard", altPresenter:"Alan"},
+    {date:"2026-01-13", topic:"Alan's SVC Structure", track:"SVC Mastery", presenter:"Alan", alt:"Needs Discovery: Controlling the Sale Without Forcing It", altPresenter:"Alan"},
+    {date:"2026-01-20", topic:"Mindset of Referrals", track:"2026 Plan", presenter:"Ben", alt:"Set Pathing: How Pros Walk Customers to Bigger Sets", altPresenter:"Ben (no Alan)"},
+    {date:"2026-01-27", topic:"Upgrading Your Upgrades", track:"SVC Mastery", presenter:"Ben", alt:"(Leadership call?)", altPresenter:"Ben (no Alan)"},
+    {date:"2026-02-03", topic:"Objection Handling — Killing Hesitation", track:"SVC Mastery", presenter:"Alan", second:"Audit Plan — Your Bulletproof 2026 Plan", secondPresenter:"Ben", alt:"Objection Handling: Killing Hesitation, Not Arguing"},
+    {date:"2026-02-10", topic:"", track:"NET", presenter:"", status:"blocked", note:"NET", alt:"Upselling & Add-Ons"},
+    {date:"2026-02-17", topic:"Leader Without a Title", track:"Leadership", presenter:"Alan", second:"SVC Objections", secondPresenter:"Alan", alt:"Service Calls That Actually Convert"},
+    {date:"2026-02-24", topic:"Arri / Jason Interview", track:"2026 Plan", presenter:"Ben (no Alan)", alt:"(Leadership call?)"},
+    {date:"2026-03-03", topic:"Cookware", track:"Cutco Kitchen", presenter:"Ben (no Alan)", alt:"Build Your Network"},
+    {date:"2026-03-10", topic:"Flatware", track:"Cutco Kitchen", presenter:"Alan (no Ben)", second:"MASTERS", secondPresenter:"Ben / Alan", alt:"Phoning for Appointments"},
+    {date:"2026-03-17", topic:"Accessories / Hunting", track:"Cutco Kitchen", presenter:"Alan–Ben (hunting)", alt:"Cookware Mastery"},
+    {date:"2026-03-24", topic:"Upselling", track:"Cutco Kitchen", presenter:"Alan–Ben", alt:"Flatware Mastery"},
+    {date:"2026-03-31", topic:"Package Deal", track:"Cutco Kitchen", presenter:"Ben–Alan", second:"Upselling Hot Seat", alt:"Advanced Tax Strategies"},
+    {date:"2026-04-07", topic:"Phoning Call", track:"", presenter:"Ben (no Alan)"},
+    {date:"2026-04-14", topic:"", track:"", presenter:"", status:"blocked", note:"Alan's Wedding"},
+    {date:"2026-04-21", topic:"Summer Game Plan — The Push Planning Call", track:"", presenter:"Ben (no Alan)", alt:"Summer Game Plan: Designing Your Ideal Campaign"},
+    {date:"2026-04-28", topic:"Rules of Finances — Advanced Tax Strategies", track:"", presenter:"Ben", alt:"Time, Energy & Health as a Competitive Advantage"},
+    {date:"2026-05-05", topic:"New Customers — Building Value", track:"Next Level Events", presenter:"Alan", second:"Summer Push Plan Audit", secondPresenter:"Alan (Wed)", alt:"Summer Standards: Non-Negotiables for Performance"},
+    {date:"2026-05-12", topic:"", track:"Next Level Events", presenter:"Ben (no Alan)", note:"Events meeting Houston — Alan", alt:"Obstacle Proofing: What Will Break Your Summer (and How to Fix It Now)"},
+    {date:"2026-05-19", topic:"Past Customers — Creating Pitches, Setting Up the Upgrade", track:"Next Level Events", presenter:"Alan", note:"Robinchek Cross Training"},
+    {date:"2026-05-26", topic:"New Customers — Closing, Self Be Back, Objections", track:"Adv Call — Next Level Events", presenter:"Ben", note:"Ben — Retreat, flying out that day"},
+    {date:"2026-06-02", topic:"Past Customer — Closing at the Booth, Dropping Down Upgrades", track:"Next Level Events", presenter:"Alan",
+     detail:"Teaching reps to close with more confidence, create more clarity, and get fewer objections with Cutco owners — and when the first objection comes, to sell bigger because the drop-down is more effective. End result: selling more upgrades, fewer pieces → a $600–1,000 average order behind the booth."},
+    {date:"2026-06-09", topic:"Attitude / Energy at the Booth & Price Positioning", track:"Next Level Events", presenter:"Ben",
+     detail:"Getting more people excited to engage with us and turning interactions that seem unimportant into big sales — how we normalize the price of Cutco. More orders per day and a higher average order, with people comfortable at higher prices."},
+    {date:"2026-06-16", topic:"Referral Call — The Decision", track:"", presenter:"Ben",
+     detail:"Using social proof and goal sharing in new ways to generate more referrals: raising personal standards, pleasant persistence, and the realization of goal sharing — how not to get satisfied at 3, 5, or 7 referrals an appointment."},
+    {date:"2026-06-23", topic:"SC2 Push Call — The Ramp Up", track:"", presenter:"Alan",
+     detail:"Assuming everyone has a goal, a why, a schedule, and a plan — what can and will go wrong. Creating the list."},
+    {date:"2026-06-30", topic:"SC2 Push Calls — Execution", track:"Hot Seat Workshop", presenter:"Ben"},
+    {date:"2026-07-07", topic:"Biz Gift #1", track:"", presenter:"Ben", note:"No Alan"},
+    {date:"2026-07-14", topic:"Fam Program", track:"", presenter:"Alan"},
+    {date:"2026-07-21", topic:"", track:"", presenter:"Ben", note:"SC2, Masters only", proposed:"Summer Game Plan: Designing Your Ideal Campaign"},
+    {date:"2026-07-28", topic:"", track:"", presenter:"Alan", note:"SC2", proposed:"Time, Energy & Health as a Competitive Advantage"},
+    {date:"2026-08-04", topic:"", track:"", presenter:"Alan", note:"SC2", proposed:"Summer Standards: Non-Negotiables for Performance"},
+    {date:"2026-08-11", topic:"", track:"", presenter:"", note:"No Ben, No Alan", proposed:"Obstacle Proofing: What Will Break Your Summer (and How to Fix It Now)"},
+    {date:"2026-08-18", topic:"PUSH Reflection", track:"Biz Gift #2", presenter:"Ben", note:"Masterclass"},
+    {date:"2026-08-25", topic:"Adv Planning", track:"Priority Planning", presenter:"Alan", note:"Start of Fall"},
+    {date:"2026-09-01", topic:"Goal Sharing", track:"Intro Call", presenter:""},
+    {date:"2026-09-08", topic:"Marketing to Events — Masters", track:"", presenter:""},
+    {date:"2026-09-15", topic:"", track:"", presenter:""},
+    {date:"2026-09-22", topic:"", track:"", presenter:""},
+    {date:"2026-09-29", topic:"", track:"", presenter:""},
+    {date:"2026-10-06", topic:"", track:"", presenter:""},
+    {date:"2026-10-13", topic:"", track:"", presenter:""},
+    {date:"2026-10-20", topic:"", track:"", presenter:""},
+    {date:"2026-10-27", topic:"", track:"", presenter:""},
+    {date:"2026-11-03", topic:"", track:"", presenter:""},
+    {date:"2026-11-10", topic:"", track:"", presenter:""},
+    {date:"2026-11-17", topic:"", track:"", presenter:""},
+    {date:"2026-11-24", topic:"", track:"", presenter:""},
+    {date:"2026-12-01", topic:"", track:"", presenter:""},
+    {date:"2026-12-08", topic:"", track:"", presenter:""},
+    {date:"2026-12-15", topic:"", track:"", presenter:""},
+    {date:"2026-12-22", topic:"", track:"", presenter:""},
+    {date:"2026-12-29", topic:"", track:"", presenter:""}
+  ],
+
+  /* ── Backlog / parking lot: the right-hand columns of the 2026 tab ──── */
+  backlog: {
+    "Units": [
+      "Your Bulletproof 2026 Plan",
+      "The Cutco Kitchen Vision",
+      "Service Call Mastery",
+      "Gifting Unit",
+      "Big Orders at the Booth Pitch",
+      "Advanced Tax Strategies",
+      "Summer Game Plan: Designing Your Ideal Campaign",
+      "Time, Energy & Health as a Competitive Advantage",
+      "Summer Standards: Non-Negotiables for Performance",
+      "Obstacle Proofing: What Will Break Your Summer (and How to Fix It Now)"
+    ],
+    "Tier 3 Topics": [
+      "Investing Calls",
+      "Health Call",
+      "Biz Gift Call",
+      "Marketing Calls",
+      "Advanced Objection Handling — psychology",
+      "Business Plan Calls"
+    ],
+    "2025 Units": [
+      "Referral Unit",
+      "Planning Unit",
+      "Bigger Orders / Sets"
+    ]
+  },
+
+  /* ── Tab 2: the topic bank, by category ─────────────────────────────── */
+  topicBank: {
+    "Units": [
+      "Intro to Referrals Unit — case by case, intro only",
+      "Intermediate Demo Unit",
+      "Intro to Planning Unit",
+      "SVC Mastery Unit",
+      "Cutco Kitchen Unit",
+      "Event Unit",
+      "Gifting Unit",
+      "Low Pressure Closing",
+      "Mini Reflection / Habits Unit"
+    ],
+    "Dropping Down / Upgrades": [
+      "Phoning and Phoning Objections",
+      "Building Value / Creating Needs",
+      "Set Positioning",
+      "Closing",
+      "Low Pressure Closing — Self Be Back"
+    ],
+    "SVC": [
+      "Planting Seeds — handling objections before they come up",
+      "Setting Up the Upgrade",
+      "Closing Upgrades",
+      "Selling Cookware / Flatware in Home",
+      "Package Selling on SVC — Custom Upgrades",
+      "Package Selling SVC — advanced"
+    ],
+    "Referrals": [
+      "Goal Sharing — Demos + SVC",
+      "High Level Rapport — Getting More Recs",
+      "Social Proof — Inch Wide, Mile Deep",
+      "Mindset of Referrals — Not Getting Satisfied",
+      "Organizing Your Leads",
+      "Using the App — Adv Rec Skills"
+    ],
+    "Events": [
+      "Interacting / Pulling People In / How Not to React",
+      "Building Value with New Customers — one liners",
+      "Closing New Customers at the Booth",
+      "Selling More 5pcs and Fewer 1pcs",
+      "The Nonverbals of Selling — body language, slow down and speed up",
+      "Creating Upgrade Pitches",
+      "Closing Ulti Upgrades",
+      "Creating Your Perfect Event Schedule",
+      "Attitude / Energy — we both talk about mindset",
+      "Creating Urgency and Qualifying",
+      "Price Positioning",
+      "Working with Multiple Customers",
+      "Marketing to Events — maybe a workshop"
+    ],
+    "Objections": [
+      "Process to Handle Any Objection",
+      "Objection Cycle",
+      "Advanced Objection Cycle — \"I need to think about it\" x2 or x3, what happens next",
+      "All or Nothing, the Warehouse Program, or 10 Pay",
+      "Dealing with the Spouse — spouse objection",
+      "Appointment Objections",
+      "Handling Objections Before They Come Up",
+      "Upgrade Objections",
+      "Dropping Down Upgrades"
+    ],
+    "Marketing": [
+      "Fortune Is in the Follow Up — outside of sales, planning a marketing campaign",
+      "Running a Sale Effectively",
+      "Setting Up Future CPO"
+    ],
+    "Planning / Mindset": [
+      "Consistent 50k, 75k, 100k Campaigns",
+      "Mindset of Setting and Achieving Goals",
+      "Push Planning",
+      "150k → 300k Year Habits",
+      "Adv Push Planning",
+      "Delegating / Systems — Masters only"
+    ],
+    "Money": [
+      "Earning More — Less Biz Expenses",
+      "Saving More",
+      "Investing More"
+    ],
+    "Gifting": [
+      "Selling to Biz Owners",
+      "Biz Objections"
+    ],
+    "General Skills": [
+      "Selling Ultimates",
+      "How to Tell Stories to Sell",
+      "Custom Set Special",
+      "Famous Let Go / Upserving",
+      "Price Positioning",
+      "Family Program",
+      "Cookware",
+      "Flatware",
+      "Accessories / Hunting Knives"
+    ]
+  },
+
+  /* ── Tab 3: what we've already run. Campaign = Spring I / Summer II / Fall III ── */
+  archive: [
+    {n:1,  date:"2024-12-30", topic:"High Level Networking and Rec Review", campaign:"Spring 2025"},
+    {n:2,  date:"2025-01-06", topic:"Priority Planning v2", campaign:"Spring 2025"},
+    {n:3,  date:"2025-01-13", topic:"Ultimate Sets", campaign:"Spring 2025"},
+    {n:4,  date:"2025-01-20", topic:"Best Fall Ever Interview w/ Tytus, Bronc, Jason, Dae", campaign:"Spring 2025"},
+    {n:5,  date:"2025-01-27", topic:"Selling Cookware", campaign:"Spring 2025"},
+    {n:6,  date:"2025-02-03", topic:"NET", campaign:"Spring 2025", status:"nocall"},
+    {n:7,  date:"2025-02-10", topic:"Get the Damn Appointment", campaign:"Spring 2025"},
+    {n:8,  date:"2025-02-17", topic:"Handling Objections on Appointments", campaign:"Spring 2025"},
+    {n:9,  date:"2025-02-24", topic:"Finances 101", campaign:"Spring 2025"},
+    {n:10, date:"2025-03-03", topic:"Price Positioning", campaign:"Spring 2025"},
+    {n:11, date:"2025-03-10", topic:"Customer Check-In Calls, How to Use Your Marketing", campaign:"Spring 2025"},
+    {n:12, date:"2025-03-17", topic:"Service First Mindset — Making Friends, Planting Seeds", campaign:"Spring 2025"},
+    {n:13, date:"2025-03-24", topic:"Objections at the Booth", campaign:"Spring 2025", note:"Alan guest speaker"},
+    {n:14, date:"2025-03-31", topic:"Live Demo", campaign:"Spring 2025"},
+    {n:15, date:"2025-04-07", topic:"No Call", campaign:"Spring 2025", status:"nocall"},
+    {n:16, date:"2025-04-14", topic:"Selling Flatware", campaign:"Spring 2025"},
+    {n:17, date:"2025-04-21", topic:"Consistent 50k, 75k, 100k Campaigns", campaign:"Spring 2025"},
+    {n:18, date:"2025-04-28", topic:"Who Do You Want to Be? 7 F's", campaign:"Spring 2025"},
+
+    {n:1,  date:"2025-05-05", topic:"Social Proof — booth, appointment, on the phone", series:"Building Bigger Orders", campaign:"Summer 2025"},
+    {n:2,  date:"2025-05-12", topic:"Planting Seeds", series:"Building Bigger Orders", campaign:"Summer 2025"},
+    {n:3,  date:"2025-05-19", topic:"Upserving", series:"Building Bigger Orders", campaign:"Summer 2025"},
+    {n:4,  date:"2025-05-26", topic:"The Cutco Kitchen — Upserving Package Deals", series:"Building Bigger Orders", campaign:"Summer 2025"},
+    {n:5,  date:"2025-06-02", topic:"Mindset of Setting and Achieving Goals", campaign:"Summer 2025"},
+    {n:6,  date:"2025-06-09", topic:"Creating Urgency + Goal Sharing at the Booth", series:"Closing", campaign:"Summer 2025"},
+    {n:7,  date:"2025-06-16", topic:"Low Pressure Closing — Self Be Back", series:"Closing", campaign:"Summer 2025"},
+    {n:8,  date:"2025-06-23", topic:"Dropping Down + Upgrade Objections", series:"Closing", campaign:"Summer 2025"},
+    {n:9,  date:"2025-06-30", topic:"Croatia — No Call", campaign:"Summer 2025", status:"nocall"},
+    {n:10, date:"2025-07-07", topic:"Push Period Planning", campaign:"Summer 2025", presenter:"Alan"},
+    {n:11, date:"2025-07-14", topic:"The Spouse Stall + \"I Need to Think About It\" at SVC, Warehouse Program", series:"Closing", campaign:"Summer 2025"},
+    {n:12, date:"2025-07-21", topic:"Low Pressure Closing Wrap Up", series:"Closing", campaign:"Summer 2025"},
+    {n:13, date:"2025-07-28", topic:"Family Program, How Many, Gifting Mindset", series:"Gifting", campaign:"Summer 2025"},
+    {n:14, date:"2025-08-04", topic:"Closing Biz Gift Orders", series:"Gifting", campaign:"Summer 2025"},
+    {n:15, date:"2025-08-11", topic:"Healthy Habits / Taking the Next Step", series:"Gifting", campaign:"Summer 2025", presenter:"Alan (Ben tiny part)"},
+    {n:16, date:"2025-08-19", topic:"Dreams List", series:"Referrals", campaign:"Summer 2025", presenter:"Ben"},
+    {n:17, date:"2025-08-26", topic:"Know Your Why, Break It Down, Campaign Planner", series:"Referrals", call:"Call 1", campaign:"Summer 2025", presenter:"Alan / Ben"},
+    {n:18, date:"2025-09-02", topic:"Goal Sharing", series:"Referrals", call:"Call 2", campaign:"Summer 2025", presenter:"Ben"},
+
+    {n:1,  date:"2025-09-09", topic:"Mindset of an Adv Rep and Planning", series:"Referrals", call:"Call 1", campaign:"Fall 2025", presenter:"Alan", hotSeat:"Hot Seat #1 — Goal Sharing", hotSeatPresenter:"Ben"},
+    {n:2,  date:"2025-09-16", topic:"Recs 101", series:"Referrals", call:"Call 2", campaign:"Fall 2025", presenter:"Ben"},
+    {n:3,  date:"2025-09-23", topic:"Social Proof — Inch Wide, Mile Deep", series:"New Customer", call:"Call 3", campaign:"Fall 2025", presenter:"Ben", hotSeat:"Hot Seat #2 — Recs", hotSeatPresenter:"Ben"},
+    {n:4,  date:"2025-09-30", topic:"The Cutco Kitchen Apt — Intro to Upserving", call:"Adv Call", campaign:"Fall 2025", presenter:"Alan"},
+    {n:5,  date:"2025-10-07", topic:"Phoning 101", call:"Call 1", campaign:"Fall 2025", presenter:"Ben"},
+    {n:6,  date:"2025-10-14", topic:"Creating Needs, Solving Problems, Build Value — Planting Seeds", call:"Call 2", campaign:"Fall 2025", presenter:"Ben", hotSeat:"Hot Seat #1 — Phone Objections", hotSeatPresenter:"Ben"},
+    {n:7,  date:"2025-10-21", topic:"Selling Sets / Ultimate Sets", call:"Call 3", campaign:"Fall 2025", presenter:"Alan"},
+    {n:8,  date:"2025-10-28", topic:"Objection Handling Call", call:"Adv Call", campaign:"Fall 2025", presenter:"Alan", hotSeat:"Hot Seat #2 — Ulti Set / General", hotSeatPresenter:"Alan"},
+    {n:9,  date:"2025-11-04", topic:"Ultimate Mindset Upgrades — Names / Uses", call:"Call 1", campaign:"Fall 2025", presenter:"Ben (Alan not on)"},
+    {n:10, date:"2025-11-11", topic:"Service Call 101 — Structure", call:"Call 2", campaign:"Fall 2025", presenter:"Ben (Alan not on)", hotSeat:"Hot Seat #1 — Reflection / Planning Next Campaign", hotSeatPresenter:"Alan (Ben not there)"},
+    {n:11, date:"2025-11-18", topic:"Marketing 101", call:"Call 3", campaign:"Fall 2025", presenter:"Ben (Alan not on)", hotSeat:"Adv Hot Seat Planning Call"},
+    {n:12, date:"2025-11-25", topic:"Crushing Your Mall Season", call:"Adv Call", campaign:"Fall 2025", presenter:"Alan", hotSeat:"Hot Seat #2 — Run Sale", hotSeatPresenter:"Ben"},
+    {n:13, date:"2025-12-02", topic:"Dropping Down Call", call:"Call 1", campaign:"Fall 2025", presenter:"Ben"},
+    {n:14, date:"2025-12-09", topic:"Finishing Strong — Starting 2026", call:"Call 2", campaign:"Fall 2025", presenter:"Alan", hotSeat:"Hot Seat #1 — Upgrades 11/25", hotSeatPresenter:"Alan"},
+    {n:15, date:"2025-12-16", topic:"How to Hit Your Financial Goal in 2026", call:"Adv Call", campaign:"Fall 2025", presenter:"Alan", hotSeat:"Hot Seat #2 — Objection Handling", hotSeatPresenter:"Alan"},
+    {n:16, date:"2025-12-23", topic:"Vacation", call:"No Call", campaign:"Fall 2025", status:"nocall"},
+    {n:17, date:"2025-12-30", topic:"Vacation — Ben in Thailand", call:"No Call", campaign:"Fall 2025", status:"nocall"}
+  ],
+
+  /* ── Tab 4: guest speakers ──────────────────────────────────────────── */
+  speakers: [
+    {name:"Christian Hogg",    topic:"Demo Skills",                 lastAsked:""},
+    {name:"Matt Foss",         topic:"Event Skills",                lastAsked:""},
+    {name:"Julian Landry",     topic:"",                            lastAsked:""},
+    {name:"Phillip Tice",      topic:"",                            lastAsked:""},
+    {name:"JC Miranda",        topic:"",                            lastAsked:""},
+    {name:"Jared Erickson",    topic:"",                            lastAsked:""},
+    {name:"Stacie Barton",     topic:"Marketing",                   lastAsked:""},
+    {name:"TC Smith",          topic:"Not sure — could do fitness", lastAsked:""},
+    {name:"Alejandro Calderon",topic:"",                            lastAsked:""}
+  ]
+};
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARP NINJA ACADEMY — MASTER HUB
+   ───────────────────────────────────────────────────────────────────────────
+   HOW TO ADD A NEW TAB (the whole point of this file's structure):
+
+     1. Add your data under a new key in SEED (top of this script).
+     2. Write a render function that returns an HTML string.
+     3. Add ONE line to the TABS array below:
+          {id:"money", label:"Money", count:()=>DATA.money.length, render:renderMoney}
+        Optional: printable:true   →  gives that tab Export PNG + Print buttons.
+
+   Nothing else needs to change — the tab bar, routing, edit mode, localStorage,
+   PNG export and printing all pick it up automatically.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const STORE_KEY = "sna-master-hub-v1";
+
+/* ── state ────────────────────────────────────────────────────────────── */
+let DATA = load();
+let DIRTY = !!localStorage.getItem(STORE_KEY);
+let EDITING = false;
+let TAB = (location.hash || "#calendar").slice(1);
+const UI = { season:"all", presenter:"all", open:false, q:"", archCampaign:"all" };
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return migrate(JSON.parse(raw));
+  }catch(e){ console.warn("Saved copy unreadable, falling back to seed:", e); }
+  return clone(SEED);
+}
+/* keeps an older saved copy working when the seed gains new sections */
+function migrate(d){
+  const base = clone(SEED);
+  for(const k of Object.keys(base)) if(!(k in d)) d[k] = base[k];
+  return d;
+}
+function save(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+    DIRTY = true; DF = null; paintSaveState();   // topic weights are rebuilt from the edited data
+  }catch(e){ toast("Couldn't save locally — export your JSON to be safe"); }
+}
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+/* ── tiny helpers ─────────────────────────────────────────────────────── */
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $  = s => document.querySelector(s);
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function parseDate(iso){ const [y,m,d] = String(iso).split("-").map(Number); return new Date(y, m-1, d); }
+function fmtDate(iso){ const d = parseDate(iso); return MONTHS[d.getMonth()] + " " + d.getDate(); }
+function fmtDay(iso){ return DAYS[parseDate(iso).getDay()]; }
+function fmtFull(iso){ const d = parseDate(iso); return MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear(); }
+
+/* Spring = Jan–Apr (I) · Summer = May–Aug (II) · Fall = Sep–Dec (III) —
+   the same split the mentee dashboard uses, so campaigns line up across tools. */
+const SEASONS = [
+  {key:"Spring", roman:"I",   range:"January – April",   test:m => m <= 3},
+  {key:"Summer", roman:"II",  range:"May – August",      test:m => m >= 4 && m <= 7},
+  {key:"Fall",   roman:"III", range:"September – December", test:m => m >= 8}
+];
+function seasonOf(iso){ const m = parseDate(iso).getMonth(); return SEASONS.find(s => s.test(m)); }
+
+/* who's on the call — drives the colour of the presenter chip */
+function presenterClass(p){
+  const s = String(p||"").toLowerCase();
+  const hasA = s.includes("alan"), hasB = s.includes("ben");
+  const noA = /no alan|alan will not|alan not/.test(s), noB = /no ben|ben will not|ben not/.test(s);
+  if(!s.trim()) return "tbd";
+  if(hasA && hasB && !noA && !noB) return "both";
+  if(hasA && !noA) return "alan";
+  if(hasB && !noB) return "ben";
+  if(hasA) return "alan";
+  if(hasB) return "ben";
+  return "tbd";
+}
+function isPlanned(r){ return !!String(r.topic||"").trim(); }
+function isBlocked(r){ return r.status === "blocked"; }
+
+/* ── topic cross-referencing: has this bank topic already been run? ─────
+   Plain word overlap matched far too much — in this business almost every
+   topic contains "closing" or "objections". So each word is weighted by how
+   rare it is across all our topics (a document-frequency weight): "cookware"
+   counts for a lot, "closing" counts for very little. Two topics are related
+   when they share enough *distinctive* weight. ── */
+const STOP = new Set("a an the and or of to in on at for with your you our my is it that this how not more less by from we us can".split(" "));
+const stem = w => w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w;
+function tokens(s){
+  return [...new Set(String(s||"").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+    .filter(w => w.length > 2 && !STOP.has(w)).map(stem))];
+}
+let DF = null;
+function buildDF(){
+  DF = new Map();
+  const corpus = [...DATA.archive.map(r => r.topic), ...DATA.calendar.map(r => r.topic),
+                  ...Object.values(DATA.topicBank).flat()].filter(Boolean);
+  for(const t of corpus) for(const w of tokens(t)) DF.set(w, (DF.get(w) || 0) + 1);
+}
+const wt   = w => 1 / Math.sqrt((DF && DF.get(w)) || 1);
+const mass = a => a.reduce((n, w) => n + wt(w), 0);
+
+const SHARE_FLOOR = 0.45;   // needs genuinely distinctive overlap, not one common word
+const SHARE_RATIO = 0.70;   // ...and it must cover most of the shorter topic
+
+function related(a, b){
+  if(!DF) buildDF();
+  const A = tokens(a), B = tokens(b);
+  if(!A.length || !B.length) return false;
+  const inB = new Set(B);
+  let shared = 0;
+  for(const w of A) if(inB.has(w)) shared += wt(w);
+  if(shared < SHARE_FLOOR) return false;
+  return shared / Math.min(mass(A), mass(B)) >= SHARE_RATIO;
+}
+/* returns {past:[archive rows, newest first], future:[2026 calendar rows]} */
+function findUses(topic){
+  const past = DATA.archive.filter(r => related(topic, r.topic))
+                           .sort((a, b) => b.date.localeCompare(a.date));
+  const future = DATA.calendar.filter(r => isPlanned(r) && related(topic, r.topic));
+  return {past, future};
+}
+
+/* ── toast + save indicator ───────────────────────────────────────────── */
+let toastTimer;
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
+}
+function paintSaveState(){
+  $("#saveDot").className = "dot" + (DIRTY ? " edited" : "");
+  $("#saveLabel").textContent = DIRTY ? "your edits (saved locally)" : "seed data";
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB REGISTRY — add a tab here and everything else wires itself up.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TABS = [
+  {id:"calendar", label:"Campaign Calendar", printable:true,
+   count:()=>DATA.calendar.filter(isPlanned).length + "/" + DATA.calendar.length,
+   render:renderCalendar},
+
+  {id:"bank",     label:"Topic Bank", printable:true,
+   count:()=>Object.values(DATA.topicBank).reduce((n,a)=>n+a.length,0),
+   render:renderBank},
+
+  {id:"archive",  label:"Call Archive", printable:true,
+   count:()=>DATA.archive.length,
+   render:renderArchive},
+
+  {id:"speakers", label:"Guest Speakers", printable:true,
+   count:()=>DATA.speakers.length,
+   render:renderSpeakers}
+];
+
+/* ═══════════ shared bits every tab can use ═══════════ */
+
+/* an editable field. path is a dot-path into DATA, e.g. "calendar.3.topic" */
+function ed(path, value, cls, placeholder){
+  const empty = !String(value||"").trim();
+  return `<span class="${cls||""}" data-edit="${path}"${empty && placeholder ? ` data-ph="${esc(placeholder)}"` : ""}>${esc(value||(empty&&placeholder?placeholder:""))}</span>`;
+}
+function toolbar(inner){ return `<div class="toolbar no-export no-print">${inner}</div>`; }
+function exportButtons(id, label){
+  return `<button class="btn primary" data-png="${id}" data-label="${esc(label)}">Export PNG</button>
+          <button class="btn" data-print="${id}">Print / PDF</button>`;
+}
+function printHead(title, sub){
+  return `<div class="print-head"><div class="t">Sharp Ninja Academy — ${esc(title)}</div><div class="s">${esc(sub)}</div></div>`;
+}
+function seg(name, opts, current){
+  return `<div class="seg">` + opts.map(o =>
+    `<button data-seg="${name}" data-val="${esc(o.v)}" class="${current===o.v?"on":""}">${esc(o.l)}</button>`
+  ).join("") + `</div>`;
+}
+function statBox(lab, val, meta, alert){
+  return `<div class="stat${alert?" alert":""}"><div class="lab">${esc(lab)}</div><div class="val">${esc(val)}</div>${meta?`<div class="meta">${esc(meta)}</div>`:""}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB 1 — CAMPAIGN CALENDAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderCalendar(){
+  const rows = DATA.calendar;
+  /* the numbers follow the campaign you're looking at — so an exported
+     "Fall III" board reports Fall's coverage, not the whole year's */
+  const scope = UI.season === "all" ? rows : rows.filter(r => seasonOf(r.date).key === UI.season);
+  const scopeName = UI.season === "all" ? "2026" : UI.season + " 2026";
+  const planned = scope.filter(isPlanned).length;
+  const blocked = scope.filter(isBlocked).length;
+  const open    = scope.filter(r => !isPlanned(r) && !isBlocked(r)).length;
+  const alan    = scope.filter(r => ["alan","both"].includes(presenterClass(r.presenter))).length;
+  const ben     = scope.filter(r => ["ben","both"].includes(presenterClass(r.presenter))).length;
+  const tbd     = scope.filter(r => isPlanned(r) && presenterClass(r.presenter)==="tbd").length;
+
+  /* filters */
+  const q = UI.q.toLowerCase();
+  const visible = rows.filter(r => {
+    if(UI.season !== "all" && seasonOf(r.date).key !== UI.season) return false;
+    if(UI.presenter !== "all"){
+      const c = presenterClass(r.presenter);
+      if(UI.presenter === "tbd" ? c !== "tbd" : !(c === UI.presenter || c === "both")) return false;
+    }
+    if(UI.open && (isPlanned(r) || isBlocked(r))) return false;
+    if(q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">2026 Group Calls</div>
+      <div class="big serif">Campaign Calendar</div>
+      <div class="lede">Every Tuesday of 2026. Turn on <b>Edit</b> to plan straight into the page, then
+        <b>Export PNG</b> for a clean image to drop in a text or a slide.</div>
+    </div>
+  </div>`;
+
+  html += toolbar(`
+    ${seg("season", [{v:"all",l:"All year"},{v:"Spring",l:"Spring I"},{v:"Summer",l:"Summer II"},{v:"Fall",l:"Fall III"}], UI.season)}
+    ${seg("presenter", [{v:"all",l:"Everyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"No host"}], UI.presenter)}
+    <button class="btn ${UI.open?"on":""}" data-toggle="open">Open weeks only</button>
+    <input class="search" id="q" placeholder="Search topics, tracks, notes…" value="${esc(UI.q)}">
+    <span class="grow"></span>
+    ${exportButtons("calBoard", scopeName + " Campaign Calendar")}`);
+
+  html += `<div id="calBoard" class="export-frame">`;
+  html += printHead(scopeName + " Campaign Calendar",
+      `${planned} of ${scope.length} weeks planned · ${open} open · printed ${fmtFull(todayISO())}`);
+
+  html += `<div class="stats">
+    ${statBox("Weeks planned", planned + " / " + scope.length, Math.round(planned/scope.length*100) + "% of " + (UI.season==="all"?"the year":UI.season))}
+    ${statBox("Open weeks", open, open ? "still to fill" : "fully booked", open > 0)}
+    ${statBox("Alan on", alan, "calls")}
+    ${statBox("Ben on", ben, "calls")}
+    ${statBox("Blocked", blocked, "NET, wedding, etc.")}
+    ${statBox("Host TBD", tbd, "planned, no host", tbd > 0)}
+  </div>`;
+
+  if(!visible.length){
+    html += `<div class="empty-note">No weeks match those filters.</div>`;
+  } else {
+    for(const S of SEASONS){
+      const group = visible.filter(r => seasonOf(r.date).key === S.key);
+      if(!group.length) continue;
+      const gAll = rows.filter(r => seasonOf(r.date).key === S.key);
+      const gPlanned = gAll.filter(isPlanned).length;
+      html += `<section class="season">
+        <div class="season-head">
+          <span class="roman">${S.roman}</span>
+          <h3>${S.key} 2026</h3>
+          <span class="range">${S.range}</span>
+          <span class="fill">${gPlanned}/${gAll.length} planned</span>
+        </div>`;
+      for(const r of group) html += weekRow(r, rows.indexOf(r), gAll.indexOf(r) + 1);
+      html += `</section>`;
+    }
+  }
+
+  /* backlog / parking lot */
+  html += `<div class="sec-title serif">Backlog <span class="n">— ideas parked, not yet on a date</span></div><div class="cols">`;
+  for(const [name, list] of Object.entries(DATA.backlog)){
+    html += `<div class="card"><h4>${esc(name)} <span class="n">${list.length}</span></h4><ul>`;
+    list.forEach((item, i) => {
+      const u = findUses(item);
+      const sched = u.future[0];
+      html += `<li class="${sched?"sched":""}">${ed("backlog."+name+"."+i, item)}${
+        sched ? `<span class="when sched">→ ${fmtDate(sched.date)}</span>` : ""}</li>`;
+    });
+    html += `</ul></div>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+/* one week row */
+function weekRow(r, idx, wkNum){
+  const p = "calendar." + idx;
+  const cls = presenterClass(r.presenter);
+  const planned = isPlanned(r), blocked = isBlocked(r);
+  const state = blocked ? "blocked" : (planned ? "" : "open");
+
+  let main = "";
+  if(planned) main = `<div class="wk-topic serif">${ed(p+".topic", r.topic)}</div>`;
+  else if(blocked) main = `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
+  else main = `<div class="wk-topic empty mono">${ed(p+".topic", "", "", "+ open — click to plan")}</div>`;
+
+  if(r.detail) main += `<div class="wk-detail">${ed(p+".detail", r.detail)}</div>`;
+
+  const meta = [];
+  if(r.track) meta.push(`<span class="chip track">${ed(p+".track", r.track)}</span>`);
+  if(r.note && !blocked) meta.push(`<span class="chip note">${ed(p+".note", r.note)}</span>`);
+  if(meta.length) main += `<div class="wk-meta">${meta.join("")}</div>`;
+
+  if(r.second) main += `<div class="wk-sub"><span class="tag">2nd call</span><span>${ed(p+".second", r.second)}${
+    r.secondPresenter ? ` <span class="chip second">${ed(p+".secondPresenter", r.secondPresenter)}</span>` : ""}</span></div>`;
+  if(r.proposed) main += `<div class="wk-sub proposed"><span class="tag">proposed</span><span>${ed(p+".proposed", r.proposed)}</span></div>`;
+  if(r.alt) main += `<div class="wk-sub alt no-export no-print"><span class="tag">alt draft</span><span>${ed(p+".alt", r.alt)}</span></div>`;
+
+  return `<div class="week ${state}">
+    <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span><b>${fmtDate(r.date)}</b>${fmtDay(r.date)}</div>
+    <div class="wk-main">${main}</div>
+    <div class="wk-right"><span class="chip ${cls} big">${ed(p+".presenter", r.presenter, "", "who?")}</span></div>
+  </div>`;
+}
+function todayISO(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB 2 — TOPIC BANK
+   Every topic is cross-checked against the archive and the 2026 calendar, so
+   you can see at a glance what's been covered and what has never been run.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderBank(){
+  const cats = DATA.topicBank;
+  const all = Object.values(cats).flat();
+  let covered = 0, scheduled = 0;
+  const marks = new Map();
+  for(const t of all){
+    const u = findUses(t);
+    marks.set(t, u);
+    if(u.past.length) covered++;
+    if(u.future.length) scheduled++;
+  }
+  const q = UI.q.toLowerCase();
+
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">The full menu</div>
+      <div class="big serif">Topic Bank</div>
+      <div class="lede">Every topic we can teach, by category. A <b style="color:var(--good)">green</b> dot means
+        we've run it before, <b style="color:var(--accent)">rust</b> means it's on the 2026 calendar, grey means untouched.</div>
+    </div>
+  </div>`;
+
+  html += toolbar(`
+    <button class="btn ${UI.open?"on":""}" data-toggle="open">Never-run only</button>
+    <input class="search" id="q" placeholder="Search all ${all.length} topics…" value="${esc(UI.q)}">
+    <span class="grow"></span>
+    ${exportButtons("bankBoard", "Topic Bank")}`);
+
+  html += `<div id="bankBoard" class="export-frame">`;
+  html += printHead("Topic Bank", `${all.length} topics across ${Object.keys(cats).length} categories · printed ${fmtFull(todayISO())}`);
+  html += `<div class="stats">
+    ${statBox("Topics", all.length, "in the bank")}
+    ${statBox("Already run", covered, "found in the archive")}
+    ${statBox("On 2026 calendar", scheduled, "scheduled")}
+    ${statBox("Never run", all.length - covered, "fresh material", true)}
+    ${statBox("Categories", Object.keys(cats).length, "")}
+  </div><div class="cols">`;
+
+  let shown = 0;
+  for(const [name, list] of Object.entries(cats)){
+    const items = list.map((t,i) => ({t, i})).filter(({t}) => {
+      if(q && !t.toLowerCase().includes(q)) return false;
+      if(UI.open && marks.get(t).past.length) return false;
+      return true;
+    });
+    if(!items.length) continue;
+    shown += items.length;
+    html += `<div class="card"><h4>${esc(name)} <span class="n">${items.length}</span></h4><ul>`;
+    for(const {t, i} of items){
+      const u = marks.get(t);
+      const last = u.past[0], next = u.future[0];
+      const cls = next ? "sched" : (last ? "used" : "");
+      let when = "";
+      if(next) when = `<span class="when sched">2026 · ${fmtDate(next.date)}</span>`;
+      else if(last) when = `<span class="when">last ${fmtDate(last.date)} '${String(parseDate(last.date).getFullYear()).slice(2)}</span>`;
+      html += `<li class="${cls}">${ed("topicBank."+name+"."+i, t)}${when}</li>`;
+    }
+    html += `</ul></div>`;
+  }
+  if(!shown) html += `<div class="empty-note">No topics match.</div>`;
+  html += `</div></div>`;
+  return html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB 3 — CALL ARCHIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderArchive(){
+  const rows = DATA.archive;
+  const camps = [...new Set(rows.map(r => r.campaign))];
+  const q = UI.q.toLowerCase();
+  const visible = rows.filter(r => {
+    if(UI.archCampaign !== "all" && r.campaign !== UI.archCampaign) return false;
+    if(q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  /* like the calendar, the numbers follow the campaign you've selected */
+  const scope = UI.archCampaign === "all" ? rows : rows.filter(r => r.campaign === UI.archCampaign);
+  const held = scope.filter(r => r.status !== "nocall").length;
+  const hotSeats = scope.filter(r => r.hotSeat).length;
+  const scopeCamps = [...new Set(scope.map(r => r.campaign))];
+
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">What we've already run</div>
+      <div class="big serif">Call Archive</div>
+      <div class="lede">Every group call back to December 2024 — so we don't repeat a topic by accident,
+        and so we can point a rep at the call that covers their gap.</div>
+    </div>
+  </div>`;
+
+  html += toolbar(`
+    ${seg("archCampaign", [{v:"all",l:"All"}].concat(camps.map(c => ({v:c, l:c}))), UI.archCampaign)}
+    <input class="search" id="q" placeholder="Search ${rows.length} calls…" value="${esc(UI.q)}">
+    <span class="grow"></span>
+    ${exportButtons("archBoard", "Call Archive")}`);
+
+  html += `<div id="archBoard" class="export-frame">`;
+  html += printHead("Call Archive — " + (UI.archCampaign === "all" ? "all campaigns" : UI.archCampaign),
+      `${held} calls held · printed ${fmtFull(todayISO())}`);
+  html += `<div class="stats">
+    ${statBox("Calls logged", scope.length, UI.archCampaign === "all" ? "since Dec 2024" : UI.archCampaign)}
+    ${statBox("Actually held", held, (scope.length - held) + " skipped weeks")}
+    ${statBox("Hot seats", hotSeats, "run alongside")}
+    ${statBox("Campaigns", scopeCamps.length, scopeCamps.join(" · "))}
+  </div>`;
+
+  if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
+  for(const c of camps){
+    const group = visible.filter(r => r.campaign === c);
+    if(!group.length) continue;
+    html += `<div class="sec-title serif">${esc(c)} <span class="n">${group.length} calls</span></div>
+      <table class="grid"><thead><tr>
+        <th>#</th><th>Date</th><th>Topic</th><th>Series</th><th>Slot</th><th>Host</th><th>Hot seat</th>
+      </tr></thead><tbody>`;
+    for(const r of group){
+      const i = rows.indexOf(r), p = "archive." + i;
+      html += `<tr class="${r.status==="nocall"?"nocall":""}">
+        <td class="num">${r.n}</td>
+        <td class="dt">${fmtDate(r.date)} '${String(parseDate(r.date).getFullYear()).slice(2)}</td>
+        <td>${ed(p+".topic", r.topic)}${r.note?`<div style="font-size:11.5px;color:var(--ink-faint);margin-top:3px">${ed(p+".note", r.note)}</div>`:""}</td>
+        <td>${r.series?`<span class="chip">${ed(p+".series", r.series)}</span>`:""}</td>
+        <td>${r.call?`<span class="chip">${ed(p+".call", r.call)}</span>`:""}</td>
+        <td>${r.presenter?`<span class="chip ${presenterClass(r.presenter)}">${ed(p+".presenter", r.presenter)}</span>`:""}</td>
+        <td>${r.hotSeat?`<div style="font-size:12px">${ed(p+".hotSeat", r.hotSeat)}</div>${
+              r.hotSeatPresenter?`<span class="chip ${presenterClass(r.hotSeatPresenter)}" style="margin-top:4px;display:inline-block">${ed(p+".hotSeatPresenter", r.hotSeatPresenter)}</span>`:""}`:""}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB 4 — GUEST SPEAKERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+function renderSpeakers(){
+  const rows = DATA.speakers;
+  const q = UI.q.toLowerCase();
+  const visible = rows.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+  const withTopic = rows.filter(r => String(r.topic||"").trim()).length;
+  const asked = rows.filter(r => String(r.lastAsked||"").trim()).length;
+
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">The bench</div>
+      <div class="big serif">Guest Speakers</div>
+      <div class="lede">Who we can pull in, what they'd teach, and when we last asked — so the same
+        two people don't get asked every time.</div>
+    </div>
+  </div>`;
+
+  html += toolbar(`
+    <input class="search" id="q" placeholder="Search names…" value="${esc(UI.q)}">
+    <button class="btn no-print" data-add="speakers">+ Add speaker</button>
+    <span class="grow"></span>
+    ${exportButtons("spkBoard", "Guest Speakers")}`);
+
+  html += `<div id="spkBoard" class="export-frame">`;
+  html += printHead("Guest Speakers", `${rows.length} on the bench · printed ${fmtFull(todayISO())}`);
+  html += `<div class="stats">
+    ${statBox("On the bench", rows.length, "")}
+    ${statBox("Topic assigned", withTopic, (rows.length - withTopic) + " still blank", rows.length - withTopic > 0)}
+    ${statBox("Ever asked", asked, "logged")}
+  </div>
+  <table class="grid"><thead><tr><th>Name</th><th>Topic</th><th>Last time asked</th></tr></thead><tbody>`;
+  for(const r of visible){
+    const p = "speakers." + rows.indexOf(r);
+    html += `<tr>
+      <td style="font-weight:500">${ed(p+".name", r.name)}</td>
+      <td>${ed(p+".topic", r.topic, "", "— to decide —")}</td>
+      <td class="dt">${ed(p+".lastAsked", r.lastAsked, "", "—")}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP — routing, rendering, editing, export
+   ═══════════════════════════════════════════════════════════════════════════ */
+function currentTab(){ return TABS.find(t => t.id === TAB) || TABS[0]; }
+
+function paintTabs(){
+  $("#tabBar").innerHTML = TABS.map(t =>
+    `<button class="tab ${t.id===TAB?"on":""}" data-tab="${t.id}">${esc(t.label)}<span class="ct">${
+      t.count ? esc(t.count()) : ""}</span></button>`).join("");
+}
+
+function render(){
+  const focused = document.activeElement && document.activeElement.id === "q";
+  const caret = focused ? document.activeElement.selectionStart : null;
+  paintTabs();
+  $("#view").innerHTML = editBanner() + currentTab().render();
+  applyEdit();
+  if(focused){
+    const q = $("#q");
+    if(q){ q.focus(); try{ q.setSelectionRange(caret, caret); }catch(e){} }
+  }
+}
+function editBanner(){
+  return `<div class="edit-banner no-export no-print">
+    <b>Edit mode.</b>
+    <span class="grow">Click any field to change it. Everything saves to this browser as you go — use <b>Data ▸ Export</b> to hand the plan to the other person.</span>
+    <button class="btn sm" data-toggle="edit">Done editing</button>
+  </div>`;
+}
+
+/* ── dot-path get/set into DATA ───────────────────────────────────────── */
+function setPath(path, value){
+  const parts = path.split(".");
+  let node = DATA;
+  for(let i = 0; i < parts.length - 1; i++) node = node[parts[i]];
+  node[parts[parts.length - 1]] = value;
+}
+
+/* ── edit mode ────────────────────────────────────────────────────────── */
+function applyEdit(){
+  document.body.classList.toggle("editing", EDITING);
+  document.querySelectorAll("[data-edit]").forEach(el => {
+    if(EDITING) el.setAttribute("contenteditable", "plaintext-only");
+    else el.removeAttribute("contenteditable");
+  });
+  $("#editBtn").classList.toggle("on", EDITING);
+  $("#editBtn").textContent = EDITING ? "Done" : "Edit";
+}
+document.addEventListener("focusin", e => {
+  const el = e.target.closest && e.target.closest("[data-edit]");
+  if(!el || !EDITING) return;
+  if(el.dataset.ph && el.textContent.trim() === el.dataset.ph) el.textContent = "";
+});
+document.addEventListener("focusout", e => {
+  const el = e.target.closest && e.target.closest("[data-edit]");
+  if(!el || !EDITING) return;
+  const val = el.textContent.replace(/\s+/g, " ").trim();
+  setPath(el.dataset.edit, val);
+  save();
+  render();
+});
+document.addEventListener("keydown", e => {
+  const el = e.target.closest && e.target.closest("[data-edit]");
+  if(el && EDITING && e.key === "Enter"){ e.preventDefault(); el.blur(); }
+  if(el && EDITING && e.key === "Escape"){ e.preventDefault(); render(); }
+});
+
+/* ── clicks ───────────────────────────────────────────────────────────── */
+document.addEventListener("click", e => {
+  const t = e.target.closest("button");
+  if(!t) return;
+
+  if(t.dataset.tab){ TAB = t.dataset.tab; location.hash = TAB; UI.q = ""; render(); window.scrollTo(0,0); return; }
+  if(t.dataset.seg){ UI[t.dataset.seg] = t.dataset.val; render(); return; }
+  if(t.dataset.toggle === "open"){ UI.open = !UI.open; render(); return; }
+  if(t.dataset.toggle === "edit" || t.id === "editBtn"){ EDITING = !EDITING; render(); return; }
+  if(t.dataset.png){ exportPNG(t.dataset.png, t.dataset.label); return; }
+  if(t.dataset.print){ printBoard(t.dataset.print); return; }
+  if(t.dataset.add === "speakers"){
+    DATA.speakers.push({name:"New speaker", topic:"", lastAsked:""});
+    save(); EDITING = true; render();
+    toast("Added — click the name to rename it"); return;
+  }
+  if(t.id === "syncBtn"){ openData(); return; }
+});
+document.addEventListener("input", e => {
+  if(e.target.id === "q"){ UI.q = e.target.value; clearTimeout(window._qt); window._qt = setTimeout(render, 160); }
+});
+window.addEventListener("hashchange", () => {
+  const id = location.hash.slice(1);
+  if(id && id !== TAB && TABS.some(t => t.id === id)){ TAB = id; render(); }
+});
+
+/* ═══════════ PRINT ═══════════ */
+function printBoard(id){
+  document.querySelectorAll(".export-frame").forEach(n => { n.dataset.hide = (n.id !== id) ? "1" : ""; });
+  const style = document.createElement("style");
+  style.id = "printOnly";
+  style.textContent = `@media print{ [data-hide="1"]{display:none!important} .page-head{display:none!important} }`;
+  document.head.appendChild(style);
+  document.body.classList.add("exporting");
+  setTimeout(() => {
+    window.print();
+    document.body.classList.remove("exporting");
+    style.remove();
+  }, 60);
+}
+
+/* ═══════════ PNG EXPORT ═══════════
+   Renders the board into an <svg><foreignObject> and paints it to a canvas.
+   No libraries, no network — except an optional pass that inlines the web
+   fonts so the image looks identical to the screen. If that fetch fails
+   (offline, or the file opened straight off disk) it falls back to system
+   fonts and still produces a clean image. */
+let FONT_CSS = null;
+async function inlineFonts(){
+  if(FONT_CSS !== null) return FONT_CSS;
+  FONT_CSS = "";
+  try{
+    const link = [...document.querySelectorAll("link[rel=stylesheet]")].find(l => l.href.includes("fonts.googleapis"));
+    if(!link) return FONT_CSS;
+    const css = await (await fetch(link.href)).text();
+    const blocks = css.split("@font-face").slice(1)
+      .filter(b => b.includes("U+0000-00FF"));           // latin subset only — keeps it small
+    const out = [];
+    for(const b of blocks){
+      const m = b.match(/url\((https:[^)]+\.woff2)\)/);
+      if(!m) continue;
+      const buf = await (await fetch(m[1])).arrayBuffer();
+      let bin = ""; const bytes = new Uint8Array(buf);
+      for(let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      out.push("@font-face" + b.replace(m[1], "data:font/woff2;base64," + btoa(bin)));
+    }
+    FONT_CSS = out.join("\n");
+  }catch(e){ console.warn("Font inlining skipped:", e); FONT_CSS = ""; }
+  return FONT_CSS;
+}
+
+async function exportPNG(id, label){
+  const node = document.getElementById(id);
+  if(!node) return toast("Nothing to export here");
+  const btn = document.querySelector(`[data-png="${id}"]`);
+  if(btn){ btn.disabled = true; btn.textContent = "Rendering…"; }
+  document.body.classList.add("exporting");
+
+  try{
+    const fonts = await inlineFonts();
+    const clone = node.cloneNode(true);
+    clone.querySelectorAll(".no-export, [contenteditable]").forEach(n => {
+      if(n.classList.contains("no-export")) n.remove(); else n.removeAttribute("contenteditable");
+    });
+
+    const width = Math.ceil(node.getBoundingClientRect().width);
+    const pageCSS = [...document.querySelectorAll("style")].map(s => s.textContent).join("\n");
+
+    const holder = document.createElement("div");
+    holder.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+    holder.style.cssText = `width:${width}px;background:#F7F5F0;padding:28px;font-family:"Geist",-apple-system,sans-serif`;
+    const st = document.createElement("style");
+    st.textContent = fonts + "\n" + pageCSS + "\n.print-head{display:block!important}";
+    holder.appendChild(st);
+    holder.appendChild(clone);
+
+    /* measure the real height off-screen before serialising */
+    const probe = document.createElement("div");
+    probe.style.cssText = `position:fixed;left:-99999px;top:0;width:${width + 56}px`;
+    probe.appendChild(holder.cloneNode(true));
+    document.body.appendChild(probe);
+    const height = Math.ceil(probe.firstChild.getBoundingClientRect().height);
+    probe.remove();
+
+    const xml = new XMLSerializer().serializeToString(holder);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width + 56}" height="${height}">` +
+                `<foreignObject x="0" y="0" width="100%" height="100%">${xml}</foreignObject></svg>`;
+
+    const scale = 2;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise((ok, no) => {
+      img.onload = ok; img.onerror = () => no(new Error("SVG render failed"));
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = (width + 56) * scale; canvas.height = height * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#F7F5F0"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.drawImage(img, 0, 0);
+
+    const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "SNA-" + String(label || "board").replace(/[^\w]+/g, "-") + "-" + todayISO() + ".png";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast("PNG saved to your Downloads");
+  }catch(err){
+    console.error(err);
+    toast("PNG export failed — use Print / PDF instead");
+  }finally{
+    document.body.classList.remove("exporting");
+    if(btn){ btn.disabled = false; btn.textContent = "Export PNG"; }
+  }
+}
+
+/* ═══════════ DATA EXPORT / IMPORT ═══════════ */
+function openData(){
+  $("#mTitle").textContent = "Hub data";
+  $("#mBody").innerHTML = "This is everything the hub knows, as JSON. <b>Copy</b> it and send it to the other " +
+    "person — they paste it in here and hit <b>Load</b> to get your exact plan. <b>Download</b> saves a file you can " +
+    "hand to Claude to commit back into the repo.";
+  $("#mText").value = JSON.stringify(DATA, null, 2);
+  $("#mActions").innerHTML = `
+    <button class="btn" data-act="reset">Reset to seed</button>
+    <span style="flex:1"></span>
+    <button class="btn" data-act="copy">Copy</button>
+    <button class="btn" data-act="download">Download</button>
+    <button class="btn primary" data-act="load">Load pasted JSON</button>
+    <button class="btn" data-act="close">Close</button>`;
+  $("#scrim").classList.add("on");
+}
+$("#scrim").addEventListener("click", async e => {
+  if(e.target.id === "scrim") return $("#scrim").classList.remove("on");
+  const act = e.target.dataset && e.target.dataset.act;
+  if(!act) return;
+  if(act === "close") return $("#scrim").classList.remove("on");
+  if(act === "copy"){
+    try{ await navigator.clipboard.writeText($("#mText").value); toast("Copied"); }
+    catch(err){ $("#mText").select(); document.execCommand("copy"); toast("Copied"); }
+    return;
+  }
+  if(act === "download"){
+    const blob = new Blob([$("#mText").value], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sna-hub-data-" + todayISO() + ".json";
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("Downloaded"); return;
+  }
+  if(act === "load"){
+    try{
+      const parsed = JSON.parse($("#mText").value);
+      if(!parsed.calendar || !Array.isArray(parsed.calendar)) throw new Error("missing calendar");
+      DATA = migrate(parsed); save(); render();
+      $("#scrim").classList.remove("on"); toast("Loaded");
+    }catch(err){ toast("That isn't valid hub JSON — " + err.message); }
+    return;
+  }
+  if(act === "reset"){
+    if(!confirm("Throw away your local edits and go back to the data pulled from the sheet?")) return;
+    localStorage.removeItem(STORE_KEY);
+    DATA = clone(SEED); DIRTY = false; DF = null; paintSaveState(); render();
+    $("#scrim").classList.remove("on"); toast("Back to seed data");
+  }
+});
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("#scrim").classList.remove("on"); });
+
+/* ═══════════ boot ═══════════ */
+$("#sheetLink").href = SEED.meta.sheetUrl;
+$("#dashLink").href  = SEED.meta.dashboardUrl;
+$("#stamp").textContent = "sheet snapshot " + SEED.meta.snapshot;
+if(!TABS.some(t => t.id === TAB)) TAB = TABS[0].id;
+paintSaveState();
+render();
+</script>
+</body>
+</html>

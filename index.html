@@ -930,6 +930,190 @@ function paintSaveState(){
   $("#saveLabel").textContent = DIRTY ? "your edits (saved locally)" : "seed data";
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB — MENTEES (live roster from the private SNA contacts sheet)
+
+   Unlike every other tab, this one does NOT live in DATA / hub sync. It reads
+   the Sharp Ninja Apps Script web app directly, gated by a coach key that is
+   entered once and kept in localStorage — the key is deliberately NOT in this
+   file, because this page is public GitHub Pages and the roster holds phones
+   and emails. Coach assignments write straight back to the private sheet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const TEAM_API = "https://script.google.com/macros/s/AKfycbyNFDkgEAUT5IDNw4wvCHLQZoe70XxVwgAZmG8bNTmlkY8t0d-wL2eKa53kgke2AOCHPQ/exec";
+const TEAM = {
+  key: localStorage.getItem("sna_coach_key") || "",
+  rows: null, coaches: [], loading: false, err: ""
+};
+
+async function teamCall(body){
+  const res = await fetch(TEAM_API, {
+    method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"},
+    body: JSON.stringify(Object.assign({key: TEAM.key}, body))
+  });
+  return res.json();
+}
+
+async function teamLoad(){
+  if(TEAM.loading || !TEAM.key) return;
+  TEAM.loading = true; TEAM.err = ""; render();
+  try{
+    const out = await teamCall({action: "coachRoster"});
+    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; }
+    else if(out.error === "bad key"){
+      TEAM.key = ""; localStorage.removeItem("sna_coach_key");
+      TEAM.err = "That key wasn't right — ask Alan for the current one.";
+    }
+    else TEAM.err = out.error || "The roster feed said no.";
+  }catch(e){ TEAM.err = "Couldn't reach the roster feed — check your connection and retry."; }
+  TEAM.loading = false; render();
+}
+
+function coachNames(){
+  const names = TEAM.coaches.map(c => String(c.Name || "").split(" ")[0]).filter(Boolean);
+  return names.length ? names : ["Alan", "Ben"];
+}
+
+function renderTeam(){
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">Who we're coaching</div>
+      <div class="big serif">Mentees</div>
+      <div class="lede">Everyone on Sharp Ninja Academy, straight from the private contacts sheet —
+        onboarding form submissions land here on their own. Pick a coach on any row to assign the mentorship.</div>
+    </div>
+  </div>`;
+
+  /* ── key gate ── */
+  if(!TEAM.key){
+    html += `<div class="empty-note" style="max-width:460px;margin:40px auto;text-align:center">
+      <div class="serif" style="font-size:20px;margin-bottom:8px">Coach access</div>
+      <div style="margin-bottom:14px">This board shows phone numbers and emails, so it stays locked.
+        Enter the coach key once — this browser will remember it.${TEAM.err ? `<div style="color:var(--red,#b3261e);margin-top:8px">${esc(TEAM.err)}</div>` : ""}</div>
+      <input class="search" id="teamKey" type="password" placeholder="coach key" style="width:240px">
+      <button class="btn primary" data-teamact="unlock">Unlock</button>
+    </div>`;
+    return html;
+  }
+  if(TEAM.loading && !TEAM.rows){ return html + `<div class="empty-note">Fetching the roster…</div>`; }
+  if(TEAM.err && !TEAM.rows){
+    return html + `<div class="empty-note">${esc(TEAM.err)}
+      <div style="margin-top:10px"><button class="btn" data-teamact="reload">Try again</button></div></div>`;
+  }
+  if(!TEAM.rows){ teamLoad(); return html + `<div class="empty-note">Fetching the roster…</div>`; }
+
+  const q = UI.q.toLowerCase();
+  const former = !!UI.teamFormer;
+  const coachSeg = UI.teamCoach || "all";
+  let rows = TEAM.rows.slice().sort((a,b) => a.Name.localeCompare(b.Name));
+  const inactive = rows.filter(r => !r.Active).length;
+  if(!former) rows = rows.filter(r => r.Active);
+  if(coachSeg !== "all") rows = rows.filter(r =>
+    coachSeg === "none" ? !String(r.Coach||"").trim()
+                        : String(r.Coach||"").split(" ")[0] === coachSeg);
+  const visible = rows.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+
+  const act = TEAM.rows.filter(r => r.Active);
+  const unassigned = act.filter(r => !String(r.Coach||"").trim()).length;
+  const missing = act.filter(r => !r.Phone || !r.Email).length;
+  const path = act.filter(r => /path/i.test(r.Program || r.Tier)).length;
+  const masters = act.filter(r => /master/i.test(r.Program || r.Tier)).length;
+
+  html += toolbar(`
+    ${seg("teamCoach", [{v:"all",l:"All"}].concat(coachNames().map(n => ({v:n,l:n}))).concat([{v:"none",l:"Unassigned"}]), coachSeg)}
+    <input class="search" id="q" placeholder="Search ${rows.length} mentees…" value="${esc(UI.q)}">
+    <button class="btn ${former?"on":""}" data-teamact="former">Show former</button>
+    <span class="grow"></span>
+    <button class="btn" data-teamact="reload" title="Re-pull the roster from the sheet">Refresh</button>
+    ${exportButtons("teamBoard", "Mentees")}`);
+
+  html += `<div id="teamBoard" class="export-frame">`;
+  html += printHead("Sharp Ninja Academy — Mentees", `${act.length} active · printed ${fmtFull(todayISO())}`);
+  html += `<div class="stats">
+    ${statBox("Active mentees", act.length, inactive ? inactive + " former" : "")}
+    ${statBox("The Path", path, "")}
+    ${statBox("The Masters", masters, "")}
+    ${statBox("Unassigned", unassigned, unassigned ? "pick a coach below" : "everyone covered", unassigned > 0)}
+    ${statBox("Missing contact info", missing, missing ? "can't text or email them" : "all reachable", missing > 0)}
+  </div>`;
+
+  if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
+  else{
+    html += `<table class="grid"><thead><tr>
+      <th>Mentee</th><th>Program</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export"></th>
+    </tr></thead><tbody>`;
+    for(const r of visible){
+      const first = coachNames();
+      const coach = String(r.Coach || "").trim();
+      html += `<tr${r.Active ? "" : ` style="opacity:.55"`}>
+        <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
+            <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
+        <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
+        <td>${esc(r.CareerSales || "")}${r.Goal ? `<div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">goal: ${esc(r.Goal)}</div>` : ""}</td>
+        <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--red,#b3261e)">no phone</span>`}
+            <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
+        <td style="font-size:12px">${esc(r.Manager || "")}
+            <div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div></td>
+        <td class="dt" style="font-size:12px">${esc(String(r.Joined || "").slice(0,10))}</td>
+        <td><select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
+          <option value=""${coach ? "" : " selected"}>—</option>
+          ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
+        </select></td>
+        <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
+            href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a></td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+  html += `<div class="no-export no-print" style="margin-top:14px;font-size:11.5px;color:var(--ink-faint)">
+    New mentees appear here automatically when they submit the onboarding form.
+    <a href="#" data-teamact="lock" style="margin-left:10px">Forget key on this device</a></div>`;
+  return html;
+}
+
+/* mentee-tab actions — document-level, so they survive re-renders */
+document.addEventListener("click", async e => {
+  const act = e.target.closest("[data-teamact]");
+  if(!act) return;
+  e.preventDefault();
+  const kind = act.dataset.teamact;
+  if(kind === "unlock"){
+    const v = ($("#teamKey") || {}).value || "";
+    if(!v.trim()) return;
+    TEAM.key = v.trim(); localStorage.setItem("sna_coach_key", TEAM.key);
+    TEAM.rows = null; teamLoad();
+  }
+  if(kind === "reload"){ TEAM.rows = null; teamLoad(); }
+  if(kind === "former"){ UI.teamFormer = !UI.teamFormer; render(); }
+  if(kind === "lock"){
+    TEAM.key = ""; TEAM.rows = null; localStorage.removeItem("sna_coach_key");
+    render(); toast("Key forgotten on this device");
+  }
+});
+document.addEventListener("change", async e => {
+  const sel = e.target.closest("select[data-coach]");
+  if(!sel) return;
+  const repId = sel.dataset.coach, coach = sel.value;
+  const row = (TEAM.rows || []).find(r => r.RepID === repId);
+  const before = row ? row.Coach : "";
+  if(row) row.Coach = coach;
+  render();
+  const out = await teamCall({action: "assignCoach", repId, coach}).catch(() => ({ok:false}));
+  if(out.ok) toast(coach ? `${repId} → ${coach}` : `${repId} unassigned`);
+  else{
+    if(row) row.Coach = before;
+    render(); toast("Couldn't save that — try again.");
+  }
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Enter" && e.target.id === "teamKey"){
+    const b = document.querySelector('[data-teamact="unlock"]');
+    if(b) b.click();
+  }
+});
+
 /* ═══════════════════════════════════════════════════════════════════════════
    NAV REGISTRY — two levels.
 
@@ -952,7 +1136,9 @@ const SECTIONS = [
    count:()=>{ const y = DATA.calendar.filter(r => Number(r.date.slice(0,4)) === UI.year);
                return y.filter(isPlanned).length + "/" + y.length; }},
   {id:"business", label:"Orders of Business",
-   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"}
+   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"},
+  {id:"team", label:"Mentees",
+   count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""}
 ];
 
 const TABS = [
@@ -975,7 +1161,11 @@ const TABS = [
 
   {id:"business", label:"Orders of Business", sub:"", section:"business", printable:true,
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open",
-   render:renderBusiness}
+   render:renderBusiness},
+
+  {id:"team", label:"Mentees", sub:"", section:"team", printable:true,
+   count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : "",
+   render:renderTeam}
 ];
 
 const tabsIn     = sec => TABS.filter(t => t.section === sec);

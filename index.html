@@ -680,7 +680,8 @@ let DATA = load();
 let DIRTY = !!localStorage.getItem(STORE_KEY);
 let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
-const UI = { season:"all", presenter:"all", open:false, q:"", archCampaign:"all" };
+const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
+             q:"", archCampaign:"all", bizView:"open" };
 
 function load(){
   let saved = null;

@@ -162,6 +162,17 @@ body.editing .wk-topic.empty{color:var(--ink-faint)}
 .edit-banner{display:none;background:var(--warn-bg);border:1px solid #E4CE8E;border-radius:var(--radius);padding:11px 15px;font-size:12.5px;color:#6d5300;margin-bottom:16px;align-items:center;gap:12px;flex-wrap:wrap}
 body.editing .edit-banner{display:flex}
 .edit-banner b{font-weight:600}
+
+/* controls that only exist while Edit is on */
+.edit-only{display:none!important}
+body.editing .edit-only{display:inline-block!important}
+body.editing th.edit-only,body.editing td.edit-only{display:table-cell!important;width:28px}
+.del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:0 4px;border-radius:4px;vertical-align:middle}
+.del:hover{background:var(--bad-bg);color:var(--bad)}
+.card h4 .del{margin-left:auto}
+.card li .del{float:right;opacity:.5}
+.card li:hover .del{opacity:1}
+body.editing .wk-meta .btn.sm{font-size:10px;padding:3px 8px;color:var(--ink-faint)}
 .edit-banner .grow{flex:1}
 
 /* ═══════════ modal ═══════════ */
@@ -565,7 +576,43 @@ function load(){
 function migrate(d){
   const base = clone(SEED);
   for(const k of Object.keys(base)) if(!(k in d)) d[k] = base[k];
+  ensureYears(d);
   return d;
+}
+
+/* ── the calendar rolls itself forward ──────────────────────────────────
+   Always keep this year and next year on the board, so Spring of the coming
+   year is plannable long before it arrives and nobody has to remember to add
+   it. Generating is deterministic — same dates, same empty fields — so if
+   Alan and Ben both generate a year, the copies are identical. ── */
+function ensureYears(d){
+  if(!Array.isArray(d.calendar)) return;
+  const now = new Date().getFullYear();
+  for(const y of [now, now + 1]) if(!hasYear(d.calendar, y)) d.calendar.push(...blankYear(d.calendar, y));
+  d.calendar.sort((a, b) => a.date.localeCompare(b.date));
+}
+const hasYear = (cal, y) => cal.some(r => r.date.startsWith(y + "-"));
+const yearsIn = cal => [...new Set(cal.map(r => Number(r.date.slice(0, 4))))].sort();
+
+/* Which weekday are calls on? Read it off the existing rows rather than
+   assuming Tuesday, so moving the call night doesn't break next year. */
+function callWeekday(cal){
+  const tally = {};
+  for(const r of cal){ const d = parseDate(r.date).getDay(); tally[d] = (tally[d] || 0) + 1; }
+  const best = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0];
+  return best === undefined ? 2 : Number(best);   // 2 = Tuesday
+}
+function blankYear(cal, year){
+  const want = callWeekday(cal);
+  const d = new Date(year, 0, 1);
+  while(d.getDay() !== want) d.setDate(d.getDate() + 1);
+  const out = [];
+  while(d.getFullYear() === year){
+    out.push({date: year + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"),
+              topic:"", track:"", presenter:""});
+    d.setDate(d.getDate() + 7);
+  }
+  return out;
 }
 function save(){
   try{
@@ -647,12 +694,47 @@ function related(a, b){
   if(shared < SHARE_FLOOR) return false;
   return shared / Math.min(mass(A), mass(B)) >= SHARE_RATIO;
 }
-/* returns {past:[archive rows, newest first], future:[2026 calendar rows]} */
+/* {past: already delivered, newest first · future: still on the calendar}
+   A calendar week that has come and gone counts as delivered — otherwise a
+   topic taught in March 2026 would still read as "scheduled" in 2027. */
 function findUses(topic){
-  const past = DATA.archive.filter(r => related(topic, r.topic))
+  const today = todayISO();
+  const done = DATA.calendar.filter(r => isPlanned(r) && r.date < today && related(topic, r.topic));
+  const past = DATA.archive.filter(r => related(topic, r.topic)).concat(done)
                            .sort((a, b) => b.date.localeCompare(a.date));
-  const future = DATA.calendar.filter(r => isPlanned(r) && related(topic, r.topic));
+  const future = DATA.calendar.filter(r => isPlanned(r) && r.date >= today && related(topic, r.topic))
+                              .sort((a, b) => a.date.localeCompare(b.date));
   return {past, future};
+}
+
+/* ── structural edits, all driven by the same dot-paths as the text fields ── */
+function getPath(path){
+  return path.split(".").reduce((n, k) => (n == null ? n : n[k]), DATA);
+}
+function parentOf(path){
+  const parts = path.split(".");
+  const key = parts.pop();
+  return {node: parts.reduce((n, k) => n[k], DATA), key};
+}
+function removeAt(path){
+  const {node, key} = parentOf(path);
+  if(Array.isArray(node)) node.splice(Number(key), 1);
+  else delete node[key];
+}
+function addTo(path, value){
+  const target = getPath(path);
+  if(Array.isArray(target)) target.push(value);
+}
+/* rename an object key while keeping its position in the list */
+function renameKey(objPath, oldKey, newKey){
+  const obj = getPath(objPath);
+  if(!obj || !(oldKey in obj) || !newKey || newKey === oldKey) return false;
+  if(newKey in obj) return false;
+  const rebuilt = {};
+  for(const k of Object.keys(obj)) rebuilt[k === oldKey ? newKey : k] = obj[k];
+  const {node, key} = parentOf(objPath);
+  node[key] = rebuilt;
+  return true;
 }
 
 /* ── toast + save indicator ───────────────────────────────────────────── */
@@ -672,7 +754,8 @@ function paintSaveState(){
    ═══════════════════════════════════════════════════════════════════════════ */
 const TABS = [
   {id:"calendar", label:"Campaign Calendar", printable:true,
-   count:()=>DATA.calendar.filter(isPlanned).length + "/" + DATA.calendar.length,
+   count:()=>{ const y = DATA.calendar.filter(r => Number(r.date.slice(0,4)) === UI.year);
+               return y.filter(isPlanned).length + "/" + y.length; },
    render:renderCalendar},
 
   {id:"bank",     label:"Topic Bank", printable:true,
@@ -708,6 +791,13 @@ function seg(name, opts, current){
     `<button data-seg="${name}" data-val="${esc(o.v)}" class="${current===o.v?"on":""}">${esc(o.l)}</button>`
   ).join("") + `</div>`;
 }
+/* edit-mode affordances. They only appear while Edit is on (CSS .edit-only). */
+function del(path, label){
+  return ` <button class="del edit-only no-export no-print" data-del="${path}" title="Delete${label?" "+esc(label):""}">×</button>`;
+}
+function addBtn(path, noun){
+  return `<button class="btn sm edit-only no-export no-print" data-add="${path}">+ ${esc(noun)}</button>`;
+}
 function statBox(lab, val, meta, alert){
   return `<div class="stat${alert?" alert":""}"><div class="lab">${esc(lab)}</div><div class="val">${esc(val)}</div>${meta?`<div class="meta">${esc(meta)}</div>`:""}</div>`;
 }
@@ -716,11 +806,15 @@ function statBox(lab, val, meta, alert){
    TAB 1 — CAMPAIGN CALENDAR
    ═══════════════════════════════════════════════════════════════════════════ */
 function renderCalendar(){
-  const rows = DATA.calendar;
+  const years = yearsIn(DATA.calendar);
+  if(!years.includes(UI.year)) UI.year = years.includes(new Date().getFullYear())
+    ? new Date().getFullYear() : years[years.length - 1];
+  const rows = DATA.calendar.filter(r => Number(r.date.slice(0,4)) === UI.year);
+
   /* the numbers follow the campaign you're looking at — so an exported
      "Fall III" board reports Fall's coverage, not the whole year's */
   const scope = UI.season === "all" ? rows : rows.filter(r => seasonOf(r.date).key === UI.season);
-  const scopeName = UI.season === "all" ? "2026" : UI.season + " 2026";
+  const scopeName = (UI.season === "all" ? "" : UI.season + " ") + UI.year;
   const planned = scope.filter(isPlanned).length;
   const blocked = scope.filter(isBlocked).length;
   const open    = scope.filter(r => !isPlanned(r) && !isBlocked(r)).length;
@@ -728,10 +822,8 @@ function renderCalendar(){
   const ben     = scope.filter(r => ["ben","both"].includes(presenterClass(r.presenter))).length;
   const tbd     = scope.filter(r => isPlanned(r) && presenterClass(r.presenter)==="tbd").length;
 
-  /* filters */
   const q = UI.q.toLowerCase();
-  const visible = rows.filter(r => {
-    if(UI.season !== "all" && seasonOf(r.date).key !== UI.season) return false;
+  const visible = scope.filter(r => {
     if(UI.presenter !== "all"){
       const c = presenterClass(r.presenter);
       if(UI.presenter === "tbd" ? c !== "tbd" : !(c === UI.presenter || c === "both")) return false;
@@ -741,22 +833,27 @@ function renderCalendar(){
     return true;
   });
 
+  const nextYear = years[years.length - 1] + 1;
+
   let html = `
   <div class="page-head no-export no-print">
     <div>
-      <div class="eyebrow">2026 Group Calls</div>
+      <div class="eyebrow">Group Calls</div>
       <div class="big serif">Campaign Calendar</div>
-      <div class="lede">Every Tuesday of 2026. Turn on <b>Edit</b> to plan straight into the page, then
-        <b>Export PNG</b> for a clean image to drop in a text or a slide.</div>
+      <div class="lede">Every call night of the year. This year and next are always here —
+        the board rolls itself forward, so Spring is plannable months ahead. Turn on
+        <b>Edit</b> to plan straight into the page, then <b>Export PNG</b> for a clean image.</div>
     </div>
   </div>`;
 
   html += toolbar(`
+    ${seg("year", years.map(y => ({v:String(y), l:String(y)})), String(UI.year))}
     ${seg("season", [{v:"all",l:"All year"},{v:"Spring",l:"Spring I"},{v:"Summer",l:"Summer II"},{v:"Fall",l:"Fall III"}], UI.season)}
     ${seg("presenter", [{v:"all",l:"Everyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"No host"}], UI.presenter)}
     <button class="btn ${UI.open?"on":""}" data-toggle="open">Open weeks only</button>
     <input class="search" id="q" placeholder="Search topics, tracks, notes…" value="${esc(UI.q)}">
     <span class="grow"></span>
+    <button class="btn" data-addyear="${nextYear}" title="Add every call night of ${nextYear}">+ ${nextYear}</button>
     ${exportButtons("calBoard", scopeName + " Campaign Calendar")}`);
 
   html += `<div id="calBoard" class="export-frame">`;
@@ -764,7 +861,7 @@ function renderCalendar(){
       `${planned} of ${scope.length} weeks planned · ${open} open · printed ${fmtFull(todayISO())}`);
 
   html += `<div class="stats">
-    ${statBox("Weeks planned", planned + " / " + scope.length, Math.round(planned/scope.length*100) + "% of " + (UI.season==="all"?"the year":UI.season))}
+    ${statBox("Weeks planned", planned + " / " + scope.length, Math.round(planned/(scope.length||1)*100) + "% of " + (UI.season==="all"? UI.year : UI.season))}
     ${statBox("Open weeks", open, open ? "still to fill" : "fully booked", open > 0)}
     ${statBox("Alan on", alan, "calls")}
     ${statBox("Ben on", ben, "calls")}
@@ -783,26 +880,26 @@ function renderCalendar(){
       html += `<section class="season">
         <div class="season-head">
           <span class="roman">${S.roman}</span>
-          <h3>${S.key} 2026</h3>
+          <h3>${S.key} ${UI.year}</h3>
           <span class="range">${S.range}</span>
           <span class="fill">${gPlanned}/${gAll.length} planned</span>
         </div>`;
-      for(const r of group) html += weekRow(r, rows.indexOf(r), gAll.indexOf(r) + 1);
+      for(const r of group) html += weekRow(r, DATA.calendar.indexOf(r), gAll.indexOf(r) + 1);
       html += `</section>`;
     }
   }
 
   /* backlog / parking lot */
-  html += `<div class="sec-title serif">Backlog <span class="n">— ideas parked, not yet on a date</span></div><div class="cols">`;
+  html += `<div class="sec-title serif">Backlog <span class="n">— ideas parked, not yet on a date</span>
+    <button class="btn sm edit-only no-export no-print" data-addkey="backlog">+ list</button></div><div class="cols">`;
   for(const [name, list] of Object.entries(DATA.backlog)){
-    html += `<div class="card"><h4>${esc(name)} <span class="n">${list.length}</span></h4><ul>`;
+    html += `<div class="card"><h4>${ed("__key.backlog."+name, name)} <span class="n">${list.length}</span></h4><ul>`;
     list.forEach((item, i) => {
-      const u = findUses(item);
-      const sched = u.future[0];
+      const sched = findUses(item).future[0];
       html += `<li class="${sched?"sched":""}">${ed("backlog."+name+"."+i, item)}${
-        sched ? `<span class="when sched">→ ${fmtDate(sched.date)}</span>` : ""}</li>`;
+        sched ? `<span class="when sched">→ ${fmtDate(sched.date)}</span>` : ""}${del("backlog."+name+"."+i)}</li>`;
     });
-    html += `</ul></div>`;
+    html += `</ul>${addBtn("backlog."+name, "idea")}</div>`;
   }
   html += `</div></div>`;
   return html;
@@ -831,6 +928,15 @@ function weekRow(r, idx, wkNum){
     r.secondPresenter ? ` <span class="chip second">${ed(p+".secondPresenter", r.secondPresenter)}</span>` : ""}</span></div>`;
   if(r.proposed) main += `<div class="wk-sub proposed"><span class="tag">proposed</span><span>${ed(p+".proposed", r.proposed)}</span></div>`;
   if(r.alt) main += `<div class="wk-sub alt no-export no-print"><span class="tag">alt draft</span><span>${ed(p+".alt", r.alt)}</span></div>`;
+
+  /* in edit mode every week can gain the optional fields, or be wiped back to open */
+  const extras = [];
+  if(!r.track)  extras.push(`<button class="btn sm" data-setfield="${p}.track">+ track</button>`);
+  if(!r.second) extras.push(`<button class="btn sm" data-setfield="${p}.second">+ 2nd call</button>`);
+  if(!r.note)   extras.push(`<button class="btn sm" data-setfield="${p}.note">+ note</button>`);
+  if(!r.detail) extras.push(`<button class="btn sm" data-setfield="${p}.detail">+ detail</button>`);
+  if(planned || blocked || r.note) extras.push(`<button class="btn sm" data-clearweek="${p}">clear</button>`);
+  main += `<div class="wk-meta edit-only no-export no-print">${extras.join("")}</div>`;
 
   return `<div class="week ${state}">
     <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span><b>${fmtDate(r.date)}</b>${fmtDay(r.date)}</div>
@@ -872,6 +978,7 @@ function renderBank(){
     <button class="btn ${UI.open?"on":""}" data-toggle="open">Never-run only</button>
     <input class="search" id="q" placeholder="Search all ${all.length} topics…" value="${esc(UI.q)}">
     <span class="grow"></span>
+    <button class="btn edit-only" data-addkey="topicBank">+ category</button>
     ${exportButtons("bankBoard", "Topic Bank")}`);
 
   html += `<div id="bankBoard" class="export-frame">`;
@@ -891,19 +998,21 @@ function renderBank(){
       if(UI.open && marks.get(t).past.length) return false;
       return true;
     });
-    if(!items.length) continue;
+    /* an empty category still shows while you're editing — otherwise a category
+       you just created would vanish before you could put anything in it */
+    if(!items.length && !(EDITING && !q && !UI.open)) continue;
     shown += items.length;
-    html += `<div class="card"><h4>${esc(name)} <span class="n">${items.length}</span></h4><ul>`;
+    html += `<div class="card"><h4>${ed("__key.topicBank."+name, name)} <span class="n">${items.length}</span>${del("topicBank."+name, "category")}</h4><ul>`;
     for(const {t, i} of items){
       const u = marks.get(t);
       const last = u.past[0], next = u.future[0];
       const cls = next ? "sched" : (last ? "used" : "");
       let when = "";
-      if(next) when = `<span class="when sched">2026 · ${fmtDate(next.date)}</span>`;
+      if(next) when = `<span class="when sched">${parseDate(next.date).getFullYear()} · ${fmtDate(next.date)}</span>`;
       else if(last) when = `<span class="when">last ${fmtDate(last.date)} '${String(parseDate(last.date).getFullYear()).slice(2)}</span>`;
-      html += `<li class="${cls}">${ed("topicBank."+name+"."+i, t)}${when}</li>`;
+      html += `<li class="${cls}">${ed("topicBank."+name+"."+i, t)}${when}${del("topicBank."+name+"."+i)}</li>`;
     }
-    html += `</ul></div>`;
+    html += `</ul>${addBtn("topicBank."+name, "topic")}</div>`;
   }
   if(!shown) html += `<div class="empty-note">No topics match.</div>`;
   html += `</div></div>`;
@@ -942,6 +1051,7 @@ function renderArchive(){
     ${seg("archCampaign", [{v:"all",l:"All"}].concat(camps.map(c => ({v:c, l:c}))), UI.archCampaign)}
     <input class="search" id="q" placeholder="Search ${rows.length} calls…" value="${esc(UI.q)}">
     <span class="grow"></span>
+    <button class="btn edit-only" data-addrow="archive">+ call</button>
     ${exportButtons("archBoard", "Call Archive")}`);
 
   html += `<div id="archBoard" class="export-frame">`;
@@ -960,7 +1070,7 @@ function renderArchive(){
     if(!group.length) continue;
     html += `<div class="sec-title serif">${esc(c)} <span class="n">${group.length} calls</span></div>
       <table class="grid"><thead><tr>
-        <th>#</th><th>Date</th><th>Topic</th><th>Series</th><th>Slot</th><th>Host</th><th>Hot seat</th>
+        <th>#</th><th>Date</th><th>Topic</th><th>Series</th><th>Slot</th><th>Host</th><th>Hot seat</th><th class="edit-only"></th>
       </tr></thead><tbody>`;
     for(const r of group){
       const i = rows.indexOf(r), p = "archive." + i;
@@ -973,6 +1083,7 @@ function renderArchive(){
         <td>${r.presenter?`<span class="chip ${presenterClass(r.presenter)}">${ed(p+".presenter", r.presenter)}</span>`:""}</td>
         <td>${r.hotSeat?`<div style="font-size:12px">${ed(p+".hotSeat", r.hotSeat)}</div>${
               r.hotSeatPresenter?`<span class="chip ${presenterClass(r.hotSeatPresenter)}" style="margin-top:4px;display:inline-block">${ed(p+".hotSeatPresenter", r.hotSeatPresenter)}</span>`:""}`:""}</td>
+        <td class="edit-only">${del(p, "call")}</td>
       </tr>`;
     }
     html += `</tbody></table>`;
@@ -1003,7 +1114,7 @@ function renderSpeakers(){
 
   html += toolbar(`
     <input class="search" id="q" placeholder="Search names…" value="${esc(UI.q)}">
-    <button class="btn no-print" data-add="speakers">+ Add speaker</button>
+    <button class="btn edit-only" data-addrow="speakers">+ speaker</button>
     <span class="grow"></span>
     ${exportButtons("spkBoard", "Guest Speakers")}`);
 
@@ -1014,13 +1125,14 @@ function renderSpeakers(){
     ${statBox("Topic assigned", withTopic, (rows.length - withTopic) + " still blank", rows.length - withTopic > 0)}
     ${statBox("Ever asked", asked, "logged")}
   </div>
-  <table class="grid"><thead><tr><th>Name</th><th>Topic</th><th>Last time asked</th></tr></thead><tbody>`;
+  <table class="grid"><thead><tr><th>Name</th><th>Topic</th><th>Last time asked</th><th class="edit-only"></th></tr></thead><tbody>`;
   for(const r of visible){
     const p = "speakers." + rows.indexOf(r);
     html += `<tr>
       <td style="font-weight:500">${ed(p+".name", r.name)}</td>
       <td>${ed(p+".topic", r.topic, "", "— to decide —")}</td>
       <td class="dt">${ed(p+".lastAsked", r.lastAsked, "", "—")}</td>
+      <td class="edit-only">${del(p, "speaker")}</td>
     </tr>`;
   }
   html += `</tbody></table></div>`;
@@ -1186,6 +1298,15 @@ function editBanner(){
   </div>`;
 }
 
+/* put the cursor in a field we just created */
+function focusPath(path){
+  const el = document.querySelector(`[data-edit="${CSS.escape(path)}"]`);
+  if(!el) return;
+  el.focus();
+  const r = document.createRange(); r.selectNodeContents(el);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+
 /* ── dot-path get/set into DATA ───────────────────────────────────────── */
 function setPath(path, value){
   const parts = path.split(".");
@@ -1209,11 +1330,41 @@ document.addEventListener("focusin", e => {
   if(!el || !EDITING) return;
   if(el.dataset.ph && el.textContent.trim() === el.dataset.ph) el.textContent = "";
 });
+/* Optional fields disappear when emptied, rather than leaving a blank chip behind. */
+const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","detail","proposed","alt",
+                                 "series","call","hotSeat","hotSeatPresenter","lastAsked"]);
+
+/* Save while typing. Blur still does the tidy-up pass and re-renders, but the
+   text is already safe by then — closing the tab mid-edit doesn't lose it. */
+let INPUT_TIMER = null;
+document.addEventListener("input", e => {
+  const el = e.target.closest && e.target.closest("[data-edit]");
+  if(!el || !EDITING) return;
+  const path = el.dataset.edit;
+  if(path.startsWith("__key.")) return;            // renames are only safe to apply on blur
+  clearTimeout(INPUT_TIMER);
+  INPUT_TIMER = setTimeout(() => {
+    setPath(path, el.textContent.replace(/\s+/g, " ").trim());
+    save();                                        // deliberately no render — keeps your cursor put
+  }, 500);
+});
+
 document.addEventListener("focusout", e => {
   const el = e.target.closest && e.target.closest("[data-edit]");
   if(!el || !EDITING) return;
+  clearTimeout(INPUT_TIMER);
   const val = el.textContent.replace(/\s+/g, " ").trim();
-  setPath(el.dataset.edit, val);
+  const path = el.dataset.edit;
+  if(path.startsWith("__key.")){                 // renaming a category / backlog list
+    const rest = path.slice(6);
+    const oldKey = rest.slice(rest.indexOf(".") + 1);
+    const objPath = rest.slice(0, rest.indexOf("."));
+    if(!renameKey(objPath, oldKey, val)) { render(); return toast(val ? "That name is already used" : "A name is required"); }
+  } else if(val === "" && OPTIONAL_FIELDS.has(path.split(".").pop())){
+    removeAt(path);                                // emptied an optional field — drop it entirely
+  } else {
+    setPath(path, val);
+  }
   save();
   render();
 });
@@ -1229,15 +1380,61 @@ document.addEventListener("click", e => {
   if(!t) return;
 
   if(t.dataset.tab){ TAB = t.dataset.tab; location.hash = TAB; UI.q = ""; render(); window.scrollTo(0,0); return; }
-  if(t.dataset.seg){ UI[t.dataset.seg] = t.dataset.val; render(); return; }
+  if(t.dataset.seg){
+    UI[t.dataset.seg] = t.dataset.seg === "year" ? Number(t.dataset.val) : t.dataset.val;
+    render(); return;
+  }
   if(t.dataset.toggle === "open"){ UI.open = !UI.open; render(); return; }
   if(t.dataset.toggle === "edit" || t.id === "editBtn"){ EDITING = !EDITING; render(); return; }
   if(t.dataset.png){ exportPNG(t.dataset.png, t.dataset.label); return; }
   if(t.dataset.print){ printBoard(t.dataset.print); return; }
-  if(t.dataset.add === "speakers"){
-    DATA.speakers.push({name:"New speaker", topic:"", lastAsked:""});
+  /* ── structural edits, all path-driven ── */
+  if(t.dataset.add){                                   // append to a list
+    addTo(t.dataset.add, "New item");
     save(); EDITING = true; render();
-    toast("Added — click the name to rename it"); return;
+    focusPath(t.dataset.add + "." + (getPath(t.dataset.add).length - 1)); return;
+  }
+  if(t.dataset.addrow){                                // append a table row
+    const blanks = {speakers:{name:"New speaker", topic:"", lastAsked:""},
+                    archive:{n:DATA.archive.length+1, date:todayISO(), topic:"New call",
+                             campaign:DATA.archive.length ? DATA.archive[DATA.archive.length-1].campaign : "Archive"}};
+    DATA[t.dataset.addrow].push(clone(blanks[t.dataset.addrow]));
+    save(); EDITING = true; render();
+    focusPath(t.dataset.addrow + "." + (DATA[t.dataset.addrow].length - 1) +
+              (t.dataset.addrow === "speakers" ? ".name" : ".topic")); return;
+  }
+  if(t.dataset.addkey){                                // new named list (category / backlog list)
+    const obj = getPath(t.dataset.addkey);
+    let name = "New category", n = 2;
+    while(name in obj) name = "New category " + n++;
+    obj[name] = [];
+    save(); EDITING = true; render();
+    focusPath("__key." + t.dataset.addkey + "." + name); return;
+  }
+  if(t.dataset.addyear){                               // extend the calendar
+    const y = Number(t.dataset.addyear);
+    if(hasYear(DATA.calendar, y)) { UI.year = y; render(); return; }
+    DATA.calendar.push(...blankYear(DATA.calendar, y));
+    DATA.calendar.sort((a, b) => a.date.localeCompare(b.date));
+    UI.year = y; save(); render();
+    toast(y + " added — " + DATA.calendar.filter(r => r.date.startsWith(y + "-")).length + " call nights"); return;
+  }
+  if(t.dataset.setfield){                              // reveal an optional field on a week
+    setPath(t.dataset.setfield, " ");
+    save(); EDITING = true; render();
+    focusPath(t.dataset.setfield); return;
+  }
+  if(t.dataset.clearweek){                             // wipe a week back to open
+    const r = getPath(t.dataset.clearweek);
+    const date = r.date;
+    for(const k of Object.keys(r)) if(k !== "date") delete r[k];
+    r.topic = ""; r.track = ""; r.presenter = ""; r.date = date;
+    save(); render(); toast("Week cleared"); return;
+  }
+  if(t.dataset.del){
+    const label = t.title || "this";
+    if(!confirm("Delete " + label.replace(/^Delete /, "") + "?")) return;
+    removeAt(t.dataset.del); save(); render(); toast("Deleted"); return;
   }
   if(t.id === "syncBtn"){ openData(); return; }
 });

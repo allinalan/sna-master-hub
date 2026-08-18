@@ -11,8 +11,8 @@ Built to be printed: plan the calls, then export a clean image.
 
 | Tab | What it's for |
 |---|---|
-| **Campaign Calendar** | Every Tuesday of 2026 — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
-| **Topic Bank** | All 71 topics we can teach, by category. Each one is auto-checked against the archive and the 2026 calendar, so you can see what's been run, what's scheduled, and what's never been touched. |
+| **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
+| **Topic Bank** | All 71 topics we can teach, by category. Each one is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | **Call Archive** | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
 | **Guest Speakers** | The bench, what they'd teach, when we last asked. |
 
@@ -31,7 +31,24 @@ On any tab:
 
 ## Editing
 
-Hit **Edit** in the header, then click any field and type. Enter saves, Escape cancels.
+Hit **Edit** in the header, then click any field and type. It saves as you type — you
+don't have to press anything. Enter or clicking away finishes the field.
+
+Edit mode also turns on the structural controls, so the hub never needs a code change:
+
+| To do this | Where |
+|---|---|
+| Plan a week | Click the "+ open — click to plan" line |
+| Add a track, 2nd call, note, or long detail to a week | The small `+ track` / `+ 2nd call` / `+ note` / `+ detail` buttons under it |
+| Wipe a week back to open | `clear` on that week |
+| Add a whole year | `+ 2028` next to the year picker |
+| Add or delete a topic | `+ topic` at the bottom of a category, `×` on any topic |
+| Add, rename, or delete a category | `+ category` in the toolbar; click a category's name to rename; `×` in its header |
+| Add or delete a backlog list | `+ list` next to Backlog |
+| Add or delete an archived call / guest speaker | `+ call` / `+ speaker` in the toolbar, `×` at the end of the row |
+
+Emptying an optional field (track, note, 2nd call, detail) removes it rather than
+leaving a blank chip behind.
 
 ### Shared editing is ON
 
@@ -74,6 +91,20 @@ The tab bar, routing, edit mode, saving, PNG export and printing all pick it up
 automatically. Use the `ed("path.to.field", value)` helper to make a field editable.
 
 ---
+
+## The calendar rolls itself forward
+
+The hub always keeps **this year and next year** on the board. Open it any time in 2026
+and Spring 2027 is already there to plan; on 1 January 2027 it quietly adds 2028. Nobody
+has to remember, and I don't have to touch the code.
+
+Switch years with the picker on the left of the calendar toolbar. `+ 2028` adds a year
+by hand if you want to get further ahead. New years are generated on the same weekday
+your existing calls use — read off the data, not hardcoded to Tuesday — so if the call
+night ever moves, next year follows it.
+
+Everything stays on one board: 2026 doesn't get archived when it ends, you just switch
+the year. The **Call Archive** tab remains the record of the calls that predate this hub.
 
 ## Notes
 

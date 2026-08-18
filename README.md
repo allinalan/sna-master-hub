@@ -33,28 +33,19 @@ On any tab:
 
 Hit **Edit** in the header, then click any field and type. Enter saves, Escape cancels.
 
-### Right now: local only
+### Shared editing is ON
 
-Until sync is switched on (below), your edits save to **your own browser** and don't
-reach the other person. To hand a plan over: **Data ▸ Copy**, send it, they paste it
-into **Data** and hit **Load pasted JSON**.
+Alan and Ben edit the same copy. Your changes push about a second after you stop
+typing; theirs arrive within 25 seconds, or instantly when you switch back to the tab.
+The header shows `shared · Ben 3m ago` instead of `seed data`.
 
-### Turning on shared editing (do this once)
+The shared copy lives in the Google Sheet **SNA Master Hub Data**, written by the
+Apps Script project **SharpNinja Hub** ([`SharpNinja-Hub-Sync.gs`](SharpNinja-Hub-Sync.gs)).
+The first time you open the hub it asks whether you're Alan or Ben, so edits get labelled.
 
-Once this is done, Alan and Ben edit the same copy and see each other's changes within
-about 25 seconds. The shared copy lives in a Google Sheet that only you two own.
-
-1. Go to **script.google.com ▸ New project**. Paste in all of
-   [`SharpNinja-Hub-Sync.gs`](SharpNinja-Hub-Sync.gs), replacing whatever's there.
-   Name it "SNA Hub Sync".
-2. Run **`setup()`** once and approve the permission prompt. The Execution log prints
-   the URL of a new sheet, **SNA Master Hub Data** — that's the shared copy.
-3. **Deploy ▸ New deployment ▸ Web app**, with *Execute as: Me* and
-   *Who has access: Anyone*. Deploy, then copy the **/exec** URL.
-4. Paste that URL into `SYNC.url` near the top of the `<script>` in `index.html`
-   (or send it to Claude to do it), and push.
-
-The hub then shows `shared · Ben 3m ago` in the header instead of `seed data`.
+If you edit the `.gs`, you must **Deploy ▸ Manage deployments ▸ edit ▸ New version** —
+otherwise the web app keeps serving the old code. If you ever create a *new* deployment
+instead, the /exec URL changes and `SYNC.url` in `index.html` has to be updated to match.
 
 **If you both edit at once**, whoever saves second gets a "Both of you edited this"
 prompt with *Keep mine* / *Take theirs*. Nothing is ever really lost — the Google Sheet

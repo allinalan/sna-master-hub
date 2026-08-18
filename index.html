@@ -1039,7 +1039,9 @@ function renderSpeakers(){
    web apps don't answer.
    ═══════════════════════════════════════════════════════════════════════════ */
 const SYNC = {
-  url:   "",          // ← paste the Apps Script /exec URL here to turn sync on
+  url:   "https://script.google.com/macros/s/AKfycbyw7ngyqNuO9AHQnCeb1paTfoDRWX1sTkJMlhC2zB9BKDuo_O-SF9XWke2e1QiA_Y9A/exec",
+         // ↑ Apps Script web app (SNA Hub Sync). Redeploy a NEW VERSION there
+         //   after editing the .gs, or it keeps serving the old code.
   token: "sharpninja",// must match TOKEN in SharpNinja-Hub-Sync.gs
   pollMs: 25000
 };

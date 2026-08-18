@@ -1498,7 +1498,7 @@ function scheduleSync(){
   clearTimeout(PUSH_TIMER);
   PUSH_TIMER = setTimeout(push, 1200);
 }
-async function push(){
+async function push(attempt){
   if(!syncOn() || PUSHING) return;
   PUSHING = true; PENDING = false;
   try{
@@ -1520,6 +1520,13 @@ async function push(){
     syncStatus("shared · saved just now");
   }catch(e){
     console.warn("push failed", e);
+    /* Apps Script sleeps when idle and the first call after a while can die on
+       the way up. One quiet retry covers that without bothering anyone. */
+    if(!attempt){
+      PUSHING = false;
+      syncStatus("saving…", "warn");
+      return setTimeout(() => push(1), 2500);
+    }
     syncStatus("offline — saved on this computer only", "warn");
   }finally{
     PUSHING = false;

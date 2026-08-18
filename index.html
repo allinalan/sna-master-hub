@@ -566,11 +566,17 @@ let TAB = (location.hash || "#calendar").slice(1);
 const UI = { season:"all", presenter:"all", open:false, q:"", archCampaign:"all" };
 
 function load(){
+  let saved = null;
   try{
     const raw = localStorage.getItem(STORE_KEY);
-    if(raw) return migrate(JSON.parse(raw));
-  }catch(e){ console.warn("Saved copy unreadable, falling back to seed:", e); }
-  return clone(SEED);
+    if(raw) saved = JSON.parse(raw);
+  }catch(e){ console.warn("Saved copy is not readable JSON; starting from the seed:", e); }
+
+  if(!saved) return migrate(clone(SEED));
+  /* If the upgrade step ever fails, use their data as it stands. Falling back to
+     the seed here would quietly wipe out someone's planning. */
+  try{ return migrate(saved); }
+  catch(e){ console.error("Couldn't upgrade the saved copy; using it unchanged:", e); return saved; }
 }
 /* keeps an older saved copy working when the seed gains new sections */
 function migrate(d){
@@ -591,8 +597,10 @@ function ensureYears(d){
   for(const y of [now, now + 1]) if(!hasYear(d.calendar, y)) d.calendar.push(...blankYear(d.calendar, y));
   d.calendar.sort((a, b) => a.date.localeCompare(b.date));
 }
-const hasYear = (cal, y) => cal.some(r => r.date.startsWith(y + "-"));
-const yearsIn = cal => [...new Set(cal.map(r => Number(r.date.slice(0, 4))))].sort();
+/* Declarations, not const arrows: ensureYears() runs while this script is still
+   being evaluated, and a const wouldn't be initialised yet. */
+function hasYear(cal, y){ return cal.some(r => r.date.startsWith(y + "-")); }
+function yearsIn(cal){ return [...new Set(cal.map(r => Number(r.date.slice(0, 4))))].sort(); }
 
 /* Which weekday are calls on? Read it off the existing rows rather than
    assuming Tuesday, so moving the call night doesn't break next year. */

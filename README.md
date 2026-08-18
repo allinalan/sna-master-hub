@@ -14,6 +14,7 @@ Built to be printed: plan the calls, then export a clean image.
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
 | **Topic Bank** | All 71 topics we can teach, by category. Each one is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | **Call Archive** | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
+| **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date. Overdue goes red, due-within-a-fortnight goes amber. |
 | **Guest Speakers** | The bench, what they'd teach, when we last asked. |
 
 Source: the Google Sheet **Group Calls 2026**.
@@ -48,9 +49,20 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | Add, rename, or delete a category | `+ category` in the toolbar; click a category's name to rename; `×` in its header |
 | Add or delete a backlog list | `+ list` next to Backlog |
 | Add or delete an archived call / guest speaker | `+ call` / `+ speaker` in the toolbar, `×` at the end of the row |
+| Add or delete an order of business / section | `+ item` at the foot of a section, `+ section` in the toolbar, `×` on the row |
 
 Emptying an optional field (track, note, 2nd call, detail) removes it rather than
 leaving a blank chip behind.
+
+### Orders of Business works without Edit mode
+
+Ticking a box, assigning an owner and setting a due date are the whole point of that
+tab, so they stay clickable with Edit **off**. Edit mode there is only for adding and
+deleting. Due dates take the same forgiving formats as call dates ("Sep 3", "9/3").
+
+Filters across the top: **Open** (the default), **Has a date**, **Done**, **All**, plus
+Alan / Ben / Unassigned. Sections sort open items first, soonest date first, undated
+last, with anything done sunk to the bottom.
 
 ### Moving a call
 

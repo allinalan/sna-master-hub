@@ -66,9 +66,14 @@ Ticking a box, assigning an owner and setting a due date are the whole point of 
 tab, so they stay clickable with Edit **off**. Edit mode there is only for adding and
 deleting. Due dates take the same forgiving formats as call dates ("Sep 3", "9/3").
 
-Filters across the top: **Open** (the default), **Has a date**, **Done**, **All**, plus
-Alan / Ben / Unassigned. Sections sort open items first, soonest date first, undated
-last, with anything done sunk to the bottom.
+Ticking something off does **not** hide it. It gets crossed out, sinks to the bottom of
+its section, and flashes for a moment so you can see where it went. Click the box again
+to put it back. Once an item is ticked, a `×` appears on its row so you can bin it for
+good without turning on Edit — that one asks for confirmation.
+
+Filters across the top: **Everything** (the default), **Hide done**, **Has a date**,
+**Done only**, plus Alan / Ben / Unassigned. Sections sort open items first, soonest
+date first, undated last, done at the bottom.
 
 ### Moving a call
 

@@ -195,7 +195,11 @@ body.editing .wk-meta .btn.sm{font-size:10px;padding:3px 8px;color:var(--ink-fai
 .biz-row{display:grid;grid-template-columns:30px 1fr 108px 92px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
 .biz-row:last-of-type{border-bottom:none}
 .biz-row:hover{background:var(--line-soft)}
-.biz-row.is-done{opacity:.5}
+.biz-row.is-done{opacity:.55}
+.biz-row.is-done .biz-note,.biz-row.is-done .due{text-decoration:line-through}
+.biz-row.flash{animation:flash 2.6s ease-out}
+@keyframes flash{0%,55%{background:var(--warn-bg)}100%{background:transparent}}
+.del.always{display:inline-block!important}
 .biz-row.is-done .biz-t{text-decoration:line-through}
 .biz-main{min-width:0}
 .biz-t{font-size:13.5px;line-height:1.4}
@@ -697,7 +701,7 @@ let DIRTY = !!localStorage.getItem(STORE_KEY);
 let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
-             q:"", archCampaign:"all", bizView:"open" };
+             q:"", archCampaign:"all", bizView:"all" };   // show ticked-off items too — hiding them reads as deletion
 
 function load(){
   let saved = null;
@@ -1400,7 +1404,7 @@ function renderBusiness(){
   </div>`;
 
   html += toolbar(`
-    ${seg("bizView", [{v:"open",l:"Open"},{v:"dated",l:"Has a date"},{v:"done",l:"Done"},{v:"all",l:"All"}], UI.bizView)}
+    ${seg("bizView", [{v:"all",l:"Everything"},{v:"open",l:"Hide done"},{v:"dated",l:"Has a date"},{v:"done",l:"Done only"}], UI.bizView)}
     ${seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"Unassigned"}], UI.presenter)}
     <input class="search" id="q" placeholder="Search ${all.length} items…" value="${esc(UI.q)}">
     <span class="grow"></span>
@@ -1436,7 +1440,8 @@ function renderBusiness(){
     for(const {i, idx} of order){
       const p = "business." + name + "." + idx;
       const st = dueState(i);
-      html += `<div class="biz-row ${i.done?"is-done":""}">
+      const flash = (p === JUST_TOGGLED) ? " flash" : "";
+      html += `<div class="biz-row ${i.done?"is-done":""}${flash}">
         <button class="tick ${i.done?"on":""}" data-check="${p}" title="${i.done?"Mark as still open":"Mark done"}" aria-pressed="${i.done}">${i.done?"✓":""}</button>
         <div class="biz-main">
           <div class="biz-t">${ed(p+".t", i.t)}</div>
@@ -1444,7 +1449,7 @@ function renderBusiness(){
         </div>
         <span class="chip ${presenterClass(i.who)} who">${edLive(p+".who", i.who, "", "assign")}</span>
         <span class="due ${st}">${edLive(p+".due", i.due ? fmtDate(i.due) : "", "", "add date")}</span>
-        ${del(p, "this item")}
+        ${i.done ? `<button class="del always" data-del="${p}" title="Delete this item">×</button>` : del(p, "this item")}
       </div>`;
     }
     html += `${addBtn("business."+name, "item")}</div>`;
@@ -1620,6 +1625,7 @@ function paintTabs(){
    lands on it. mousedown fires first, so we note where the click is headed and
    put the cursor back there once the new DOM exists. */
 let PENDING_FOCUS = null;
+let JUST_TOGGLED = null, FLASH_TIMER = null;
 document.addEventListener("mousedown", e => {
   const el = e.target.closest && e.target.closest("[data-edit]");
   PENDING_FOCUS = el ? el.dataset.edit : null;
@@ -1770,7 +1776,13 @@ document.addEventListener("click", e => {
     const item = getPath(t.dataset.check);
     item.done = !item.done;
     if(item.done) item.doneOn = todayISO(); else delete item.doneOn;
-    save(); render(); return;
+    JUST_TOGGLED = t.dataset.check;                    // render highlights it so you can see where it went
+    save(); render();
+    clearTimeout(FLASH_TIMER);
+    FLASH_TIMER = setTimeout(() => { JUST_TOGGLED = null; render(); }, 2600);
+    toast(item.done ? "Ticked off — it's at the bottom of the section. Click the box again to undo."
+                    : "Back on the list");
+    return;
   }
 
   /* ── structural edits, all path-driven ── */

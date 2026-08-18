@@ -571,6 +571,7 @@ function save(){
   try{
     localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
     DIRTY = true; DF = null; paintSaveState();   // topic weights are rebuilt from the edited data
+    if(typeof scheduleSync === "function") scheduleSync();
   }catch(e){ toast("Couldn't save locally — export your JSON to be safe"); }
 }
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -661,6 +662,7 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
 }
 function paintSaveState(){
+  if(typeof syncOn === "function" && syncOn()) return;   // sync owns the status line
   $("#saveDot").className = "dot" + (DIRTY ? " edited" : "");
   $("#saveLabel").textContent = DIRTY ? "your edits (saved locally)" : "seed data";
 }
@@ -1026,6 +1028,133 @@ function renderSpeakers(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   SHARED SYNC — so Alan and Ben see each other's edits
+   ───────────────────────────────────────────────────────────────────────────
+   The page is static (GitHub Pages), so the shared copy lives in a Google
+   Sheet and a small Apps Script Web App reads and writes it. Same shape as
+   the mentee dashboard's script. Setup is in README.md → "Turning on sync".
+
+   Reads are a plain GET. Writes POST with Content-Type text/plain on purpose:
+   anything else makes the browser send a CORS preflight, which Apps Script
+   web apps don't answer.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const SYNC = {
+  url:   "",          // ← paste the Apps Script /exec URL here to turn sync on
+  token: "sharpninja",// must match TOKEN in SharpNinja-Hub-Sync.gs
+  pollMs: 25000
+};
+
+const syncOn = () => !!SYNC.url;
+let REV = Number(localStorage.getItem(STORE_KEY + ":rev") || 0);
+let REMOTE = {rev:0, by:"", updated:""};
+let PUSH_TIMER = null, PUSHING = false, PENDING = false;
+
+/* who's editing — asked once, only used to label changes */
+function whoAmI(){
+  let w = localStorage.getItem(STORE_KEY + ":who");
+  if(!w){
+    w = (prompt("Who's using this hub? (so edits are labelled)\n\nType Alan or Ben:", "") || "").trim();
+    if(w) localStorage.setItem(STORE_KEY + ":who", w);
+  }
+  return w || "someone";
+}
+function setRev(n){ REV = n; localStorage.setItem(STORE_KEY + ":rev", String(n)); }
+
+function syncStatus(text, kind){
+  const el = $("#saveLabel"), dot = $("#saveDot");
+  if(!el) return;
+  el.textContent = text;
+  dot.className = "dot" + (kind === "warn" ? " edited" : "");
+}
+function ago(iso){
+  if(!iso) return "";
+  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if(s < 60) return "just now";
+  if(s < 3600) return Math.round(s/60) + "m ago";
+  if(s < 86400) return Math.round(s/3600) + "h ago";
+  return Math.round(s/86400) + "d ago";
+}
+
+/* ── pull ─────────────────────────────────────────────────────────────── */
+async function pull(quiet){
+  if(!syncOn()) return;
+  try{
+    const res = await fetch(SYNC.url + "?token=" + encodeURIComponent(SYNC.token) + "&t=" + Date.now());
+    const body = await res.json();
+    if(!body.ok) throw new Error(body.error || "refused");
+    REMOTE = {rev:body.rev, by:body.by, updated:body.updated};
+
+    if(body.rev > REV && body.data){
+      /* someone else moved ahead of us */
+      if(PENDING || PUSHING){
+        syncStatus(body.by + " also edited — yours will win on save", "warn");
+        return;
+      }
+      DATA = migrate(body.data); DF = null; setRev(body.rev);
+      localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+      render();
+      if(!quiet) toast(body.by ? body.by + "'s changes loaded" : "Updated from the shared copy");
+    }
+    if(!PENDING && !PUSHING) syncStatus("shared · " + (REMOTE.by ? REMOTE.by + " " + ago(REMOTE.updated) : "in sync"));
+  }catch(e){
+    console.warn("pull failed", e);
+    syncStatus("offline — editing locally", "warn");
+  }
+}
+
+/* ── push (debounced) ─────────────────────────────────────────────────── */
+function scheduleSync(){
+  if(!syncOn()) return;
+  PENDING = true;
+  syncStatus("saving…", "warn");
+  clearTimeout(PUSH_TIMER);
+  PUSH_TIMER = setTimeout(push, 1200);
+}
+async function push(){
+  if(!syncOn() || PUSHING) return;
+  PUSHING = true; PENDING = false;
+  try{
+    const res = await fetch(SYNC.url, {
+      method: "POST",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},   // keeps it a simple request — no preflight
+      body: JSON.stringify({token: SYNC.token, baseRev: REV, by: whoAmI(), data: DATA})
+    });
+    const body = await res.json();
+    if(body.conflict){
+      REMOTE = {rev:body.rev, by:body.by, updated:body.updated};
+      showConflict(body);
+      syncStatus("conflict with " + body.by, "warn");
+      return;
+    }
+    if(!body.ok) throw new Error(body.error || "refused");
+    setRev(body.rev);
+    REMOTE = {rev:body.rev, by:whoAmI(), updated:new Date().toISOString()};
+    syncStatus("shared · saved just now");
+  }catch(e){
+    console.warn("push failed", e);
+    syncStatus("offline — saved on this computer only", "warn");
+  }finally{
+    PUSHING = false;
+    if(PENDING) scheduleSync();
+  }
+}
+
+/* both sides edited the same version — let the human pick */
+function showConflict(body){
+  $("#mTitle").textContent = "Both of you edited this";
+  $("#mBody").innerHTML = `<b>${esc(body.by || "The other person")}</b> saved changes ${esc(ago(body.updated))} while you were editing. ` +
+    `Keeping yours overwrites theirs; taking theirs discards what you just changed. ` +
+    `Either way the Google Sheet keeps a version history, so nothing is truly lost.`;
+  $("#mText").value = JSON.stringify(body.data, null, 2);
+  $("#mActions").innerHTML = `
+    <button class="btn" data-act="takeTheirs">Take ${esc(body.by || "theirs")}</button>
+    <span style="flex:1"></span>
+    <button class="btn primary" data-act="keepMine">Keep mine</button>`;
+  $("#scrim").classList.add("on");
+  window._conflict = body;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    APP — routing, rendering, editing, export
    ═══════════════════════════════════════════════════════════════════════════ */
 function currentTab(){ return TABS.find(t => t.id === TAB) || TABS[0]; }
@@ -1275,6 +1404,15 @@ $("#scrim").addEventListener("click", async e => {
     }catch(err){ toast("That isn't valid hub JSON — " + err.message); }
     return;
   }
+  if(act === "keepMine"){
+    setRev(window._conflict.rev); push();
+    $("#scrim").classList.remove("on"); toast("Your version is now the shared one"); return;
+  }
+  if(act === "takeTheirs"){
+    DATA = migrate(window._conflict.data); DF = null; setRev(window._conflict.rev);
+    localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+    render(); $("#scrim").classList.remove("on"); toast("Loaded their version"); return;
+  }
   if(act === "reset"){
     if(!confirm("Throw away your local edits and go back to the data pulled from the sheet?")) return;
     localStorage.removeItem(STORE_KEY);
@@ -1291,6 +1429,17 @@ $("#stamp").textContent = "sheet snapshot " + SEED.meta.snapshot;
 if(!TABS.some(t => t.id === TAB)) TAB = TABS[0].id;
 paintSaveState();
 render();
+
+/* shared mode: pull once on load, then keep an eye on the shared copy */
+if(syncOn()){
+  syncStatus("connecting…");
+  pull(true);
+  setInterval(() => { if(document.visibilityState === "visible") pull(); }, SYNC.pollMs);
+  document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") pull(); });
+  window.addEventListener("beforeunload", e => {
+    if(PENDING || PUSHING){ e.preventDefault(); e.returnValue = ""; }   // don't lose an in-flight save
+  });
+}
 </script>
 </body>
 </html>

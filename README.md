@@ -3,7 +3,7 @@
 One page that holds everything Alan and Ben need to run the Academy program.
 Built to be printed: plan the calls, then export a clean image.
 
-**Live:** _(GitHub Pages URL goes here once deployed)_
+**Live:** https://allinalan.github.io/sna-master-hub/
 
 ---
 
@@ -33,20 +33,39 @@ On any tab:
 
 Hit **Edit** in the header, then click any field and type. Enter saves, Escape cancels.
 
-Everything you type saves to **your own browser** (localStorage) — it does not sync
-between Alan and Ben automatically. To hand a plan over:
+### Right now: local only
 
-1. **Data ▸ Copy** (or **Download**)
-2. Send it to the other person
-3. They open **Data**, paste it in, hit **Load pasted JSON**
+Until sync is switched on (below), your edits save to **your own browser** and don't
+reach the other person. To hand a plan over: **Data ▸ Copy**, send it, they paste it
+into **Data** and hit **Load pasted JSON**.
 
-**Data ▸ Reset to seed** throws away local edits and goes back to the version baked
-into this file.
+### Turning on shared editing (do this once)
 
-To make an edit permanent for everyone, send the downloaded JSON to Claude and ask
-for it to be committed — it replaces the `SEED` block in `index.html`.
+Once this is done, Alan and Ben edit the same copy and see each other's changes within
+about 25 seconds. The shared copy lives in a Google Sheet that only you two own.
 
----
+1. Go to **script.google.com ▸ New project**. Paste in all of
+   [`SharpNinja-Hub-Sync.gs`](SharpNinja-Hub-Sync.gs), replacing whatever's there.
+   Name it "SNA Hub Sync".
+2. Run **`setup()`** once and approve the permission prompt. The Execution log prints
+   the URL of a new sheet, **SNA Master Hub Data** — that's the shared copy.
+3. **Deploy ▸ New deployment ▸ Web app**, with *Execute as: Me* and
+   *Who has access: Anyone*. Deploy, then copy the **/exec** URL.
+4. Paste that URL into `SYNC.url` near the top of the `<script>` in `index.html`
+   (or send it to Claude to do it), and push.
+
+The hub then shows `shared · Ben 3m ago` in the header instead of `seed data`.
+
+**If you both edit at once**, whoever saves second gets a "Both of you edited this"
+prompt with *Keep mine* / *Take theirs*. Nothing is ever really lost — the Google Sheet
+keeps its own version history (File ▸ Version history).
+
+**A note on the write endpoint.** Because this page is public and static, the /exec URL
+and its token sit in the page source. That's enough to keep out drive-by traffic, but
+someone who went looking could write to the sheet. The exposure is a planning calendar,
+every save is versioned, and the sheet's history can roll anything back — but that's the
+trade for a free, no-login, works-anywhere setup. If you'd rather not take it, leave
+`SYNC.url` empty and use the Data ▸ Copy / Load hand-off instead.
 
 ## Adding a tab
 
@@ -67,7 +86,13 @@ automatically. Use the `ed("path.to.field", value)` helper to make a field edita
 
 ## Notes
 
-- No build step, no dependencies, no server. Double-clicking `index.html` works offline
-  (PNG export falls back to system fonts in that case).
+- No build step, no dependencies, no framework. Double-clicking `index.html` works
+  offline (PNG export falls back to system fonts in that case).
+- The calendar shows an **alt draft** line on some weeks — a second 2026 plan that was
+  sitting at the bottom of the sheet's archive tab. It's kept on screen so you can pick
+  between the two, and it's hidden from exports and printouts.
+- Four August weeks show a **proposed** topic (Summer Game Plan, Time/Energy/Health,
+  Summer Standards, Obstacle Proofing). Those came from the "Units" column lined up
+  against those rows — confirm or clear them.
 - Related: the [SNA mentee dashboard](https://allinalan.github.io/sna-dashboard/), which
   reads live rep performance data from a separate sheet.

@@ -642,6 +642,41 @@ function fmtDate(iso){ const d = parseDate(iso); return MONTHS[d.getMonth()] + "
 function fmtDay(iso){ return DAYS[parseDate(iso).getDay()]; }
 function fmtFull(iso){ const d = parseDate(iso); return MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear(); }
 
+/* ── reading a date the way a person would type it ──────────────────────
+   A call moving nights shouldn't mean typing ISO format. All of these work:
+     Jan 6 · January 6th · 6 Jan · 1/6 · 1/6/27 · 01-06-2027 · 2027-01-06
+   A year is optional — leave it off and the week keeps the year it's already
+   in, so nudging a 2027 call to "Jan 13" doesn't drag it back to this year. */
+function makeISO(y, m, d){
+  if(!(y >= 2000 && y <= 2100) || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(y, m - 1, d);
+  if(dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;   // catches Feb 30 and friends
+  return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+function parseLooseDate(text, defaultYear){
+  const t = String(text || "").trim().replace(/,/g, " ");
+  if(!t) return null;
+  let m;
+  if((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return makeISO(+m[1], +m[2], +m[3]);
+  if((m = t.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?$/))){
+    let y = m[3] ? Number(m[3]) : defaultYear;
+    if(y < 100) y += 2000;
+    return makeISO(y, +m[1], +m[2]);
+  }
+  let mi = -1, day = null, yr = null;
+  for(const w of t.split(/\s+/)){
+    const i = MONTHS.findIndex(x => w.toLowerCase().startsWith(x.toLowerCase()));
+    if(i >= 0 && mi < 0){ mi = i; continue; }
+    const n = Number(w.replace(/(st|nd|rd|th)$/i, ""));
+    if(!isNaN(n) && w.trim() !== ""){
+      if(w.replace(/\D/g, "").length === 4) yr = n;
+      else if(day === null) day = n;
+    }
+  }
+  if(mi >= 0 && day !== null) return makeISO(yr || defaultYear, mi + 1, day);
+  return null;
+}
+
 /* Spring = Jan–Apr (I) · Summer = May–Aug (II) · Fall = Sep–Dec (III) —
    the same split the mentee dashboard uses, so campaigns line up across tools. */
 const SEASONS = [
@@ -947,7 +982,8 @@ function weekRow(r, idx, wkNum){
   main += `<div class="wk-meta edit-only no-export no-print">${extras.join("")}</div>`;
 
   return `<div class="week ${state}">
-    <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span><b>${fmtDate(r.date)}</b>${fmtDay(r.date)}</div>
+    <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span>
+      <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${del(p, "this week")}</div>
     <div class="wk-main">${main}</div>
     <div class="wk-right"><span class="chip ${cls} big">${ed(p+".presenter", r.presenter, "", "who?")}</span></div>
   </div>`;
@@ -1349,7 +1385,7 @@ document.addEventListener("input", e => {
   const el = e.target.closest && e.target.closest("[data-edit]");
   if(!el || !EDITING) return;
   const path = el.dataset.edit;
-  if(path.startsWith("__key.")) return;            // renames are only safe to apply on blur
+  if(path.startsWith("__key.") || path.endsWith(".date")) return;   // these only apply once you're done
   clearTimeout(INPUT_TIMER);
   INPUT_TIMER = setTimeout(() => {
     setPath(path, el.textContent.replace(/\s+/g, " ").trim());
@@ -1363,6 +1399,19 @@ document.addEventListener("focusout", e => {
   clearTimeout(INPUT_TIMER);
   const val = el.textContent.replace(/\s+/g, " ").trim();
   const path = el.dataset.edit;
+  if(path.endsWith(".date")){                    // a call moved nights
+    const row = getPath(path.slice(0, path.lastIndexOf(".")));
+    const iso = parseLooseDate(val, Number(String(row.date).slice(0, 4)));
+    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Jan 6" or "1/6"`); }
+    if(iso === row.date){ render(); return; }
+    const clash = DATA.calendar.some(r => r !== row && r.date === iso);
+    row.date = iso;
+    DATA.calendar.sort((a, b) => a.date.localeCompare(b.date));
+    UI.year = Number(iso.slice(0, 4));           // follow the week if it crossed a year
+    save(); render();
+    return toast("Moved to " + fmtFull(iso) + " (" + fmtDay(iso) + ")" +
+                 (clash ? " — heads up, there's already a call that night" : ""));
+  }
   if(path.startsWith("__key.")){                 // renaming a category / backlog list
     const rest = path.slice(6);
     const oldKey = rest.slice(rest.indexOf(".") + 1);

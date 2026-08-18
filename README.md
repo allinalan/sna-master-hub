@@ -39,6 +39,8 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | To do this | Where |
 |---|---|
 | Plan a week | Click the "+ open — click to plan" line |
+| Move a call to a different night | Click the date and retype it — see below |
+| Remove a week entirely | `×` next to the weekday |
 | Add a track, 2nd call, note, or long detail to a week | The small `+ track` / `+ 2nd call` / `+ note` / `+ detail` buttons under it |
 | Wipe a week back to open | `clear` on that week |
 | Add a whole year | `+ 2028` next to the year picker |
@@ -49,6 +51,24 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 
 Emptying an optional field (track, note, 2nd call, detail) removes it rather than
 leaving a blank chip behind.
+
+### Moving a call
+
+Click the date on any week and type the new one. It's forgiving about format — all of
+these work:
+
+```
+Jan 6      January 6th      6 Jan      1/6      1/6/27      01-06-2027      2026-01-06
+```
+
+Leave the year off and the week keeps the year it's already in, so nudging a 2027 call
+to "Jan 13" won't drag it back to this year. The weekday label and the week numbers
+update themselves, and the board re-sorts. Put a year on it and the week moves to that
+year's board, taking you with it.
+
+Nonsense ("Feb 30", "next tuesday") is rejected and the week is left exactly as it was.
+If you move a call onto a night that already has one, it lets you — two calls in a night
+is a real thing — but it says so.
 
 ### Shared editing is ON
 

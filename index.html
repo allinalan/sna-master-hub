@@ -976,6 +976,15 @@ async function teamLoad(){
   TEAM.loading = false; render();
 }
 
+/* the sheet stores Joined as a real datetime, so the feed stringifies it long
+   ("Tue Aug 18 2026 19:21:06 GMT-0700 ...") — render it as a date, not a log line */
+function fmtJoined(v){
+  const t = String(v || "").trim();
+  if(!t) return `<span style="color:var(--ink-faint)">&ndash;</span>`;
+  const d = new Date(t);
+  return isNaN(d) ? esc(t.slice(0,10))
+                  : esc(d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}));
+}
 function coachNames(){
   const names = TEAM.coaches.map(c => String(c.Name || "").split(" ")[0]).filter(Boolean);
   return names.length ? names : ["Alan", "Ben"];
@@ -1062,7 +1071,7 @@ function renderTeam(){
             <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
         <td style="font-size:12px">${r.Manager ? esc(r.Manager) : `<span style="color:var(--ink-faint)">&ndash;</span>`}
             ${r.ManagerPhone || r.ManagerEmail ? `<div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div>` : ""}</td>
-        <td class="dt" style="font-size:12px">${String(r.Joined || "").trim() ? esc(String(r.Joined).slice(0,10)) : `<span style="color:var(--ink-faint)">&ndash;</span>`}</td>
+        <td class="dt" style="font-size:12px">${fmtJoined(r.Joined)}</td>
         <td><select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
           <option value=""${coach ? "" : " selected"}>—</option>
           ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}

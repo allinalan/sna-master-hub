@@ -1077,7 +1077,9 @@ function renderTeam(){
           ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
         </select></td>
         <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
-            href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a></td>
+            href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>${
+          r.OnRoster ? `<div style="margin-top:6px"><a href="#" data-repactive="${esc(r.RepID)}" data-to="${r.Active ? 0 : 1}"
+            style="font-size:10.5px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
       </tr>`;
     }
     html += `</tbody></table>`;
@@ -1106,6 +1108,26 @@ document.addEventListener("click", async e => {
   if(kind === "lock"){
     TEAM.key = ""; TEAM.rows = null; localStorage.removeItem("sna_coach_key");
     render(); toast("Key forgotten on this device");
+  }
+});
+document.addEventListener("click", async e => {
+  const a = e.target.closest("[data-repactive]");
+  if(!a) return;
+  e.preventDefault();
+  const repId = a.dataset.repactive, on = a.dataset.to === "1";
+  const row = (TEAM.rows || []).find(r => r.RepID === repId);
+  if(!row) return;
+  const name = row.Name.split(" ")[0];
+  if(!confirm(on ? `Bring ${row.Name} back? They'll reappear on the dashboard, in the weekly texts, and in the form dropdowns.`
+                 : `Mark ${row.Name} as former? They drop off the dashboard, the weekly texts, and both form dropdowns. Their history stays.`)) return;
+  const before = row.Active;
+  row.Active = on;
+  render();
+  const out = await teamCall({action: "setActive", repId, active: on}).catch(() => ({ok:false}));
+  if(out.ok) toast(on ? `${name} is back` : `${name} marked former`);
+  else{
+    row.Active = before;
+    render(); toast("Couldn't save that — try again.");
   }
 });
 document.addEventListener("change", async e => {

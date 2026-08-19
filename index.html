@@ -116,6 +116,8 @@ input.search::placeholder{color:var(--ink-faint)}
 .wk-date{font-family:"Geist Mono",monospace;font-size:12px;color:var(--ink-soft);padding-top:2px;line-height:1.45}
 .wk-date b{display:block;color:var(--ink);font-size:14px;font-weight:600}
 .wk-date .wknum{font-size:10px;color:var(--ink-faint);letter-spacing:.06em}
+.wk-time{font-size:10.5px;color:var(--ink-faint);margin-top:3px;line-height:1.3}
+.wk-time.custom{color:var(--accent)}
 .wk-main{min-width:0}
 .wk-topic{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
 .wk-topic.empty{font-family:"Geist Mono",monospace;font-size:12.5px;font-weight:400;color:var(--accent);letter-spacing:.03em}
@@ -323,7 +325,8 @@ const SEED = {
     sheetName: "Group Calls 2026",
     sheetUrl: "https://docs.google.com/spreadsheets/d/1-GS8NfuURZFTqLI9qSjT6TcBj4VeTFr79j1gPYt8HsA/edit",
     dashboardUrl: "https://allinalan.github.io/sna-dashboard/",
-    snapshot: "2026-08-18"
+    snapshot: "2026-08-18",
+    callTime: "10AM Central Time"   // the standing time; any week can override it
   },
 
   /* ── Tab 1: the 2026 group-call calendar ──────────────────────────────
@@ -720,6 +723,10 @@ function load(){
 function migrate(d){
   const base = clone(SEED);
   for(const k of Object.keys(base)) if(!(k in d)) d[k] = base[k];
+  // meta gains fields over time (callTime, …). It already exists on any saved
+  // board, so the loop above skips it — backfill its new keys individually or a
+  // board saved before a field existed comes back blank instead of defaulted.
+  if(d.meta) for(const k of Object.keys(base.meta)) if(!(k in d.meta)) d.meta[k] = base.meta[k];
   ensureYears(d);
   return d;
 }
@@ -1250,6 +1257,9 @@ function renderCalendar(){
       <div class="lede">Every call night of the year. This year and next are always here —
         the board rolls itself forward, so Spring is plannable months ahead. Turn on
         <b>Edit</b> to plan straight into the page, then <b>Export PNG</b> for a clean image.</div>
+      <div class="lede" style="margin-top:6px">Calls run at <b>${ed("meta.callTime", callTime(), "", "set a time")}</b>
+        — click it in <b>Edit</b> to change every night at once, or give one week its own
+        time with <b>+ time</b>.</div>
     </div>
   </div>`;
 
@@ -1265,7 +1275,8 @@ function renderCalendar(){
 
   html += `<div id="calBoard" class="export-frame">`;
   html += printHead(scopeName + " Campaign Calendar",
-      `${planned} of ${scope.length} weeks planned · ${open} open · printed ${fmtFull(todayISO())}`);
+      `${planned} of ${scope.length} weeks planned · ${open} open${
+        callTime() ? " · calls at " + esc(callTime()) : ""} · printed ${fmtFull(todayISO())}`);
 
   html += `<div class="stats">
     ${statBox("Weeks planned", planned + " / " + scope.length, Math.round(planned/(scope.length||1)*100) + "% of " + (UI.season==="all"? UI.year : UI.season))}
@@ -1338,6 +1349,7 @@ function weekRow(r, idx, wkNum){
 
   /* in edit mode every week can gain the optional fields, or be wiped back to open */
   const extras = [];
+  if(!r.time && planned) extras.push(`<button class="btn sm" data-setfield="${p}.time">+ time</button>`);
   if(!r.track)  extras.push(`<button class="btn sm" data-setfield="${p}.track">+ track</button>`);
   if(!r.second) extras.push(`<button class="btn sm" data-setfield="${p}.second">+ 2nd call</button>`);
   if(!r.note)   extras.push(`<button class="btn sm" data-setfield="${p}.note">+ note</button>`);
@@ -1347,12 +1359,16 @@ function weekRow(r, idx, wkNum){
 
   return `<div class="week ${state}">
     <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span>
-      <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${del(p, "this week")}</div>
+      <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${
+        planned ? `<div class="wk-time${r.time ? " custom" : ""}">${
+          r.time ? ed(p+".time", r.time) : esc(callTime())}</div>` : ""}${del(p, "this week")}</div>
     <div class="wk-main">${main}</div>
     <div class="wk-right"><span class="chip ${cls} big">${ed(p+".presenter", r.presenter, "", "who?")}</span></div>
   </div>`;
 }
 function todayISO(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+/* the standing call time — one source for the lede, every week row, and the print header */
+function callTime(){ return String((DATA.meta && DATA.meta.callTime) || "").trim(); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TAB 2 — TOPIC BANK

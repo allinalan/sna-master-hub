@@ -1365,11 +1365,11 @@ const SECTIONS = [
   {id:"calendar", label:"Campaign Calendar",
    count:()=>{ const y = DATA.calendar.filter(r => Number(r.date.slice(0,4)) === UI.year);
                return y.filter(isPlanned).length + "/" + y.length; }},
-  {id:"business", label:"Orders of Business",
-   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"},
   {id:"perf", label:"Performance", count:()=>"live"},
   {id:"team", label:"Mentees",
-   count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""}
+   count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""},
+  {id:"business", label:"Orders of Business",
+   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"}
 ];
 
 const TABS = [

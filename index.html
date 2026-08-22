@@ -433,6 +433,10 @@ body.exporting::after{display:none}
 
 <main class="wrap" id="view"></main>
 
+<!-- the Performance tab's embedded dashboard lives OUTSIDE #view so the
+     iframe survives re-renders instead of reloading on every edit -->
+<div class="wrap no-export no-print" id="dashWrap" style="display:none"></div>
+
 <div class="wrap no-export">
   <footer>
     <span>Source of truth: <a href="#" id="sheetLink" target="_blank" rel="noopener">Group Calls 2026</a> · mentee performance: <a href="#" id="dashLink" target="_blank" rel="noopener">SNA Dashboard</a></span>
@@ -1299,6 +1303,48 @@ document.addEventListener("keydown", e => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   TAB — PERFORMANCE (the mentee dashboard, embedded)
+
+   One codebase, three faces: the reps' personal ?rep= links, the standalone
+   coach page, and this tab all load the SAME deployed sna-dashboard — so the
+   hub can never drift out of sync with what the reps see. ?embed=1 tells the
+   dashboard to drop its own masthead/footer and report its height, so it
+   reads as a native page here rather than a frame.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const DASH_BASE = location.hostname === "localhost"
+  ? "http://localhost:8822/"                        // local dev pair (see .claude/launch.json)
+  : "https://allinalan.github.io/sna-dashboard/";
+
+function renderPerf(){
+  ensureDashFrame();
+  return `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">Live from the check-in system</div>
+      <div class="big serif">Performance</div>
+      <div class="lede">The mentee dashboard, inside the hub — the same live board the standalone page
+        shows. Flip to <b>Rep</b> in the board for the per-mentee deep-dive. Every rep keeps their own
+        private link, and it can't drift out of sync with this: it's the same page.</div>
+    </div>
+  </div>`;
+}
+/* built once, on first visit — so the live feed only loads if you open the tab */
+function ensureDashFrame(){
+  if(document.getElementById("dashIframe")) return;
+  $("#dashWrap").innerHTML = `<iframe id="dashIframe" src="${DASH_BASE}?embed=1"
+    title="SNA mentee performance dashboard"
+    style="width:100%;border:0;height:1100px;display:block"></iframe>`;
+}
+/* the embedded page reports its height so this iframe grows with it —
+   one page scroll, never two */
+window.addEventListener("message", e => {
+  if(!/^https?:\/\/(allinalan\.github\.io|localhost(:\d+)?)$/.test(e.origin)) return;
+  const f = document.getElementById("dashIframe");
+  if(f && e.data && e.data.type === "sna-dash-h" && Number(e.data.h) > 0)
+    f.style.height = Math.max(500, Math.min(Number(e.data.h), 40000)) + "px";
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    NAV REGISTRY — two levels.
 
    SECTIONS are the bold tabs across the top. TABS are the pages; each one names
@@ -1321,6 +1367,7 @@ const SECTIONS = [
                return y.filter(isPlanned).length + "/" + y.length; }},
   {id:"business", label:"Orders of Business",
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"},
+  {id:"perf", label:"Performance", count:()=>"live"},
   {id:"team", label:"Mentees",
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""}
 ];
@@ -1346,6 +1393,9 @@ const TABS = [
   {id:"business", label:"Orders of Business", sub:"", section:"business", printable:true,
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open",
    render:renderBusiness},
+
+  {id:"perf", label:"Performance", sub:"", section:"perf",
+   count:()=>"", render:renderPerf},
 
   {id:"team", label:"Mentees", sub:"", section:"team", printable:true,
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : "",
@@ -2051,6 +2101,7 @@ function render(){
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
   $("#view").innerHTML = editBanner() + currentTab().render();
+  $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();
   if(focused){
     const q = $("#q");

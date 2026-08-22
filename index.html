@@ -5,267 +5,410 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sharp Ninja Academy — Master Hub</title>
 <meta name="description" content="One place for the Sharp Ninja Academy program: campaign calendar, topic bank, call archive, and guest speakers.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23F7F5F0' stroke='%2316140F' stroke-width='4'/%3E%3Ctext x='32' y='43' font-size='30' text-anchor='middle' font-family='Hiragino Mincho ProN,Yu Mincho,serif' fill='%2316140F'%3E忍%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23AE3B15'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' font-family='Hiragino Mincho ProN,Yu Mincho,serif' fill='%23F3EFE6'%3E忍%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#191410">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ═══════════ tokens — same palette as the SNA mentee dashboard ═══════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SNA MASTER HUB — "Program Book" design system
+   A dark lacquer masthead wraps warm paper boards. Vermilion seal, brass
+   details. Fraunces (display) · Hanken Grotesk (text) · Spline Sans Mono
+   (dates, labels, numerals). Boards stay light so PNG export and print
+   keep working exactly as before.
+   ═══════════════════════════════════════════════════════════════════════════ */
 :root{
-  --paper:#F7F5F0; --ink:#16140F; --ink-soft:#5A554B; --ink-faint:#8B8579;
-  --line:#DED9CE; --line-soft:#EBE7DD;
-  --accent:#B4451F; --accent-soft:#F0E2D8;
-  --good:#3E6B4B; --good-bg:#DFEAE0;
-  --warn:#C99700; --warn-bg:#F7ECCF;
-  --bad:#B4451F;  --bad-bg:#F3DBD2;
-  --alan:#2F5D8C; --alan-bg:#DEE8F2;
-  --ben:#7A4A8C;  --ben-bg:#EADEF2;
-  --card:#FFFFFF;
-  --radius:14px;
+  --paper:#F3EFE6; --paper-deep:#EAE4D6;
+  --card:#FBF8F1; --card-raised:#FFFDF6;
+  --ink:#1C1712; --ink-soft:#5E5645; --ink-faint:#958C79;
+  --line:#DCD5C3; --line-soft:#E8E2D2; --line-strong:#C9C0AA;
+  --accent:#AE3B15; --accent-deep:#8F2F0F; --accent-soft:#F1DFD2; --accent-ink:#7C2C0E;
+  --brass:#8E7942; --brass-soft:#EFE7D2;
+  --good:#3D6B4F; --good-bg:#DFE9DC;
+  --warn:#96760A; --warn-bg:#F2E7C6;
+  --bad:#A33512;  --bad-bg:#F0D9CC; --red:#A33512;
+  --alan:#33608F; --alan-bg:#DCE7F1;
+  --ben:#7B4B8F;  --ben-bg:#E9DFF0;
+  --shell:#191410; --shell-hi:#221C15;
+  --shell-text:#F4EEDF; --shell-mut:#9A907C; --shell-dim:#7C7360;
+  --shell-line:rgba(244,238,223,.1);
+  --radius:12px;
+  --serif:"Fraunces",Georgia,serif;
+  --sans:"Hanken Grotesk",-apple-system,"Helvetica Neue",sans-serif;
+  --monof:"Spline Sans Mono",ui-monospace,SFMono-Regular,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{background:var(--paper);color:var(--ink);font-family:"Geist",-apple-system,"Helvetica Neue",sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:0 0 90px}
-.mono{font-family:"Geist Mono",ui-monospace,monospace}
-.serif{font-family:"Fraunces",Georgia,serif}
-::selection{background:var(--accent-soft)}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;padding:0 0 110px}
+.mono{font-family:var(--monof)}
+.serif{font-family:var(--serif)}
+::selection{background:#EAD9C4}
 a{color:var(--accent);text-underline-offset:2px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);font-weight:500}
+.wrap{max-width:1220px;margin:0 auto;padding:0 28px}
 
-/* ═══════════ header ═══════════ */
-header{border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:40}
-.head-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1180px;margin:0 auto;flex-wrap:wrap;gap:12px}
+/* film grain over everything — never exported, never printed */
+body::after{content:"";position:fixed;inset:0;z-index:200;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.eyebrow{font-family:var(--monof);font-size:10px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:500;display:flex;align-items:center;gap:9px}
+.eyebrow::before{content:"";width:20px;height:2px;background:var(--accent);flex:none}
+
+/* ═══════════ masthead — the dark cover ═══════════ */
+header{background:linear-gradient(180deg,var(--shell-hi),var(--shell));color:var(--shell-text)}
+.head-inner{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:16px 28px 15px;max-width:1220px;margin:0 auto;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:14px}
-.mark{width:38px;height:38px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:20px;flex:none;line-height:1}
-.brand h1{font-family:"Fraunces",Georgia,serif;font-size:19px;font-weight:600;letter-spacing:-.01em;line-height:1.15}
-.brand .sub{font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
-.head-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.status{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none}
-.dot.edited{background:var(--warn)}
+.mark{width:41px;height:41px;background:var(--accent);color:#F6EFE2;border-radius:10px;flex:none;
+  display:grid;place-items:center;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:21px;line-height:1;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 8px rgba(0,0,0,.4)}
+.brand h1{font-family:var(--serif);font-size:20px;font-weight:540;letter-spacing:.005em;line-height:1.1;color:var(--shell-text)}
+.brand .sub{font-family:var(--monof);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--shell-mut);margin-top:4px}
+.head-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
+.status{font-family:var(--monof);font-size:10.5px;color:var(--shell-mut);display:flex;align-items:center;gap:7px;margin-right:4px}
+.status #saveLabel{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:#6FA080;flex:none;box-shadow:0 0 6px rgba(111,160,128,.5)}
+.dot.edited{background:#D9A62E;box-shadow:0 0 6px rgba(217,166,46,.5)}
 
 /* ═══════════ buttons ═══════════ */
-.btn{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;padding:8px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;transition:background .12s,border-color .12s}
-.btn:hover{border-color:var(--ink-faint);background:var(--line-soft)}
+.btn{font-family:var(--monof);font-size:10.5px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
+  padding:8px 14px;border:1px solid var(--line-strong);background:transparent;color:var(--ink-soft);
+  border-radius:8px;cursor:pointer;white-space:nowrap;
+  transition:background .15s,border-color .15s,color .15s,transform .06s}
+.btn:hover{border-color:var(--ink-faint);background:var(--card-raised);color:var(--ink)}
+.btn:active{transform:translateY(1px)}
 .btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.primary:hover{background:#000}
-.btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-.btn.on:hover{background:#9d3b1a}
+.btn.primary:hover{background:#000;border-color:#000;color:var(--paper)}
+.btn.on{background:var(--accent);color:#FFF9F1;border-color:var(--accent)}
+.btn.on:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#FFF9F1}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.btn.sm{padding:5px 10px;font-size:11px}
+.btn.sm{padding:5px 10px;font-size:10px}
+header .btn{border-color:rgba(244,238,223,.26);color:#EDE6D6;background:transparent}
+header .btn:hover{background:rgba(244,238,223,.09);border-color:rgba(244,238,223,.45);color:var(--shell-text)}
+header .btn.on{background:var(--accent);border-color:var(--accent);color:#FFF9F1}
 
-/* ═══════════ tab bar ═══════════ */
-nav.tabs{border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:67px;z-index:35}
-.tabs-inner{max-width:1180px;margin:0 auto;padding:0 24px}
-
-/* the two that matter, side by side */
-.tabs-primary{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+/* ═══════════ nav band — sticky part of the cover ═══════════ */
+nav.tabs{position:sticky;top:0;z-index:50;background:var(--shell);
+  border-top:1px solid var(--shell-line);border-bottom:1px solid rgba(142,121,66,.4);
+  box-shadow:0 12px 26px -18px rgba(18,13,7,.55)}
+.tabs-inner{max-width:1220px;margin:0 auto;padding:0 28px}
+.tabs-primary{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
 .tabs-primary::-webkit-scrollbar{display:none}
-.tab-primary{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;letter-spacing:-.01em;
-  padding:14px 4px;margin-right:14px;border:none;background:none;cursor:pointer;color:var(--ink-faint);
-  border-bottom:3px solid transparent;white-space:nowrap;margin-bottom:-1px;display:flex;align-items:baseline;gap:7px}
-.tab-primary:hover{color:var(--ink-soft)}
-.tab-primary.on{color:var(--ink);border-bottom-color:var(--accent)}
-.tab-primary .ct{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;font-weight:400;color:var(--ink-faint)}
-
-/* everything that lives under Campaign Calendar */
-.tabs-sub{display:flex;gap:2px;border-top:1px solid var(--line-soft);overflow-x:auto;scrollbar-width:none}
+.tab-primary{font-family:var(--serif);font-size:16px;font-weight:500;letter-spacing:.002em;
+  padding:15px 2px 13px;margin-right:30px;border:none;background:none;cursor:pointer;color:var(--shell-dim);
+  white-space:nowrap;display:flex;align-items:baseline;gap:8px;position:relative;transition:color .18s}
+.tab-primary::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent);
+  border-radius:3px 3px 0 0;transform:scaleX(0);transform-origin:left;transition:transform .28s cubic-bezier(.2,.7,.3,1)}
+.tab-primary:hover{color:var(--shell-mut)}
+.tab-primary.on{color:var(--shell-text)}
+.tab-primary.on::after{transform:scaleX(1)}
+.tab-primary .ct{font-family:var(--monof);font-size:9.5px;font-weight:400;letter-spacing:.06em;color:var(--shell-dim)}
+.tab-primary.on .ct{color:var(--shell-mut)}
+.tabs-sub{display:flex;gap:0;border-top:1px solid var(--shell-line);overflow-x:auto;scrollbar-width:none}
 .tabs-sub::-webkit-scrollbar{display:none}
-.tab-sub{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.03em;
-  padding:9px 12px;border:none;background:none;cursor:pointer;color:var(--ink-faint);
-  border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
-.tab-sub:hover{color:var(--ink)}
-.tab-sub.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
-.tab-sub .ct{color:var(--ink-faint);font-size:10.5px;margin-left:4px;font-weight:400}
+.tab-sub{font-family:var(--monof);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:11px 1px 10px;margin-right:24px;border:none;background:none;cursor:pointer;color:var(--shell-dim);
+  white-space:nowrap;position:relative;transition:color .18s}
+.tab-sub::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--shell-text);
+  transform:scaleX(0);transform-origin:left;transition:transform .25s cubic-bezier(.2,.7,.3,1)}
+.tab-sub:hover{color:var(--shell-mut)}
+.tab-sub.on{color:var(--shell-text)}
+.tab-sub.on::after{transform:scaleX(1)}
+.tab-sub .ct{color:var(--shell-dim);font-size:9.5px;margin-left:5px;font-weight:400}
+.tab-sub.on .ct{color:var(--shell-mut)}
 
 /* ═══════════ page title + toolbar ═══════════ */
-.page-head{padding:26px 0 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
-.page-head .big{font-family:"Fraunces",Georgia,serif;font-size:clamp(26px,4.4vw,38px);font-weight:600;letter-spacing:-.02em;line-height:1.05}
-.page-head .lede{font-size:13px;color:var(--ink-soft);margin-top:7px;max-width:62ch}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:18px 0 6px;border-bottom:1px solid var(--line-soft);margin-bottom:18px}
-.toolbar .grow{flex:1}
-.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card)}
-.seg button{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;padding:7px 13px;border:none;background:none;cursor:pointer;color:var(--ink-soft);letter-spacing:.03em}
-.seg button.on{background:var(--ink);color:var(--paper)}
-input.search{font-family:"Geist",sans-serif;font-size:13px;padding:8px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);min-width:200px}
-input.search::placeholder{color:var(--ink-faint)}
+.page-head{padding:44px 0 0;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.page-head .big{font-family:var(--serif);font-size:clamp(30px,4.4vw,42px);font-weight:540;
+  letter-spacing:-.018em;line-height:1.02;margin-top:10px}
+.page-head .lede{font-size:13.5px;color:var(--ink-soft);margin-top:10px;max-width:58ch;line-height:1.6}
+/* the "what's next" ticket beside the calendar title */
+.next-call{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;
+  padding:14px 18px 15px;min-width:230px;max-width:320px;box-shadow:0 1px 2px rgba(28,23,18,.05);align-self:center}
+.next-call .nc-lab{font-family:var(--monof);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+.next-call .nc-date{font-family:var(--serif);font-size:19px;font-weight:560;margin-top:7px;letter-spacing:-.01em}
+.next-call .nc-topic{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.45}
+.next-call .nc-open{color:var(--accent);font-family:var(--monof);font-size:10.5px;letter-spacing:.04em}
+.next-call .nc-meta{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.next-call .nc-time{font-family:var(--monof);font-size:10px;color:var(--ink-faint)}
+@media (max-width:760px){.next-call{max-width:none;width:100%;align-self:stretch}}
 
-/* ═══════════ stat strip ═══════════ */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:22px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px}
-.stat .lab{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
-.stat .val{font-family:"Fraunces",Georgia,serif;font-size:26px;font-weight:600;letter-spacing:-.02em;margin-top:5px;line-height:1}
-.stat .meta{font-size:11px;color:var(--ink-faint);margin-top:4px}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:20px 0;border-bottom:1px solid var(--line);margin-bottom:28px}
+.toolbar .grow{flex:1}
+.tb-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb-actions{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.seg{display:flex;gap:2px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--paper-deep);padding:3px}
+.seg button{font-family:var(--monof);font-size:10.5px;letter-spacing:.03em;padding:6px 12px;border:none;background:none;
+  border-radius:6px;cursor:pointer;color:var(--ink-soft);white-space:nowrap;transition:background .15s,color .15s,box-shadow .15s}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--card-raised);color:var(--ink);font-weight:500;
+  box-shadow:0 1px 3px rgba(28,23,18,.14),inset 0 0 0 1px var(--line)}
+input.search{font-family:var(--sans);font-size:13px;padding:8px 13px;border:1px solid var(--line);border-radius:8px;
+  background:var(--card);color:var(--ink);width:230px;flex:0 1 230px;min-width:150px;transition:border-color .15s,box-shadow .15s}
+input.search::placeholder{color:var(--ink-faint)}
+input.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(174,59,21,.12)}
+
+/* ═══════════ stat strip — annual-report rules, not boxes ═══════════ */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:14px 24px;margin:0 0 40px}
+.stat{border-top:2px solid var(--ink);padding:11px 0 2px;background:none}
+.stat .lab{font-family:var(--monof);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--ink-soft)}
+.stat .val{font-family:var(--serif);font-size:31px;font-weight:520;letter-spacing:-.02em;margin-top:8px;line-height:1}
+.stat .meta{font-size:11.5px;color:var(--ink-faint);margin-top:6px}
+.stat.alert{border-top-color:var(--accent)}
 .stat.alert .val{color:var(--accent)}
 
 /* ═══════════ campaign sections ═══════════ */
-.season{margin-bottom:34px;break-inside:avoid}
-.season-head{display:flex;align-items:baseline;gap:12px;padding:0 0 10px;border-bottom:1.5px solid var(--ink);margin-bottom:2px;flex-wrap:wrap}
-.season-head h3{font-family:"Fraunces",Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em}
-.season-head .roman{font-family:"Geist Mono",monospace;font-size:11px;color:var(--paper);background:var(--ink);padding:3px 8px;border-radius:999px;letter-spacing:.08em}
-.season-head .range{font-size:12px;color:var(--ink-soft)}
-.season-head .fill{margin-left:auto;font-size:11.5px;color:var(--ink-soft);font-family:"Geist Mono",monospace}
+.season{margin-bottom:46px;break-inside:avoid}
+.season-head{display:flex;align-items:baseline;gap:13px;padding:0 0 11px;border-bottom:2px solid var(--ink);margin-bottom:2px;flex-wrap:wrap}
+.season-head h3{font-family:var(--serif);font-size:23px;font-weight:560;letter-spacing:-.012em}
+.season-head .roman{font-family:var(--monof);font-size:10px;font-weight:500;color:var(--brass);
+  border:1px solid rgba(142,121,66,.55);padding:3px 8px;border-radius:5px;letter-spacing:.14em;align-self:center}
+.season-head .range{font-family:var(--monof);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+.season-head .fill{margin-left:auto;font-size:10.5px;color:var(--ink-soft);font-family:var(--monof);letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+.season-head .meter{width:56px;height:3px;border-radius:2px;background:var(--line-strong);overflow:hidden;flex:none}
+.season-head .meter i{display:block;height:100%;background:var(--accent);border-radius:2px}
 
 /* ═══════════ week rows ═══════════ */
-.week{display:grid;grid-template-columns:120px 1fr 150px;gap:16px;padding:13px 4px;border-bottom:1px solid var(--line-soft);align-items:start;break-inside:avoid;position:relative}
-.week:hover{background:rgba(255,255,255,.55)}
-.week.open{background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(180,69,31,.035) 9px,rgba(180,69,31,.035) 18px)}
-.week.blocked{opacity:.62}
-.wk-date{font-family:"Geist Mono",monospace;font-size:12px;color:var(--ink-soft);padding-top:2px;line-height:1.45}
-.wk-date b{display:block;color:var(--ink);font-size:14px;font-weight:600}
-.wk-date .wknum{font-size:10px;color:var(--ink-faint);letter-spacing:.06em}
-.wk-time{font-size:10.5px;color:var(--ink-faint);margin-top:3px;line-height:1.3}
+.week{display:grid;grid-template-columns:118px minmax(0,1fr) 160px;gap:18px;padding:14px 8px;margin:0 -8px;
+  border-bottom:1px solid var(--line-soft);align-items:start;break-inside:avoid;position:relative;
+  border-radius:8px;transition:background .15s}
+.week:hover{background:rgba(255,253,246,.8)}
+.week.open{background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(174,59,21,.045) 9px,rgba(174,59,21,.045) 18px)}
+.week.blocked{opacity:.55}
+.wk-date{font-family:var(--monof);font-size:11.5px;color:var(--ink-soft);padding-top:2px;line-height:1.5}
+.wk-date b{display:block;color:var(--ink);font-size:13.5px;font-weight:600;letter-spacing:.01em}
+.wk-date .wknum{font-size:9px;color:var(--ink-faint);letter-spacing:.14em}
+.wk-time{font-size:10px;color:var(--ink-faint);margin-top:3px;line-height:1.3}
 .wk-time.custom{color:var(--accent)}
 .wk-main{min-width:0}
-.wk-topic{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
-.wk-topic.empty{font-family:"Geist Mono",monospace;font-size:12.5px;font-weight:400;color:var(--accent);letter-spacing:.03em}
-.wk-detail{font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.5;max-width:74ch}
-.wk-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;align-items:center}
-.wk-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;padding-top:1px}
+.wk-topic{font-family:var(--serif);font-size:17.5px;font-weight:560;letter-spacing:-.008em;line-height:1.3}
+.wk-topic.empty{font-family:var(--monof);font-size:11.5px;font-weight:400;color:var(--accent);letter-spacing:.05em}
+.wk-detail{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.55;max-width:74ch}
+.wk-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;align-items:center}
+.wk-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;padding-top:2px}
 
 /* ═══════════ chips ═══════════ */
-.chip{font-family:"Geist Mono",monospace;font-size:10.5px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);white-space:nowrap}
-.chip.track{background:var(--accent-soft);border-color:transparent;color:#7d3115}
-.chip.note{background:var(--warn-bg);border-color:transparent;color:#7a5c00}
+.chip{font-family:var(--monof);font-size:10px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink-soft);white-space:nowrap}
+.chip.track{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink)}
+.chip.note{background:var(--warn-bg);border-color:transparent;color:#6E5606}
 .chip.alan{background:var(--alan-bg);border-color:transparent;color:var(--alan);font-weight:600}
 .chip.ben{background:var(--ben-bg);border-color:transparent;color:var(--ben);font-weight:600}
 .chip.both{background:linear-gradient(100deg,var(--alan-bg) 50%,var(--ben-bg) 50%);border-color:transparent;color:var(--ink);font-weight:600}
-.chip.tbd{border-style:dashed;color:var(--ink-faint)}
+.chip.tbd{border-style:dashed;background:transparent;color:var(--ink-faint)}
 .chip.second{background:var(--good-bg);border-color:transparent;color:var(--good)}
-.chip.big{font-size:11.5px;padding:5px 11px}
+.chip.big{font-size:11px;padding:5px 12px}
 .chip.count{background:var(--line-soft);border-color:transparent}
 
 /* second call / proposed / alt lines under a week */
-.wk-sub{display:flex;gap:8px;align-items:baseline;margin-top:9px;padding-left:11px;border-left:2px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
-.wk-sub .tag{font-family:"Geist Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);flex:none;padding-top:2px}
-.wk-sub.proposed{border-left-color:var(--accent);color:var(--accent)}
+.wk-sub{display:flex;gap:9px;align-items:baseline;margin-top:9px;padding-left:12px;border-left:2px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+.wk-sub .tag{font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);flex:none;padding-top:2px}
+.wk-sub.proposed{border-left-color:var(--accent);color:var(--accent-ink)}
+.wk-sub.proposed .tag{color:var(--accent)}
 .wk-sub.alt{border-left-style:dashed}
 
 /* ═══════════ generic cards / columns ═══════════ */
-.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 17px;break-inside:avoid}
-.card h4{font-family:"Fraunces",Georgia,serif;font-size:15.5px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:9px;border-bottom:1px solid var(--line-soft);margin-bottom:10px}
-.card h4 .n{font-family:"Geist Mono",monospace;font-size:11px;color:var(--ink-faint);font-weight:400}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:17px 18px;break-inside:avoid;
+  box-shadow:0 1px 2px rgba(28,23,18,.04)}
+.card h4{font-family:var(--serif);font-size:15.5px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  padding-bottom:10px;border-bottom:1px solid var(--line-soft);margin-bottom:10px}
+.card h4 .n{font-family:var(--monof);font-size:10px;color:var(--ink-faint);font-weight:400;letter-spacing:.06em}
 .card ul{list-style:none}
-.card li{font-size:13px;line-height:1.45;padding:6px 0 6px 15px;position:relative;border-bottom:1px solid var(--line-soft)}
+.card li{font-size:13px;line-height:1.45;padding:6px 0 6px 16px;position:relative;border-bottom:1px solid var(--line-soft)}
 .card li:last-child{border-bottom:none}
-.card li::before{content:"";position:absolute;left:2px;top:13px;width:4px;height:4px;border-radius:50%;background:var(--ink-faint)}
+.card li::before{content:"";position:absolute;left:2px;top:13px;width:5px;height:5px;border-radius:50%;background:var(--line-strong)}
 .card li.used::before{background:var(--good)}
-.card li .when{font-family:"Geist Mono",monospace;font-size:10px;color:var(--good);margin-left:6px;white-space:nowrap}
+.card li .when{font-family:var(--monof);font-size:9.5px;color:var(--good);margin-left:6px;white-space:nowrap;letter-spacing:.03em}
 .card li.sched::before{background:var(--accent)}
 .card li .when.sched{color:var(--accent)}
 
 /* ═══════════ tables ═══════════ */
-table.grid{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-table.grid th{text-align:left;font-family:"Geist Mono",monospace;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);font-weight:500;padding:11px 13px;border-bottom:1px solid var(--line);background:var(--line-soft);white-space:nowrap}
-table.grid td{padding:10px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.tbl{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;
+  box-shadow:0 1px 2px rgba(28,23,18,.04)}
+table.grid{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+table.grid th{text-align:left;font-family:var(--monof);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:500;padding:13px 14px 9px;border-bottom:1.5px solid rgba(28,23,18,.65);white-space:nowrap}
+table.grid td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
 table.grid tr:last-child td{border-bottom:none}
-table.grid tbody tr:hover{background:var(--line-soft)}
-table.grid td.num{font-family:"Geist Mono",monospace;color:var(--ink-faint);font-size:11.5px;width:34px}
-table.grid td.dt{font-family:"Geist Mono",monospace;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;width:96px}
+table.grid tbody tr{transition:background .12s}
+table.grid tbody tr:hover{background:var(--paper-deep)}
+table.grid td.num{font-family:var(--monof);color:var(--ink-faint);font-size:11px;width:34px}
+table.grid td.dt{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap;width:96px}
 table.grid tr.nocall td{color:var(--ink-faint);font-style:italic}
-.sec-title{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;margin:26px 0 11px;display:flex;align-items:baseline;gap:9px}
-.sec-title .n{font-family:"Geist Mono",monospace;font-size:11px;color:var(--ink-faint);font-weight:400}
-.empty-note{font-size:13px;color:var(--ink-faint);padding:26px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius)}
+#teamBoard table.grid{min-width:880px}
+.sec-title{font-family:var(--serif);font-size:19px;font-weight:560;margin:34px 0 12px;display:flex;align-items:baseline;gap:10px;letter-spacing:-.008em}
+.sec-title .n{font-family:var(--monof);font-size:10.5px;color:var(--ink-faint);font-weight:400;letter-spacing:.04em}
+.empty-note{font-size:13px;color:var(--ink-faint);padding:30px;text-align:center;border:1px dashed var(--line-strong);border-radius:var(--radius);background:var(--card)}
 
 /* ═══════════ editing ═══════════ */
-[data-edit]{border-radius:4px;transition:background .1s,box-shadow .1s}
-body.editing [data-edit]{cursor:text;box-shadow:inset 0 -1px 0 var(--line);min-height:1.2em;display:inline-block;min-width:44px}
-body.editing [data-edit]:hover{background:var(--warn-bg)}
-body.editing [data-edit]:focus{background:#fff;box-shadow:0 0 0 2px var(--accent);outline:none}
+[data-edit]{border-radius:4px;transition:background .12s,box-shadow .12s}
+body.editing [data-edit]{cursor:text;box-shadow:inset 0 -1px 0 var(--line-strong);min-height:1.2em;display:inline-block;min-width:44px}
+body.editing [data-edit]:hover{background:var(--accent-soft)}
+body.editing [data-edit]:focus{background:var(--card-raised);box-shadow:0 0 0 2px var(--accent);outline:none}
 body.editing .wk-topic.empty{color:var(--ink-faint)}
-.edit-banner{display:none;background:var(--warn-bg);border:1px solid #E4CE8E;border-radius:var(--radius);padding:11px 15px;font-size:12.5px;color:#6d5300;margin-bottom:16px;align-items:center;gap:12px;flex-wrap:wrap}
+.edit-banner{display:none;background:var(--accent-soft);border:1px solid #E0C2AC;border-radius:10px;padding:11px 15px;
+  font-size:12.5px;color:var(--accent-ink);margin:20px 0 0;align-items:center;gap:12px;flex-wrap:wrap}
 body.editing .edit-banner{display:flex}
 .edit-banner b{font-weight:600}
+.edit-banner .grow{flex:1}
 
 /* controls that only exist while Edit is on */
 .edit-only{display:none!important}
 body.editing .edit-only{display:inline-block!important}
 body.editing th.edit-only,body.editing td.edit-only{display:table-cell!important;width:28px}
-.del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:0 4px;border-radius:4px;vertical-align:middle}
+.del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:0 4px;border-radius:4px;vertical-align:middle;transition:background .12s,color .12s}
 .del:hover{background:var(--bad-bg);color:var(--bad)}
 .card h4 .del{margin-left:auto}
 .card li .del{float:right;opacity:.5}
 .card li:hover .del{opacity:1}
-body.editing .wk-meta .btn.sm{font-size:10px;padding:3px 8px;color:var(--ink-faint)}
-.edit-banner .grow{flex:1}
+body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-faint)}
 
 /* ═══════════ orders of business ═══════════ */
-.biz{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:6px}
-.biz-row{display:grid;grid-template-columns:30px 1fr 108px 92px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+.biz{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:6px;
+  box-shadow:0 1px 2px rgba(28,23,18,.04)}
+.biz-row{display:grid;grid-template-columns:30px minmax(0,1fr) 112px 92px 20px;gap:10px;align-items:center;padding:11px 16px;
+  border-bottom:1px solid var(--line-soft);transition:background .12s}
 .biz-row:last-of-type{border-bottom:none}
-.biz-row:hover{background:var(--line-soft)}
-.biz-row.is-done{opacity:.55}
+.biz-row:hover{background:var(--paper-deep)}
+.biz-row.is-done{opacity:.5}
 .biz-row.is-done .biz-note,.biz-row.is-done .due{text-decoration:line-through}
 .biz-row.flash{animation:flash 2.6s ease-out}
-@keyframes flash{0%,55%{background:var(--warn-bg)}100%{background:transparent}}
+@keyframes flash{0%,55%{background:var(--accent-soft)}100%{background:transparent}}
+.biz-row.flash .tick{animation:tickpop .32s cubic-bezier(.34,1.56,.64,1)}
+@keyframes tickpop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
 .del.always{display:inline-block!important}
 .biz-row.is-done .biz-t{text-decoration:line-through}
 .biz-main{min-width:0}
 .biz-t{font-size:13.5px;line-height:1.4}
 .biz-note{font-size:11.5px;color:var(--ink-faint);margin-top:2px;line-height:1.4}
-.tick{width:20px;height:20px;border:1.5px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;
-      display:grid;place-items:center;font-size:12px;color:transparent;padding:0;line-height:1;transition:.12s}
+.tick{width:21px;height:21px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--card-raised);cursor:pointer;
+      display:grid;place-items:center;font-size:12px;color:transparent;padding:0;line-height:1;transition:border-color .15s,background .15s}
 .tick:hover{border-color:var(--good)}
 .tick.on{background:var(--good);border-color:var(--good);color:#fff}
-.chip.who{justify-self:start;font-size:10.5px}
-.due{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;text-align:right;color:var(--ink-faint);white-space:nowrap}
+.chip.who{justify-self:start;font-size:10px}
+.due{font-family:var(--monof);font-size:10.5px;text-align:right;color:var(--ink-faint);white-space:nowrap;letter-spacing:.03em}
+.due [data-ph],.chip.who [data-ph]{border-bottom:1px dashed var(--line-strong)}
 .due.over{color:var(--bad);font-weight:600}
 .due.soon{color:var(--warn)}
 .due.later{color:var(--ink-soft)}
-.biz .btn.sm{margin:9px 14px}
-@media (max-width:700px){
-  .biz-row{grid-template-columns:26px 1fr;row-gap:6px}
-  .chip.who,.due{grid-column:2;justify-self:start;text-align:left}
-}
+.biz .btn.sm{margin:10px 16px}
 
 /* ═══════════ modal ═══════════ */
-.scrim{position:fixed;inset:0;background:rgba(22,20,15,.45);z-index:60;display:none;align-items:center;justify-content:center;padding:24px}
+.scrim{position:fixed;inset:0;background:rgba(18,13,8,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  z-index:60;display:none;align-items:center;justify-content:center;padding:24px}
 .scrim.on{display:flex}
-.modal{background:var(--card);border-radius:18px;max-width:640px;width:100%;max-height:82vh;overflow:auto;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.24)}
-.modal h3{font-family:"Fraunces",Georgia,serif;font-size:20px;font-weight:600;margin-bottom:6px}
+.modal{background:var(--card-raised);border:1px solid var(--line);border-radius:16px;max-width:640px;width:100%;max-height:82vh;
+  overflow:auto;padding:26px;box-shadow:0 30px 70px rgba(10,7,4,.4)}
+.scrim.on .modal{animation:pageIn .3s cubic-bezier(.16,.68,.32,1)}
+.modal h3{font-family:var(--serif);font-size:21px;font-weight:560;margin-bottom:7px;letter-spacing:-.012em}
 .modal p{font-size:13px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6}
-.modal textarea{width:100%;height:240px;font-family:"Geist Mono",monospace;font-size:11px;line-height:1.5;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper);color:var(--ink);resize:vertical}
+.modal textarea{width:100%;height:240px;font-family:var(--monof);font-size:11px;line-height:1.5;border:1px solid var(--line);
+  border-radius:10px;padding:12px;background:var(--paper);color:var(--ink);resize:vertical}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
 /* toast */
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);font-family:"Geist Mono",monospace;font-size:12px;padding:11px 20px;border-radius:999px;opacity:0;transition:opacity .2s,transform .2s;z-index:80;pointer-events:none;max-width:90vw;text-align:center}
-.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(16px) scale(.97);
+  background:var(--ink);color:var(--paper);font-family:var(--monof);font-size:11.5px;letter-spacing:.02em;
+  padding:11px 20px;border-radius:10px;opacity:0;box-shadow:0 12px 30px rgba(10,7,4,.35);
+  transition:opacity .22s,transform .28s cubic-bezier(.34,1.4,.64,1);z-index:80;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 
-footer{border-top:1px solid var(--line);margin-top:44px;padding-top:18px;font-size:11.5px;color:var(--ink-faint);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+footer{border-top:1px solid var(--line);margin-top:64px;padding-top:20px;font-family:var(--monof);font-size:10.5px;
+  letter-spacing:.03em;color:var(--ink-faint);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+footer a{color:var(--ink-soft)}
+
+/* page entrance — replayed on tab switches only */
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#view.page-enter>*{animation:pageIn .4s cubic-bezier(.16,.68,.32,1) both}
+#view.page-enter>*:nth-child(2){animation-delay:.05s}
+#view.page-enter>*:nth-child(3){animation-delay:.1s}
+#view.page-enter>*:nth-child(4){animation-delay:.15s}
+#view.page-enter>*:nth-child(n+5){animation-delay:.19s}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 
 /* ═══════════ responsive ═══════════ */
-@media (max-width:760px){
-  .week{grid-template-columns:92px 1fr;gap:12px}
+@media (max-width:1024px){
+  .wrap,.tabs-inner{padding:0 22px}
+  .head-inner{padding:14px 22px 13px}
+  .week{grid-template-columns:104px minmax(0,1fr) 148px;gap:14px}
+}
+@media (max-width:860px){
+  .week{grid-template-columns:96px minmax(0,1fr)}
   .wk-right{grid-column:2;flex-direction:row;align-items:center;flex-wrap:wrap;padding-top:0}
-  .head-inner{padding:12px 16px}
-  .wrap,.tabs-inner{padding:0 16px}
-  nav.tabs{top:63px}
-  .tab-primary{font-size:15px;margin-right:10px}
+}
+@media (max-width:760px){
+  .wrap,.tabs-inner{padding:0 18px}
+  .head-inner{padding:12px 18px 11px}
+  .brand{gap:11px}
+  .mark{width:36px;height:36px;font-size:18px;border-radius:9px}
+  .brand h1{font-size:16.5px}
+  .brand .sub{font-size:8px;letter-spacing:.2em;margin-top:3px}
+  .status #saveLabel{max-width:110px}
+  .tab-primary{font-size:14.5px;margin-right:20px;padding:13px 2px 11px}
+  .tab-sub{margin-right:18px}
+  .tabs-primary,.tabs-sub{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+  .page-head{padding-top:32px}
+  .page-head .lede{font-size:13px}
+  .toolbar{padding:16px 0;gap:10px}
+  .tb-filters{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:2px;scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
+  .tb-filters::-webkit-scrollbar{display:none}
+  .seg{flex:none}
+  input.search{width:100%;flex:1 1 100%;min-width:0}
+  .tb-actions{margin-left:0;width:100%}
+  .stats{grid-template-columns:repeat(2,1fr);gap:12px 20px;margin-bottom:32px}
+  .stat .val{font-size:26px}
+  .season{margin-bottom:36px}
+  .season-head h3{font-size:20px}
+  .season-head .range{display:none}
+  .week{margin:0;padding:13px 2px;border-radius:0}
+  .biz-row{grid-template-columns:26px minmax(0,1fr) auto 20px;row-gap:6px}
+  .biz-main{grid-column:2 / 4}
+  .chip.who{grid-column:2;grid-row:2;justify-self:start}
+  .due{grid-column:3;grid-row:2;justify-self:start;text-align:left}
+  .biz-row .del,.biz-row .del.always{grid-column:4;grid-row:1;justify-self:end}
+}
+@media (max-width:600px){
+  .head-inner{flex-wrap:nowrap;gap:10px}
+  .status #saveLabel{display:none}
+  .head-right{gap:6px;flex-wrap:nowrap}
+  header .btn{padding:6px 10px;font-size:10px}
+  .brand h1{font-size:15.5px;white-space:nowrap}
+  .brand .sub{font-size:7.5px;letter-spacing:.18em}
+  /* the standing call time is already in the lede — only per-week overrides
+     earn a line in the narrow date column */
+  .wk-time:not(.custom){display:none}
 }
 
 /* ═══════════ print / PNG export ═══════════ */
 .export-frame{background:var(--paper)}
 body.exporting .no-export,body.exporting nav.tabs,body.exporting header{display:none!important}
 body.exporting .week:hover{background:none}
+body.exporting::after{display:none}
 @media print{
   @page{size:letter portrait;margin:12mm}
   body{padding:0;background:#fff}
+  body::after{display:none}
   header,nav.tabs,.toolbar,.no-print,.edit-banner,footer .no-print,.scrim,.toast{display:none!important}
   .wrap{max-width:100%;padding:0}
   .week,.season,.card,tr{break-inside:avoid}
   .season-head{break-after:avoid}
   a{text-decoration:none;color:var(--ink)}
   .print-head{display:block!important}
-  .week.open{background:none;border-left:3px solid var(--accent);padding-left:8px}
-  .stat,.card,table.grid{box-shadow:none}
+  .week.open{background:none;border-left:3px solid var(--accent);padding-left:8px;margin:0;border-radius:0}
+  .week{margin:0;border-radius:0}
+  .stat,.card,.tbl,table.grid{box-shadow:none}
+  .tbl{overflow:visible;border-radius:0}
+  table.grid,#teamBoard table.grid{min-width:0}
+  .export-frame{background:#fff}
 }
-.print-head{display:none;padding-bottom:14px;margin-bottom:18px;border-bottom:1.5px solid var(--ink)}
-.print-head .t{font-family:"Fraunces",Georgia,serif;font-size:24px;font-weight:600}
-.print-head .s{font-size:11.5px;color:var(--ink-soft);margin-top:4px;font-family:"Geist Mono",monospace}
-body.exporting .print-head{display:block}
+.print-head{display:none;padding-bottom:14px;margin-bottom:18px;border-bottom:2px solid var(--ink)}
+.print-head .t{font-family:var(--serif);font-size:24px;font-weight:560;letter-spacing:-.012em}
+.print-head .s{font-size:10.5px;color:var(--ink-soft);margin-top:5px;font-family:var(--monof);letter-spacing:.04em}
 </style>
 </head>
 <body>
@@ -1037,12 +1180,15 @@ function renderTeam(){
   const masters = act.filter(r => /master/i.test(r.Program || r.Tier)).length;
 
   html += toolbar(`
-    ${seg("teamCoach", [{v:"all",l:"All"}].concat(coachNames().map(n => ({v:n,l:n}))).concat([{v:"none",l:"Unassigned"}]), coachSeg)}
+    <div class="tb-filters">
+      ${seg("teamCoach", [{v:"all",l:"All"}].concat(coachNames().map(n => ({v:n,l:n}))).concat([{v:"none",l:"Unassigned"}]), coachSeg)}
+      <button class="btn ${former?"on":""}" data-teamact="former">Show former</button>
+    </div>
     <input class="search" id="q" placeholder="Search ${rows.length} mentees…" value="${esc(UI.q)}">
-    <button class="btn ${former?"on":""}" data-teamact="former">Show former</button>
-    <span class="grow"></span>
-    <button class="btn" data-teamact="reload" title="Re-pull the roster from the sheet">Refresh</button>
-    ${exportButtons("teamBoard", "Mentees")}`);
+    <div class="tb-actions">
+      <button class="btn" data-teamact="reload" title="Re-pull the roster from the sheet">Refresh</button>
+      ${exportButtons("teamBoard", "Mentees")}
+    </div>`);
 
   html += `<div id="teamBoard" class="export-frame">`;
   html += printHead("Sharp Ninja Academy — Mentees", `${act.length} active · printed ${fmtFull(todayISO())}`);
@@ -1056,7 +1202,7 @@ function renderTeam(){
 
   if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
   else{
-    html += `<table class="grid"><thead><tr>
+    html += `<div class="tbl"><table class="grid"><thead><tr>
       <th>Mentee</th><th>Program</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export"></th>
     </tr></thead><tbody>`;
     for(const r of visible){
@@ -1082,7 +1228,7 @@ function renderTeam(){
             style="font-size:10.5px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
       </tr>`;
     }
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
   }
   html += `</div>`;
   html += `<div class="no-export no-print" style="margin-top:14px;font-size:11.5px;color:var(--ink-faint)">
@@ -1291,18 +1437,32 @@ function renderCalendar(){
       <div class="lede" style="margin-top:6px">Calls run at <b>${ed("meta.callTime", callTime(), "", "set a time")}</b>
         — click it in <b>Edit</b> to change every night at once, or give one week its own
         time with <b>+ time</b>.</div>
-    </div>
+    </div>${(() => {
+      const next = DATA.calendar.filter(r => r.date >= todayISO() && !isBlocked(r))
+                                .sort((a, b) => a.date.localeCompare(b.date))[0];
+      if(!next) return "";
+      return `<div class="next-call">
+        <div class="nc-lab">Next call night</div>
+        <div class="nc-date">${fmtDay(next.date)} · ${fmtDate(next.date)}</div>
+        <div class="nc-topic">${isPlanned(next) ? esc(next.topic) : `<span class="nc-open">open — nothing planned yet</span>`}</div>
+        <div class="nc-meta">${(next.time || callTime()) ? `<span class="nc-time">${esc(next.time || callTime())}</span>` : ""}${
+          next.presenter ? `<span class="chip ${presenterClass(next.presenter)}">${esc(next.presenter)}</span>` : ""}</div>
+      </div>`;
+    })()}
   </div>`;
 
   html += toolbar(`
-    ${seg("year", years.map(y => ({v:String(y), l:String(y)})), String(UI.year))}
-    ${seg("season", [{v:"all",l:"All year"},{v:"Spring",l:"Spring I"},{v:"Summer",l:"Summer II"},{v:"Fall",l:"Fall III"}], UI.season)}
-    ${seg("presenter", [{v:"all",l:"Everyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"No host"}], UI.presenter)}
-    <button class="btn ${UI.open?"on":""}" data-toggle="open">Open weeks only</button>
+    <div class="tb-filters">
+      ${seg("year", years.map(y => ({v:String(y), l:String(y)})), String(UI.year))}
+      ${seg("season", [{v:"all",l:"All year"},{v:"Spring",l:"Spring I"},{v:"Summer",l:"Summer II"},{v:"Fall",l:"Fall III"}], UI.season)}
+      ${seg("presenter", [{v:"all",l:"Everyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"No host"}], UI.presenter)}
+      <button class="btn ${UI.open?"on":""}" data-toggle="open">Open weeks only</button>
+    </div>
     <input class="search" id="q" placeholder="Search topics, tracks, notes…" value="${esc(UI.q)}">
-    <span class="grow"></span>
-    <button class="btn" data-addyear="${nextYear}" title="Add every call night of ${nextYear}">+ ${nextYear}</button>
-    ${exportButtons("calBoard", scopeName + " Campaign Calendar")}`);
+    <div class="tb-actions">
+      <button class="btn" data-addyear="${nextYear}" title="Add every call night of ${nextYear}">+ ${nextYear}</button>
+      ${exportButtons("calBoard", scopeName + " Campaign Calendar")}
+    </div>`);
 
   html += `<div id="calBoard" class="export-frame">`;
   html += printHead(scopeName + " Campaign Calendar",
@@ -1331,7 +1491,7 @@ function renderCalendar(){
           <span class="roman">${S.roman}</span>
           <h3>${S.key} ${UI.year}</h3>
           <span class="range">${S.range}</span>
-          <span class="fill">${gPlanned}/${gAll.length} planned</span>
+          <span class="fill"><span class="meter"><i style="width:${Math.round(gPlanned/(gAll.length||1)*100)}%"></i></span>${gPlanned}/${gAll.length} planned</span>
         </div>`;
       for(const r of group) html += weekRow(r, DATA.calendar.indexOf(r), gAll.indexOf(r) + 1);
       html += `</section>`;
@@ -1430,11 +1590,14 @@ function renderBank(){
   </div>`;
 
   html += toolbar(`
-    <button class="btn ${UI.open?"on":""}" data-toggle="open">Never-run only</button>
+    <div class="tb-filters">
+      <button class="btn ${UI.open?"on":""}" data-toggle="open">Never-run only</button>
+    </div>
     <input class="search" id="q" placeholder="Search all ${all.length} topics…" value="${esc(UI.q)}">
-    <span class="grow"></span>
-    <button class="btn edit-only" data-addkey="topicBank">+ category</button>
-    ${exportButtons("bankBoard", "Topic Bank")}`);
+    <div class="tb-actions">
+      <button class="btn edit-only" data-addkey="topicBank">+ category</button>
+      ${exportButtons("bankBoard", "Topic Bank")}
+    </div>`);
 
   html += `<div id="bankBoard" class="export-frame">`;
   html += printHead("Topic Bank", `${all.length} topics across ${Object.keys(cats).length} categories · printed ${fmtFull(todayISO())}`);
@@ -1503,11 +1666,14 @@ function renderArchive(){
   </div>`;
 
   html += toolbar(`
-    ${seg("archCampaign", [{v:"all",l:"All"}].concat(camps.map(c => ({v:c, l:c}))), UI.archCampaign)}
+    <div class="tb-filters">
+      ${seg("archCampaign", [{v:"all",l:"All"}].concat(camps.map(c => ({v:c, l:c}))), UI.archCampaign)}
+    </div>
     <input class="search" id="q" placeholder="Search ${rows.length} calls…" value="${esc(UI.q)}">
-    <span class="grow"></span>
-    <button class="btn edit-only" data-addrow="archive">+ call</button>
-    ${exportButtons("archBoard", "Call Archive")}`);
+    <div class="tb-actions">
+      <button class="btn edit-only" data-addrow="archive">+ call</button>
+      ${exportButtons("archBoard", "Call Archive")}
+    </div>`);
 
   html += `<div id="archBoard" class="export-frame">`;
   html += printHead("Call Archive — " + (UI.archCampaign === "all" ? "all campaigns" : UI.archCampaign),
@@ -1524,7 +1690,7 @@ function renderArchive(){
     const group = visible.filter(r => r.campaign === c);
     if(!group.length) continue;
     html += `<div class="sec-title serif">${esc(c)} <span class="n">${group.length} calls</span></div>
-      <table class="grid"><thead><tr>
+      <div class="tbl"><table class="grid"><thead><tr>
         <th>#</th><th>Date</th><th>Topic</th><th>Series</th><th>Slot</th><th>Host</th><th>Hot seat</th><th class="edit-only"></th>
       </tr></thead><tbody>`;
     for(const r of group){
@@ -1541,7 +1707,7 @@ function renderArchive(){
         <td class="edit-only">${del(p, "call")}</td>
       </tr>`;
     }
-    html += `</tbody></table>`;
+    html += `</tbody></table></div>`;
   }
   html += `</div>`;
   return html;
@@ -1569,9 +1735,10 @@ function renderSpeakers(){
 
   html += toolbar(`
     <input class="search" id="q" placeholder="Search names…" value="${esc(UI.q)}">
-    <button class="btn edit-only" data-addrow="speakers">+ speaker</button>
-    <span class="grow"></span>
-    ${exportButtons("spkBoard", "Guest Speakers")}`);
+    <div class="tb-actions">
+      <button class="btn edit-only" data-addrow="speakers">+ speaker</button>
+      ${exportButtons("spkBoard", "Guest Speakers")}
+    </div>`);
 
   html += `<div id="spkBoard" class="export-frame">`;
   html += printHead("Guest Speakers", `${rows.length} on the bench · printed ${fmtFull(todayISO())}`);
@@ -1580,7 +1747,7 @@ function renderSpeakers(){
     ${statBox("Topic assigned", withTopic, (rows.length - withTopic) + " still blank", rows.length - withTopic > 0)}
     ${statBox("Ever asked", asked, "logged")}
   </div>
-  <table class="grid"><thead><tr><th>Name</th><th>Topic</th><th>Last time asked</th><th class="edit-only"></th></tr></thead><tbody>`;
+  <div class="tbl"><table class="grid"><thead><tr><th>Name</th><th>Topic</th><th>Last time asked</th><th class="edit-only"></th></tr></thead><tbody>`;
   for(const r of visible){
     const p = "speakers." + rows.indexOf(r);
     html += `<tr>
@@ -1590,7 +1757,7 @@ function renderSpeakers(){
       <td class="edit-only">${del(p, "speaker")}</td>
     </tr>`;
   }
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
   return html;
 }
 
@@ -1641,12 +1808,15 @@ function renderBusiness(){
   </div>`;
 
   html += toolbar(`
-    ${seg("bizView", [{v:"all",l:"Everything"},{v:"open",l:"Hide done"},{v:"dated",l:"Has a date"},{v:"done",l:"Done only"}], UI.bizView)}
-    ${seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"Unassigned"}], UI.presenter)}
+    <div class="tb-filters">
+      ${seg("bizView", [{v:"all",l:"Everything"},{v:"open",l:"Hide done"},{v:"dated",l:"Has a date"},{v:"done",l:"Done only"}], UI.bizView)}
+      ${seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"Unassigned"}], UI.presenter)}
+    </div>
     <input class="search" id="q" placeholder="Search ${all.length} items…" value="${esc(UI.q)}">
-    <span class="grow"></span>
-    <button class="btn edit-only" data-addkey="business">+ section</button>
-    ${exportButtons("bizBoard", "Next Orders of Business")}`);
+    <div class="tb-actions">
+      <button class="btn edit-only" data-addkey="business">+ section</button>
+      ${exportButtons("bizBoard", "Next Orders of Business")}
+    </div>`);
 
   html += `<div id="bizBoard" class="export-frame">`;
   html += printHead("Next Orders of Business",
@@ -1868,6 +2038,14 @@ document.addEventListener("mousedown", e => {
   PENDING_FOCUS = el ? el.dataset.edit : null;
 });
 
+/* replay the staggered page entrance — only on real tab switches, never on
+   the re-render every keystroke causes */
+function pageIn(){
+  const v = $("#view");
+  v.classList.remove("page-enter"); void v.offsetWidth;   // restart the animation
+  v.classList.add("page-enter");
+}
+
 function render(){
   const focused = document.activeElement && document.activeElement.id === "q";
   const caret = focused ? document.activeElement.selectionStart : null;
@@ -1996,11 +2174,11 @@ document.addEventListener("click", e => {
   if(t.dataset.section){                               // a bold tab — go to that section's first page
     const home = homeTabOf(t.dataset.section);
     if(sectionOf(TAB) !== t.dataset.section || TAB !== home){
-      TAB = home; location.hash = TAB; UI.q = ""; UI.presenter = "all"; render(); window.scrollTo(0,0);
+      TAB = home; location.hash = TAB; UI.q = ""; UI.presenter = "all"; render(); pageIn(); window.scrollTo(0,0);
     }
     return;
   }
-  if(t.dataset.tab){ TAB = t.dataset.tab; location.hash = TAB; UI.q = ""; UI.presenter = "all"; render(); window.scrollTo(0,0); return; }
+  if(t.dataset.tab){ TAB = t.dataset.tab; location.hash = TAB; UI.q = ""; UI.presenter = "all"; render(); pageIn(); window.scrollTo(0,0); return; }
   if(t.dataset.seg){
     UI[t.dataset.seg] = t.dataset.seg === "year" ? Number(t.dataset.val) : t.dataset.val;
     render(); return;
@@ -2077,7 +2255,7 @@ document.addEventListener("input", e => {
 });
 window.addEventListener("hashchange", () => {
   const id = location.hash.slice(1);
-  if(id && id !== TAB && TABS.some(t => t.id === id)){ TAB = id; render(); }
+  if(id && id !== TAB && TABS.some(t => t.id === id)){ TAB = id; render(); pageIn(); }
 });
 
 /* ═══════════ PRINT ═══════════ */
@@ -2144,7 +2322,7 @@ async function exportPNG(id, label){
 
     const holder = document.createElement("div");
     holder.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-    holder.style.cssText = `width:${width}px;background:#F7F5F0;padding:28px;font-family:"Geist",-apple-system,sans-serif`;
+    holder.style.cssText = `width:${width}px;background:#F3EFE6;padding:28px;font-family:"Hanken Grotesk",-apple-system,sans-serif`;
     const st = document.createElement("style");
     st.textContent = fonts + "\n" + pageCSS + "\n.print-head{display:block!important}";
     holder.appendChild(st);
@@ -2173,7 +2351,7 @@ async function exportPNG(id, label){
     const canvas = document.createElement("canvas");
     canvas.width = (width + 56) * scale; canvas.height = height * scale;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#F7F5F0"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#F3EFE6"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.drawImage(img, 0, 0);
 
@@ -2262,6 +2440,7 @@ $("#stamp").textContent = "sheet snapshot " + SEED.meta.snapshot;
 if(!TABS.some(t => t.id === TAB)) TAB = TABS[0].id;
 paintSaveState();
 render();
+pageIn();
 
 /* shared mode: pull once on load, then keep an eye on the shared copy */
 if(syncOn()){

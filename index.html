@@ -2486,7 +2486,9 @@ document.addEventListener("keydown", e => { if(e.key === "Escape") $("#scrim").c
 
 /* ═══════════ boot ═══════════ */
 $("#sheetLink").href = SEED.meta.sheetUrl;
-$("#dashLink").href  = SEED.meta.dashboardUrl;
+/* the standalone dashboard now redirects coaches back here — link the tab instead */
+$("#dashLink").href = "#perf";
+$("#dashLink").removeAttribute("target");
 $("#stamp").textContent = "sheet snapshot " + SEED.meta.snapshot;
 if(!TABS.some(t => t.id === TAB)) TAB = TABS[0].id;
 paintSaveState();

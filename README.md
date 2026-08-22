@@ -19,7 +19,7 @@ Everything else lives as a sub-tab under Campaign Calendar.
 |---|---|
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
 | **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date. Overdue goes red, due-within-a-fortnight goes amber. |
-| **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab, the standalone page, and every rep's private `?rep=` link — so they can never drift out of sync. |
+| **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab and every rep's private `?rep=` link — so they can never drift out of sync. A bare visit to the old standalone URL redirects here. |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
 | ↳ Guest Speakers | The bench, what they'd teach, when we last asked. |

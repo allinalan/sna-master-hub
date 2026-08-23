@@ -409,6 +409,23 @@ body.exporting::after{display:none}
 .print-head{display:none;padding-bottom:14px;margin-bottom:18px;border-bottom:2px solid var(--ink)}
 .print-head .t{font-family:var(--serif);font-size:24px;font-weight:560;letter-spacing:-.012em}
 .print-head .s{font-size:10.5px;color:var(--ink-soft);margin-top:5px;font-family:var(--monof);letter-spacing:.04em}
+
+/* ── Automations switches (Mentees tab) ── */
+.sw-card{background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:0 0 16px}
+.sw-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+.sw-title{font-weight:700;font-size:14px}
+.sw-hint{font-size:11.5px;color:var(--ink-faint,#8a8175);line-height:1.5}
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 28px}
+.sw-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--line)}
+.sw-name{font-size:13px;font-weight:600}
+.sw-toggle{flex:none;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;
+  background:var(--paper-deep,#f1ede4);padding:3px 10px 3px 4px;cursor:pointer;font:inherit}
+.sw-toggle .sw-knob{width:17px;height:17px;border-radius:50%;background:var(--ink-faint,#9a9184);transition:background .15s}
+.sw-toggle .sw-state{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--ink-faint,#8a8175);min-width:24px;text-align:left}
+.sw-toggle.on .sw-knob{background:var(--green,#2a7d4f)}
+.sw-toggle.on .sw-state{color:var(--green,#2a7d4f)}
+.sw-toggle[disabled]{opacity:.55;cursor:default}
+.sw-toggle:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -1097,7 +1114,8 @@ function paintSaveState(){
 const TEAM_API = "https://script.google.com/macros/s/AKfycbyNFDkgEAUT5IDNw4wvCHLQZoe70XxVwgAZmG8bNTmlkY8t0d-wL2eKa53kgke2AOCHPQ/exec";
 const TEAM = {
   key: localStorage.getItem("sna_coach_key") || "",
-  rows: null, coaches: [], loading: false, err: ""
+  rows: null, coaches: [], loading: false, err: "",
+  sw: null, swErr: "", swBusy: {}
 };
 
 async function teamCall(body){
@@ -1113,7 +1131,7 @@ async function teamLoad(){
   TEAM.loading = true; TEAM.err = ""; render();
   try{
     const out = await teamCall({action: "coachRoster"});
-    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; }
+    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; swLoad(); }
     else if(out.error === "bad key"){
       TEAM.key = ""; localStorage.removeItem("sna_coach_key");
       TEAM.err = "That key wasn't right — ask Alan for the current one.";
@@ -1121,6 +1139,51 @@ async function teamLoad(){
     else TEAM.err = out.error || "The roster feed said no.";
   }catch(e){ TEAM.err = "Couldn't reach the roster feed — check your connection and retry."; }
   TEAM.loading = false; render();
+}
+
+/* ── Automations switches — the private sheet's Settings tab, flippable here.
+   Reads/writes via the coach-key-gated getSettings/setSetting doPost actions;
+   every sender checks the sheet live, so a flip takes effect at the next send. ── */
+async function swLoad(){
+  TEAM.swErr = "";
+  try{
+    const out = await teamCall({action: "getSettings"});
+    if(out.ok) TEAM.sw = out.switches;
+    else TEAM.swErr = out.error || "The switches feed said no.";
+  }catch(e){ TEAM.swErr = "Couldn't load the switches — check your connection."; }
+  render();
+}
+const SW_META = [
+  {k:"texts",    name:"Check-in texts",      hint:"Monday nudge + Tuesday last-call + post-call texts to reps"},
+  {k:"digest",   name:"Coach digest",        hint:"Tuesday evening who's-missing text to the coaches"},
+  {k:"emails",   name:"Rep emails",          hint:"Post-call survey link + monthly booking reminder emails"},
+  {k:"replinks", name:"Rep dashboard links", hint:"Personal ?rep= pages — OFF shows reps an “almost ready” screen"}
+];
+function swPanel(){
+  let inner;
+  if(TEAM.sw){
+    inner = SW_META.map(m => {
+      const on = !!TEAM.sw[m.k], busy = !!TEAM.swBusy[m.k];
+      return `<div class="sw-row">
+        <div><div class="sw-name">${m.name}</div><div class="sw-hint">${m.hint}</div></div>
+        <button class="sw-toggle ${on ? "on" : ""}" data-swkey="${m.k}" ${busy ? "disabled" : ""}
+          role="switch" aria-checked="${on}" aria-label="${m.name}">
+          <span class="sw-knob"></span><span class="sw-state">${busy ? "…" : on ? "ON" : "OFF"}</span>
+        </button>
+      </div>`;
+    }).join("");
+  }else if(TEAM.swErr){
+    inner = `<div class="sw-hint" style="padding:8px 0">${esc(TEAM.swErr)}
+      <a href="#" data-teamact="swretry" style="margin-left:8px">Try again</a></div>`;
+  }else{
+    inner = `<div class="sw-hint" style="padding:8px 0">Loading switches…</div>`;
+  }
+  return `<div class="sw-card no-export no-print">
+    <div class="sw-head"><div class="sw-title">Automations</div>
+      <div class="sw-hint">Live master switches — a flip is saved to the private sheet's Settings tab
+      and takes effect at the very next send. Nothing to restart.</div></div>
+    <div class="sw-grid">${inner}</div>
+  </div>`;
 }
 
 /* the sheet stores Joined as a real datetime, so the feed stringifies it long
@@ -1204,6 +1267,8 @@ function renderTeam(){
     ${statBox("Missing contact info", missing, missing ? "can't text or email them" : "all reachable", missing > 0)}
   </div>`;
 
+  html += swPanel();
+
   if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
   else{
     html += `<div class="tbl"><table class="grid"><thead><tr>
@@ -1254,6 +1319,7 @@ document.addEventListener("click", async e => {
     TEAM.rows = null; teamLoad();
   }
   if(kind === "reload"){ TEAM.rows = null; teamLoad(); }
+  if(kind === "swretry"){ TEAM.sw = null; TEAM.swErr = ""; swLoad(); }
   if(kind === "former"){ UI.teamFormer = !UI.teamFormer; render(); }
   if(kind === "lock"){
     TEAM.key = ""; TEAM.rows = null; localStorage.removeItem("sna_coach_key");
@@ -1294,6 +1360,21 @@ document.addEventListener("change", async e => {
     if(row) row.Coach = before;
     render(); toast("Couldn't save that — try again.");
   }
+});
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-swkey]");
+  if(!b) return;
+  e.preventDefault();
+  const k = b.dataset.swkey;
+  if(!TEAM.sw || TEAM.swBusy[k]) return;
+  const before = !!TEAM.sw[k], to = !before;
+  const label = (SW_META.find(m => m.k === k) || {name:k}).name;
+  TEAM.sw[k] = to; TEAM.swBusy[k] = true; render();
+  const out = await teamCall({action: "setSetting", setting: k, on: to}).catch(() => ({ok:false}));
+  TEAM.swBusy[k] = false;
+  if(out.ok && out.switches){ TEAM.sw = out.switches; toast(`${label}: ${TEAM.sw[k] ? "ON" : "OFF"}`); }
+  else{ TEAM.sw[k] = before; toast("Couldn't flip that switch — try again."); }
+  render();
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Enter" && e.target.id === "teamKey"){

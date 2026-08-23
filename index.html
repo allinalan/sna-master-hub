@@ -1159,6 +1159,26 @@ const SW_META = [
   {k:"emails",   name:"Rep emails",          hint:"Post-call survey link + monthly booking reminder emails"},
   {k:"replinks", name:"Rep dashboard links", hint:"Personal ?rep= pages — OFF shows reps an “almost ready” screen"}
 ];
+/* Career sales arrive as onboarding free text ("125k", "True: $230,710",
+   "1200000", "109K, true career = 36K"). Normalize to one clean format:
+   prefer the number after "true" when present, expand k/m suffixes, and
+   render as $1,234,567. Unparseable text falls back to the raw value. */
+function fmtCareer(v){
+  const s = String(v || "").trim();
+  if(!s) return "";
+  const grab = t => {
+    const m = String(t).match(/\$?\s*(\d[\d,.]*)\s*([kKmM])?/);
+    if(!m) return null;
+    let n = parseFloat(m[1].replace(/,/g, ""));
+    if(isNaN(n)) return null;
+    if(m[2]) n *= /k/i.test(m[2]) ? 1e3 : 1e6;
+    return n;
+  };
+  const tr = s.match(/true[^0-9$]*(.*)/i);
+  const n = (tr ? grab(tr[1]) : null) ?? grab(s);
+  return n == null ? "" : "$" + Math.round(n).toLocaleString("en-US");
+}
+
 function swPanel(){
   let inner;
   if(TEAM.sw){
@@ -1281,7 +1301,7 @@ function renderTeam(){
         <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
             <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
         <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
-        <td>${r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`}${r.Goal ? `<div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">goal: ${esc(r.Goal)}</div>` : ""}</td>
+        <td class="dt">${fmtCareer(r.CareerSales) ? `<span title="${esc(r.CareerSales)}">${fmtCareer(r.CareerSales)}</span>` : (r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`)}</td>
         <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--red,#b3261e)">no phone</span>`}
             <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
         <td style="font-size:12px">${r.Manager ? esc(r.Manager) : `<span style="color:var(--ink-faint)">&ndash;</span>`}

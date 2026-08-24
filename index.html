@@ -1146,11 +1146,19 @@ async function teamLoad(){
    every sender checks the sheet live, so a flip takes effect at the next send. ── */
 async function swLoad(){
   TEAM.swErr = "";
-  try{
-    const out = await teamCall({action: "getSettings"});
-    if(out.ok) TEAM.sw = out.switches;
-    else TEAM.swErr = out.error || "The switches feed said no.";
-  }catch(e){ TEAM.swErr = "Couldn't load the switches — check your connection."; }
+  // /exec intermittently serves a Google error page instead of JSON (observed
+  // ~1 in 5, 2026-08-24) — ride it out before bothering the coach with an error
+  for(let attempt = 1; attempt <= 3; attempt++){
+    try{
+      const out = await teamCall({action: "getSettings"});
+      if(out.ok){ TEAM.sw = out.switches; TEAM.swErr = ""; render(); return; }
+      TEAM.swErr = out.error || "The switches feed said no.";
+      break;                                   // a real server answer — don't retry
+    }catch(e){
+      TEAM.swErr = "Couldn't load the switches — retrying didn't help. It's usually temporary.";
+      if(attempt < 3) await new Promise(r => setTimeout(r, attempt * 3000));
+    }
+  }
   render();
 }
 const SW_META = [

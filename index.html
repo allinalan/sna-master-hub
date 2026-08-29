@@ -172,7 +172,7 @@ input.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px 
 .season-head .meter i{display:block;height:100%;background:var(--accent);border-radius:2px}
 
 /* ═══════════ week rows ═══════════ */
-.week{display:grid;grid-template-columns:118px minmax(0,1fr) 160px;gap:18px;padding:14px 8px;margin:0 -8px;
+.week{display:grid;grid-template-columns:118px minmax(0,1fr);gap:18px;padding:14px 8px;margin:0 -8px;
   border-bottom:1px solid var(--line-soft);align-items:start;break-inside:avoid;position:relative;
   border-radius:8px;transition:background .15s}
 .week:hover{background:rgba(255,253,246,.8)}
@@ -334,7 +334,7 @@ footer a{color:var(--ink-soft)}
 @media (max-width:1024px){
   .wrap,.tabs-inner{padding:0 22px}
   .head-inner{padding:14px 22px 13px}
-  .week{grid-template-columns:104px minmax(0,1fr) 148px;gap:14px}
+  .week{grid-template-columns:104px minmax(0,1fr);gap:14px}
 }
 @media (max-width:860px){
   .week{grid-template-columns:96px minmax(0,1fr)}
@@ -1651,15 +1651,21 @@ function renderCalendar(){
   const planned = scope.filter(isPlanned).length;
   const blocked = scope.filter(isBlocked).length;
   const open    = scope.filter(r => !isPlanned(r) && !isBlocked(r)).length;
-  const alan    = scope.filter(r => ["alan","both"].includes(presenterClass(r.presenter))).length;
-  const ben     = scope.filter(r => ["ben","both"].includes(presenterClass(r.presenter))).length;
+  /* a week counts for Alan/Ben if they're on ANY of its calls */
+  const wkPres  = r => [r.presenter, r.secondPresenter, r.hotSeatPresenter].filter(v => String(v||"").trim());
+  const alan    = scope.filter(r => wkPres(r).some(v => ["alan","both"].includes(presenterClass(v)))).length;
+  const ben     = scope.filter(r => wkPres(r).some(v => ["ben","both"].includes(presenterClass(v)))).length;
   const tbd     = scope.filter(r => isPlanned(r) && presenterClass(r.presenter)==="tbd").length;
 
   const q = UI.q.toLowerCase();
   const visible = scope.filter(r => {
     if(UI.presenter !== "all"){
-      const c = presenterClass(r.presenter);
-      if(UI.presenter === "tbd" ? c !== "tbd" : !(c === UI.presenter || c === "both")) return false;
+      if(UI.presenter === "tbd"){
+        if(presenterClass(r.presenter) !== "tbd") return false;      // group call has no host
+      } else {
+        const cs = wkPres(r).map(presenterClass);                     // …on any of the week's calls
+        if(!cs.some(c => c === UI.presenter || c === "both")) return false;
+      }
     }
     if(UI.open && (isPlanned(r) || isBlocked(r))) return false;
     if(UI.tier !== "all" && ![r.topic, r.second, r.hotSeat].some(t => String(t||"").trim() && String(tierOf(t)) === UI.tier)) return false;
@@ -1765,7 +1771,6 @@ function renderCalendar(){
 const has = v => v != null && String(v) !== "";
 function weekRow(r, idx, wkNum){
   const p = "calendar." + idx;
-  const cls = presenterClass(r.presenter);
   const planned = isPlanned(r), blocked = isBlocked(r);
   const state = blocked ? "blocked" : (planned ? "" : "open");
   const nCalls = (planned?1:0) + (String(r.second||"").trim()?1:0) + (String(r.hotSeat||"").trim()?1:0);
@@ -1778,20 +1783,23 @@ function weekRow(r, idx, wkNum){
   const spick = field =>
     `<button class="slot-pick edit-only no-export no-print" data-pick="${idx}" data-pickfield="${field}" title="Pick from the topic bank">▾</button>`;
 
+  /* every call carries its own presenter chip — there is no whole-week host */
+  const pchip = (path, val) =>
+    (EDITING || String(val||"").trim())
+      ? `<span class="chip ${presenterClass(val)}">${ed(path, val || "", "", "who?")}</span>` : "";
+
   let main = "";
   if(planned){
-    main += `<div class="slot main t${tierOf(r.topic)}">${stime(p+".time", r.time, callTime())}<span class="stag">Group</span><span class="stopic">${ed(p+".topic", r.topic)}${tierChip(r.topic)}</span>${spick("topic")}</div>`;
+    main += `<div class="slot main t${tierOf(r.topic)}">${stime(p+".time", r.time, callTime())}<span class="stag">Group</span><span class="stopic">${ed(p+".topic", r.topic)}${tierChip(r.topic)}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`;
   } else if(blocked){
     main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
   } else {
-    main += `<div class="slot main">${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open — click to plan")}</span>${spick("topic")}</div>`;
+    main += `<div class="slot main">${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open — click to plan")}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`;
   }
   if(has(r.second))
-    main += `<div class="slot second t${tierOf(r.second)}">${stime(p+".secondTime", r.secondTime, "")}<span class="stag">2nd call</span><span class="stopic">${ed(p+".second", r.second)}${tierChip(r.second)}</span>${
-      (EDITING || String(r.secondPresenter||"").trim()) ? `<span class="chip second">${ed(p+".secondPresenter", r.secondPresenter || "", "", "who?")}</span>` : ""}${spick("second")}</div>`;
+    main += `<div class="slot second t${tierOf(r.second)}">${stime(p+".secondTime", r.secondTime, "")}<span class="stag">2nd call</span><span class="stopic">${ed(p+".second", r.second)}${tierChip(r.second)}</span>${pchip(p+".secondPresenter", r.secondPresenter)}${spick("second")}</div>`;
   if(has(r.hotSeat))
-    main += `<div class="slot hot">${stime(p+".hotSeatTime", r.hotSeatTime, "")}<span class="stag">🔥 Hot seat</span><span class="stopic">${ed(p+".hotSeat", r.hotSeat)}</span>${
-      (EDITING || String(r.hotSeatPresenter||"").trim()) ? `<span class="chip second">${ed(p+".hotSeatPresenter", r.hotSeatPresenter || "", "", "who?")}</span>` : ""}${spick("hotSeat")}</div>`;
+    main += `<div class="slot hot">${stime(p+".hotSeatTime", r.hotSeatTime, "")}<span class="stag">🔥 Hot seat</span><span class="stopic">${ed(p+".hotSeat", r.hotSeat)}</span>${pchip(p+".hotSeatPresenter", r.hotSeatPresenter)}${spick("hotSeat")}</div>`;
   if(!blocked && (!has(r.second) || !has(r.hotSeat))){
     const g = [];
     if(!has(r.second))  g.push(`<button class="btn sm" data-setfield="${p}.second">+ 2nd call</button>`);
@@ -1822,7 +1830,6 @@ function weekRow(r, idx, wkNum){
       <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${
         nCalls > 1 ? `<span class="count">${nCalls} calls</span>` : ""}${del(p, "this week")}</div>
     <div class="wk-main">${main}</div>
-    <div class="wk-right"><span class="chip ${cls} big">${ed(p+".presenter", r.presenter, "", "who?")}</span></div>
   </div>`;
 }
 function todayISO(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }

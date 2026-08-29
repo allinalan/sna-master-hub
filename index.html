@@ -420,9 +420,25 @@ button.tierchip:hover{filter:brightness(.85)}
 .tierchip.t2{color:var(--accent);border-color:var(--accent)}
 .tierchip.t3{color:var(--tier3);border-color:var(--tier3)}
 .tierchip.t0{color:var(--ink-faint);border-color:var(--line);border-style:dashed}
-.week.tier-t1{box-shadow:inset 3px 0 0 var(--good)}
-.week.tier-t2{box-shadow:inset 3px 0 0 var(--accent)}
-.week.tier-t3{box-shadow:inset 3px 0 0 var(--tier3)}
+/* ── call slots: A's stacked layout + C's per-call times ── */
+.slot{display:flex;gap:10px;align-items:baseline;padding:6px 10px;margin:2px 0;border-radius:8px;min-width:0}
+.slot+.slot{border-top:1px dashed var(--line-soft)}
+.slot .stime{font-family:var(--monof);font-size:10px;color:var(--ink-faint);flex:none;min-width:44px}
+.slot .stag{font-family:var(--monof);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;flex:none;min-width:60px;color:var(--ink-faint)}
+.slot.second .stag{color:var(--accent-ink)}
+.slot.hot .stag{color:var(--warn);min-width:78px}
+.slot .stopic{font-family:var(--serif);font-size:15.5px;font-weight:560;min-width:0;flex:1;overflow-wrap:break-word}
+.slot.second .stopic,.slot.hot .stopic{font-size:14px;font-weight:500}
+.slot .stopic.empty{font-family:var(--monof);font-size:11px;font-weight:400;color:var(--ink-faint)}
+.slot.t1{box-shadow:inset 3px 0 0 var(--good)}
+.slot.t2{box-shadow:inset 3px 0 0 var(--accent)}
+.slot.t3{box-shadow:inset 3px 0 0 var(--tier3)}
+.slot.hot{background:linear-gradient(90deg,var(--warn-bg),transparent 72%)}
+.slot.ghost{border:1px dashed var(--line);gap:8px;padding:5px 10px}
+.slot-pick{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:11px;padding:2px 5px;flex:none;border-radius:5px}
+.slot-pick:hover{color:var(--accent);background:var(--accent-soft)}
+.count{font-family:var(--monof);font-size:9px;letter-spacing:.1em;color:var(--accent-ink);
+  background:var(--accent-soft);border-radius:999px;padding:2px 8px;display:inline-block;margin-top:5px}
 li.tier-t1{box-shadow:inset 2px 0 0 var(--good);padding-left:9px}
 li.tier-t2{box-shadow:inset 2px 0 0 var(--accent);padding-left:9px}
 li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
@@ -1646,7 +1662,7 @@ function renderCalendar(){
       if(UI.presenter === "tbd" ? c !== "tbd" : !(c === UI.presenter || c === "both")) return false;
     }
     if(UI.open && (isPlanned(r) || isBlocked(r))) return false;
-    if(UI.tier !== "all" && !(isPlanned(r) && String(tierOf(r.topic)) === UI.tier)) return false;
+    if(UI.tier !== "all" && ![r.topic, r.second, r.hotSeat].some(t => String(t||"").trim() && String(tierOf(t)) === UI.tier)) return false;
     if(q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1704,6 +1720,7 @@ function renderCalendar(){
     ${statBox("Ben on", ben, "calls")}
     ${statBox("Blocked", blocked, "NET, wedding, etc.")}
     ${statBox("Host TBD", tbd, "planned, no host", tbd > 0)}
+    ${statBox("Hot seats", scope.filter(r => String(r.hotSeat||"").trim()).length, "on this stretch")}
   </div>`;
 
   if(!visible.length){
@@ -1742,17 +1759,45 @@ function renderCalendar(){
   return html;
 }
 
-/* one week row */
+/* one week row — up to three calls stacked as SLOTS (Group · 2nd · Hot seat),
+   each with its own time (option C), tier edge, presenter, and bank picker
+   (option A). Quiet weeks render exactly one slot and stay quiet. */
+const has = v => v != null && String(v) !== "";
 function weekRow(r, idx, wkNum){
   const p = "calendar." + idx;
   const cls = presenterClass(r.presenter);
   const planned = isPlanned(r), blocked = isBlocked(r);
   const state = blocked ? "blocked" : (planned ? "" : "open");
+  const nCalls = (planned?1:0) + (String(r.second||"").trim()?1:0) + (String(r.hotSeat||"").trim()?1:0);
+
+  /* slot time: editable with a "time?" ghost in Edit mode; in view mode only
+     shown when set (the Group slot falls back to the standing call time) */
+  const stime = (path, val, fallback) =>
+    EDITING ? `<span class="stime">${ed(path, val, "", "time?")}</span>`
+            : (String(val || fallback || "").trim() ? `<span class="stime">${esc(val || fallback)}</span>` : "");
+  const spick = field =>
+    `<button class="slot-pick edit-only no-export no-print" data-pick="${idx}" data-pickfield="${field}" title="Pick from the topic bank">▾</button>`;
 
   let main = "";
-  if(planned) main = `<div class="wk-topic serif">${ed(p+".topic", r.topic)}${tierChip(r.topic)}</div>`;
-  else if(blocked) main = `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
-  else main = `<div class="wk-topic empty mono">${ed(p+".topic", "", "", "+ open — click to plan")}</div>`;
+  if(planned){
+    main += `<div class="slot main t${tierOf(r.topic)}">${stime(p+".time", r.time, callTime())}<span class="stag">Group</span><span class="stopic">${ed(p+".topic", r.topic)}${tierChip(r.topic)}</span>${spick("topic")}</div>`;
+  } else if(blocked){
+    main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
+  } else {
+    main += `<div class="slot main">${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open — click to plan")}</span>${spick("topic")}</div>`;
+  }
+  if(has(r.second))
+    main += `<div class="slot second t${tierOf(r.second)}">${stime(p+".secondTime", r.secondTime, "")}<span class="stag">2nd call</span><span class="stopic">${ed(p+".second", r.second)}${tierChip(r.second)}</span>${
+      (EDITING || String(r.secondPresenter||"").trim()) ? `<span class="chip second">${ed(p+".secondPresenter", r.secondPresenter || "", "", "who?")}</span>` : ""}${spick("second")}</div>`;
+  if(has(r.hotSeat))
+    main += `<div class="slot hot">${stime(p+".hotSeatTime", r.hotSeatTime, "")}<span class="stag">🔥 Hot seat</span><span class="stopic">${ed(p+".hotSeat", r.hotSeat)}</span>${
+      (EDITING || String(r.hotSeatPresenter||"").trim()) ? `<span class="chip second">${ed(p+".hotSeatPresenter", r.hotSeatPresenter || "", "", "who?")}</span>` : ""}${spick("hotSeat")}</div>`;
+  if(!blocked && (!has(r.second) || !has(r.hotSeat))){
+    const g = [];
+    if(!has(r.second))  g.push(`<button class="btn sm" data-setfield="${p}.second">+ 2nd call</button>`);
+    if(!has(r.hotSeat)) g.push(`<button class="btn sm" data-setfield="${p}.hotSeat">+ 🔥 hot seat</button>`);
+    main += `<div class="slot ghost edit-only no-export no-print">${g.join(" ")}</div>`;
+  }
 
   if(r.detail) main += `<div class="wk-detail">${ed(p+".detail", r.detail)}</div>`;
 
@@ -1761,27 +1806,21 @@ function weekRow(r, idx, wkNum){
   if(r.note && !blocked) meta.push(`<span class="chip note">${ed(p+".note", r.note)}</span>`);
   if(meta.length) main += `<div class="wk-meta">${meta.join("")}</div>`;
 
-  if(r.second) main += `<div class="wk-sub"><span class="tag">2nd call</span><span>${ed(p+".second", r.second)}${
-    r.secondPresenter ? ` <span class="chip second">${ed(p+".secondPresenter", r.secondPresenter)}</span>` : ""}</span></div>`;
   if(r.proposed) main += `<div class="wk-sub proposed"><span class="tag">proposed</span><span>${ed(p+".proposed", r.proposed)}</span></div>`;
   if(r.alt) main += `<div class="wk-sub alt no-export no-print"><span class="tag">alt draft</span><span>${ed(p+".alt", r.alt)}</span></div>`;
 
   /* in edit mode every week can gain the optional fields, or be wiped back to open */
   const extras = [];
-  extras.push(`<button class="btn sm" data-pick="${idx}">▾ pick from bank</button>`);
-  if(!r.time && planned) extras.push(`<button class="btn sm" data-setfield="${p}.time">+ time</button>`);
   if(!r.track)  extras.push(`<button class="btn sm" data-setfield="${p}.track">+ track</button>`);
-  if(!r.second) extras.push(`<button class="btn sm" data-setfield="${p}.second">+ 2nd call</button>`);
   if(!r.note)   extras.push(`<button class="btn sm" data-setfield="${p}.note">+ note</button>`);
   if(!r.detail) extras.push(`<button class="btn sm" data-setfield="${p}.detail">+ detail</button>`);
   if(planned || blocked || r.note) extras.push(`<button class="btn sm" data-clearweek="${p}">clear</button>`);
   main += `<div class="wk-meta edit-only no-export no-print">${extras.join("")}</div>`;
 
-  return `<div class="week ${state}${planned && tierOf(r.topic) ? " tier-t"+tierOf(r.topic) : ""}">
+  return `<div class="week ${state}">
     <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span>
       <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${
-        planned ? `<div class="wk-time${r.time ? " custom" : ""}">${
-          r.time ? ed(p+".time", r.time) : esc(callTime())}</div>` : ""}${del(p, "this week")}</div>
+        nCalls > 1 ? `<span class="count">${nCalls} calls</span>` : ""}${del(p, "this week")}</div>
     <div class="wk-main">${main}</div>
     <div class="wk-right"><span class="chip ${cls} big">${ed(p+".presenter", r.presenter, "", "who?")}</span></div>
   </div>`;
@@ -2335,8 +2374,8 @@ document.addEventListener("focusin", e => {
   if(el.dataset.ph && el.textContent.trim() === el.dataset.ph) el.textContent = "";
 });
 /* Optional fields disappear when emptied, rather than leaving a blank chip behind. */
-const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","detail","proposed","alt",
-                                 "series","call","hotSeat","hotSeatPresenter","lastAsked"]);
+const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","secondTime","detail","proposed","alt",
+                                 "series","call","hotSeat","hotSeatPresenter","hotSeatTime","lastAsked"]);
 
 /* Save while typing. Blur still does the tidy-up pass and re-renders, but the
    text is already safe by then — closing the tab mid-edit doesn't lose it. */
@@ -2420,9 +2459,10 @@ document.addEventListener("keydown", e => {
    outside #view so a background sync render can't wipe it. Also the home of
    "add a new topic while planning": name + tier + category, lands in the bank
    AND on the week in one click. */
-let PICK_IDX = null;
-function openPicker(idx, anchor){
-  PICK_IDX = idx;
+let PICK_IDX = null, PICK_FIELD = "topic";
+const SLOT_NAMES = {topic:"Group call", second:"2nd call", hotSeat:"Hot seat"};
+function openPicker(idx, anchor, field){
+  PICK_IDX = idx; PICK_FIELD = SLOT_NAMES[field] ? field : "topic";
   const pop = $("#pickPop");
   let inner = `<div class="pp-head"><input id="ppq" class="search" placeholder="Search the bank…" autocomplete="off">
     <button class="btn sm" id="ppClose" title="Close">✕</button></div><div class="pp-list">`;
@@ -2454,11 +2494,11 @@ function closePicker(){ $("#pickPop").classList.add("hidden"); PICK_IDX = null; 
 function pickTopic(text){
   const row = DATA.calendar[PICK_IDX];
   if(!row){ closePicker(); return; }
-  row.topic = text;
-  if(row.status) delete row.status;                 // planning un-blocks the week
+  row[PICK_FIELD] = text;
+  if(PICK_FIELD === "topic" && row.status) delete row.status;   // planning un-blocks the week
   const ti = tierOf(text);
   save(); closePicker(); render();
-  toast("Planned: " + text + (ti ? ` · T${ti} ${TIERS[ti].name}` : ""));
+  toast(SLOT_NAMES[PICK_FIELD] + ": " + text + (ti ? ` · T${ti} ${TIERS[ti].name}` : ""));
 }
 document.addEventListener("click", e => {           // click-away closes the picker
   const pop = $("#pickPop");
@@ -2476,7 +2516,7 @@ document.addEventListener("click", e => {
   if(!t) return;
 
   /* picker + tier controls first — they must win over anything below */
-  if(t.dataset.pick !== undefined){ openPicker(Number(t.dataset.pick), t); return; }
+  if(t.dataset.pick !== undefined){ openPicker(Number(t.dataset.pick), t, t.dataset.pickfield); return; }
   if(t.id === "ppClose"){ closePicker(); return; }
   if(t.dataset.picktopic !== undefined){ pickTopic(t.dataset.picktopic); return; }
   if(t.id === "ppAdd"){

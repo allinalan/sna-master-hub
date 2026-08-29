@@ -410,6 +410,45 @@ body.exporting::after{display:none}
 .print-head .t{font-family:var(--serif);font-size:24px;font-weight:560;letter-spacing:-.012em}
 .print-head .s{font-size:10.5px;color:var(--ink-soft);margin-top:5px;font-family:var(--monof);letter-spacing:.04em}
 
+/* ── tiers: T1 The Dojo (green) · T2 The Path (rust) · T3 The Masters (indigo) ── */
+:root{--tier3:#5b57a8}
+.tierchip{font-family:var(--monof);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
+  border-radius:999px;padding:2px 8px;border:1px solid;background:transparent;vertical-align:2px;white-space:nowrap}
+button.tierchip{cursor:pointer;font:inherit;font-family:var(--monof);font-size:8.5px}
+button.tierchip:hover{filter:brightness(.85)}
+.tierchip.t1{color:var(--good);border-color:var(--good)}
+.tierchip.t2{color:var(--accent);border-color:var(--accent)}
+.tierchip.t3{color:var(--tier3);border-color:var(--tier3)}
+.tierchip.t0{color:var(--ink-faint);border-color:var(--line);border-style:dashed}
+.week.tier-t1{box-shadow:inset 3px 0 0 var(--good)}
+.week.tier-t2{box-shadow:inset 3px 0 0 var(--accent)}
+.week.tier-t3{box-shadow:inset 3px 0 0 var(--tier3)}
+li.tier-t1{box-shadow:inset 2px 0 0 var(--good);padding-left:9px}
+li.tier-t2{box-shadow:inset 2px 0 0 var(--accent);padding-left:9px}
+li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
+
+/* ── topic picker popover ── */
+#pickPop{position:fixed;z-index:300;width:380px;max-width:94vw;background:var(--card,#fff);
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);
+  display:flex;flex-direction:column}
+#pickPop.hidden{display:none}
+.pp-head{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
+.pp-head .search{flex:1}
+.pp-list{overflow:auto;max-height:44vh;padding:6px}
+.pp-cat{font-family:var(--monof);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);padding:9px 8px 3px}
+.pp-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;
+  border:none;border-radius:8px;padding:6px 8px;cursor:pointer;font:inherit;font-size:12.5px;color:var(--ink)}
+.pp-item:hover{background:var(--paper-deep,#f1ede4)}
+.pp-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--line)}
+.pp-dot.t1{background:var(--good)} .pp-dot.t2{background:var(--accent)} .pp-dot.t3{background:var(--tier3)}
+.pp-tier{margin-left:auto;font-family:var(--monof);font-size:9px}
+.pp-tier.t1{color:var(--good)} .pp-tier.t2{color:var(--accent)} .pp-tier.t3{color:var(--tier3)}
+.pp-new{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;padding:10px;border-top:1px solid var(--line)}
+.pp-new .search{grid-column:1 / -1}
+.pp-new select{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:7px;
+  background:var(--paper,#fff);color:var(--ink);padding:4px 6px;max-width:150px}
+
 /* ── Automations switches (Mentees tab) ── */
 .sw-card{background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:0 0 16px}
 .sw-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
@@ -461,6 +500,7 @@ body.exporting::after{display:none}
   </footer>
 </div>
 
+<div id="pickPop" class="hidden"></div>
 <div class="scrim" id="scrim">
   <div class="modal">
     <h3 id="mTitle">Data</h3>
@@ -585,6 +625,10 @@ const SEED = {
   },
 
   /* ── Tab 2: the topic bank, by category ─────────────────────────────── */
+  /* topic text -> 1|2|3. Kept as a side-map so topics stay plain strings and
+     every dot-path, export and cross-reference keeps working. A calendar week
+     inherits its color from whatever tier its topic text carries here. */
+  topicTiers: {},
   topicBank: {
     "Units": [
       "Intro to Referrals Unit — case by case, intro only",
@@ -868,7 +912,8 @@ let DIRTY = !!localStorage.getItem(STORE_KEY);
 let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
-             q:"", archCampaign:"all", bizView:"all" };   // show ticked-off items too — hiding them reads as deletion
+             q:"", archCampaign:"all", bizView:"all",
+             tier:"all" };   // show ticked-off items too — hiding them reads as deletion
 
 function load(){
   let saved = null;
@@ -1049,6 +1094,28 @@ function related(a, b){
 /* {past: already delivered, newest first · future: still on the calendar}
    A calendar week that has come and gone counts as delivered — otherwise a
    topic taught in March 2026 would still read as "scheduled" in 2027. */
+/* ── tiers: T1 The Dojo · T2 The Path · T3 The Masters ─────────────────── */
+const TIERS = {1:{name:"The Dojo"}, 2:{name:"The Path"}, 3:{name:"The Masters"}};
+function tierOf(text){
+  const t = DATA.topicTiers && DATA.topicTiers[String(text||"").trim()];
+  return TIERS[t] ? t : 0;
+}
+function setTier(text, t){
+  text = String(text||"").trim(); if(!text) return;
+  if(!DATA.topicTiers) DATA.topicTiers = {};
+  if(t) DATA.topicTiers[text] = t; else delete DATA.topicTiers[text];
+}
+/* the chip: a colored label when assigned; in Edit mode a button that cycles
+   unset → T1 → T2 → T3 → unset, keyed by the topic TEXT so bank and calendar
+   always agree */
+function tierChip(text){
+  const t = tierOf(text);
+  const label = t ? `T${t} · ${TIERS[t].name}` : "tier?";
+  if(EDITING) return ` <button class="tierchip t${t} no-export no-print" data-tierc="${esc(text)}" title="Click to cycle tier">${label}</button>`;
+  return t ? ` <span class="tierchip t${t}">T${t} · ${TIERS[t].name}</span>` : "";
+}
+const tierSeg = () => seg("tier", [{v:"all",l:"All tiers"},{v:"1",l:"T1 · Dojo"},{v:"2",l:"T2 · Path"},{v:"3",l:"T3 · Masters"}], UI.tier);
+
 function findUses(topic){
   const today = todayISO();
   const done = DATA.calendar.filter(r => isPlanned(r) && r.date < today && related(topic, r.topic));
@@ -1579,6 +1646,7 @@ function renderCalendar(){
       if(UI.presenter === "tbd" ? c !== "tbd" : !(c === UI.presenter || c === "both")) return false;
     }
     if(UI.open && (isPlanned(r) || isBlocked(r))) return false;
+    if(UI.tier !== "all" && !(isPlanned(r) && String(tierOf(r.topic)) === UI.tier)) return false;
     if(q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1615,6 +1683,7 @@ function renderCalendar(){
       ${seg("year", years.map(y => ({v:String(y), l:String(y)})), String(UI.year))}
       ${seg("season", [{v:"all",l:"All year"},{v:"Spring",l:"Spring I"},{v:"Summer",l:"Summer II"},{v:"Fall",l:"Fall III"}], UI.season)}
       ${seg("presenter", [{v:"all",l:"Everyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"No host"}], UI.presenter)}
+      ${tierSeg()}
       <button class="btn ${UI.open?"on":""}" data-toggle="open">Open weeks only</button>
     </div>
     <input class="search" id="q" placeholder="Search topics, tracks, notes…" value="${esc(UI.q)}">
@@ -1681,7 +1750,7 @@ function weekRow(r, idx, wkNum){
   const state = blocked ? "blocked" : (planned ? "" : "open");
 
   let main = "";
-  if(planned) main = `<div class="wk-topic serif">${ed(p+".topic", r.topic)}</div>`;
+  if(planned) main = `<div class="wk-topic serif">${ed(p+".topic", r.topic)}${tierChip(r.topic)}</div>`;
   else if(blocked) main = `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
   else main = `<div class="wk-topic empty mono">${ed(p+".topic", "", "", "+ open — click to plan")}</div>`;
 
@@ -1699,6 +1768,7 @@ function weekRow(r, idx, wkNum){
 
   /* in edit mode every week can gain the optional fields, or be wiped back to open */
   const extras = [];
+  extras.push(`<button class="btn sm" data-pick="${idx}">▾ pick from bank</button>`);
   if(!r.time && planned) extras.push(`<button class="btn sm" data-setfield="${p}.time">+ time</button>`);
   if(!r.track)  extras.push(`<button class="btn sm" data-setfield="${p}.track">+ track</button>`);
   if(!r.second) extras.push(`<button class="btn sm" data-setfield="${p}.second">+ 2nd call</button>`);
@@ -1707,7 +1777,7 @@ function weekRow(r, idx, wkNum){
   if(planned || blocked || r.note) extras.push(`<button class="btn sm" data-clearweek="${p}">clear</button>`);
   main += `<div class="wk-meta edit-only no-export no-print">${extras.join("")}</div>`;
 
-  return `<div class="week ${state}">
+  return `<div class="week ${state}${planned && tierOf(r.topic) ? " tier-t"+tierOf(r.topic) : ""}">
     <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span>
       <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${
         planned ? `<div class="wk-time${r.time ? " custom" : ""}">${
@@ -1750,6 +1820,7 @@ function renderBank(){
 
   html += toolbar(`
     <div class="tb-filters">
+      ${tierSeg()}
       <button class="btn ${UI.open?"on":""}" data-toggle="open">Never-run only</button>
     </div>
     <input class="search" id="q" placeholder="Search all ${all.length} topics…" value="${esc(UI.q)}">
@@ -1773,8 +1844,11 @@ function renderBank(){
     const items = list.map((t,i) => ({t, i})).filter(({t}) => {
       if(q && !t.toLowerCase().includes(q)) return false;
       if(UI.open && marks.get(t).past.length) return false;
+      if(UI.tier !== "all" && String(tierOf(t)) !== UI.tier) return false;
       return true;
     });
+    /* tiers read as separated: T1 first, then T2, T3, unassigned last */
+    items.sort((a, b) => (tierOf(a.t) || 9) - (tierOf(b.t) || 9));
     /* an empty category still shows while you're editing — otherwise a category
        you just created would vanish before you could put anything in it */
     if(!items.length && !(EDITING && !q && !UI.open)) continue;
@@ -1787,7 +1861,7 @@ function renderBank(){
       let when = "";
       if(next) when = `<span class="when sched">${parseDate(next.date).getFullYear()} · ${fmtDate(next.date)}</span>`;
       else if(last) when = `<span class="when">last ${fmtDate(last.date)} '${String(parseDate(last.date).getFullYear()).slice(2)}</span>`;
-      html += `<li class="${cls}">${ed("topicBank."+name+"."+i, t)}${when}${del("topicBank."+name+"."+i)}</li>`;
+      html += `<li class="${cls} tier-t${tierOf(t)}">${ed("topicBank."+name+"."+i, t)}${tierChip(t)}${when}${del("topicBank."+name+"."+i)}</li>`;
     }
     html += `</ul>${addBtn("topicBank."+name, "topic")}</div>`;
   }
@@ -2297,7 +2371,7 @@ document.addEventListener("focusout", e => {
     const row = getPath(path.slice(0, path.lastIndexOf(".")));
     const iso = parseLooseDate(val, Number(String(row.date).slice(0, 4)));
     if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Jan 6" or "1/6"`); }
-    if(iso === row.date){ render(); return; }
+    if(iso === row.date){ el.textContent = fmtDate(row.date); return; }   // unchanged — no repaint
     const clash = DATA.calendar.some(r => r !== row && r.date === iso);
     row.date = iso;
     DATA.calendar.sort((a, b) => a.date.localeCompare(b.date));
@@ -2310,11 +2384,26 @@ document.addEventListener("focusout", e => {
     const rest = path.slice(6);
     const oldKey = rest.slice(rest.indexOf(".") + 1);
     const objPath = rest.slice(0, rest.indexOf("."));
+    if(val === oldKey) return;                   // touched but not changed — leave the page alone
     if(!renameKey(objPath, oldKey, val)) { render(); return toast(val ? "That name is already used" : "A name is required"); }
   } else if(val === "" && OPTIONAL_FIELDS.has(path.split(".").pop())){
     removeAt(path);                                // emptied an optional field — drop it entirely
   } else {
+    const before = String(getPath(path) ?? "");
+    if(before === val){
+      /* THE CLICK-REFRESH FIX (2026-08-26): a focusout with nothing changed
+         used to save + re-render the whole page, so every stray click in Edit
+         mode looked like a refresh. Now: restore the placeholder if we blanked
+         it on focus, and otherwise do nothing at all. */
+      if(!val && el.dataset.ph) el.textContent = el.dataset.ph;
+      return;
+    }
     setPath(path, val);
+    /* a topic renamed in the bank keeps its tier — the tier map is keyed by text */
+    if(path.startsWith("topicBank.") && before && DATA.topicTiers && DATA.topicTiers[before] !== undefined){
+      DATA.topicTiers[val] = DATA.topicTiers[before];
+      delete DATA.topicTiers[before];
+    }
   }
   save();
   render();
@@ -2326,10 +2415,88 @@ document.addEventListener("keydown", e => {
   if(live(el) && e.key === "Escape"){ e.preventDefault(); render(); }
 });
 
+/* ── topic picker: plan a week straight from the bank ─────────────────────
+   One floating panel, opened from a week row's "▾ pick from bank". Lives
+   outside #view so a background sync render can't wipe it. Also the home of
+   "add a new topic while planning": name + tier + category, lands in the bank
+   AND on the week in one click. */
+let PICK_IDX = null;
+function openPicker(idx, anchor){
+  PICK_IDX = idx;
+  const pop = $("#pickPop");
+  let inner = `<div class="pp-head"><input id="ppq" class="search" placeholder="Search the bank…" autocomplete="off">
+    <button class="btn sm" id="ppClose" title="Close">✕</button></div><div class="pp-list">`;
+  for(const [name, list] of Object.entries(DATA.topicBank)){
+    if(!list.length) continue;
+    const sorted = list.slice().sort((a, b) => (tierOf(a) || 9) - (tierOf(b) || 9));
+    inner += `<div class="pp-cat">${esc(name)}</div>`;
+    for(const t of sorted){
+      const ti = tierOf(t);
+      inner += `<button class="pp-item" data-picktopic="${esc(t)}"><span class="pp-dot t${ti}"></span>${esc(t)}${
+        ti ? `<span class="pp-tier t${ti}">T${ti}</span>` : ""}</button>`;
+    }
+  }
+  inner += `</div><div class="pp-new">
+    <input id="ppNewName" class="search" placeholder="…or type a new topic" autocomplete="off">
+    <select id="ppNewTier"><option value="0">tier?</option><option value="1">T1 · The Dojo</option>
+      <option value="2">T2 · The Path</option><option value="3">T3 · The Masters</option></select>
+    <select id="ppNewCat">${Object.keys(DATA.topicBank).map(c => `<option>${esc(c)}</option>`).join("")}</select>
+    <button class="btn sm primary" id="ppAdd">Add &amp; use</button>
+  </div>`;
+  pop.innerHTML = inner;
+  pop.classList.remove("hidden");
+  const r = anchor.getBoundingClientRect();
+  pop.style.top  = Math.max(10, Math.min(window.innerHeight - pop.offsetHeight - 12, r.bottom + 6)) + "px";
+  pop.style.left = Math.max(10, Math.min(window.innerWidth - pop.offsetWidth - 12, r.left)) + "px";
+  $("#ppq").focus();
+}
+function closePicker(){ $("#pickPop").classList.add("hidden"); PICK_IDX = null; }
+function pickTopic(text){
+  const row = DATA.calendar[PICK_IDX];
+  if(!row){ closePicker(); return; }
+  row.topic = text;
+  if(row.status) delete row.status;                 // planning un-blocks the week
+  const ti = tierOf(text);
+  save(); closePicker(); render();
+  toast("Planned: " + text + (ti ? ` · T${ti} ${TIERS[ti].name}` : ""));
+}
+document.addEventListener("click", e => {           // click-away closes the picker
+  const pop = $("#pickPop");
+  if(pop.classList.contains("hidden")) return;
+  if(pop.contains(e.target) || e.target.closest("[data-pick]")) return;
+  closePicker();
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && !$("#pickPop").classList.contains("hidden")) closePicker();
+});
+
 /* ── clicks ───────────────────────────────────────────────────────────── */
 document.addEventListener("click", e => {
   const t = e.target.closest("button");
   if(!t) return;
+
+  /* picker + tier controls first — they must win over anything below */
+  if(t.dataset.pick !== undefined){ openPicker(Number(t.dataset.pick), t); return; }
+  if(t.id === "ppClose"){ closePicker(); return; }
+  if(t.dataset.picktopic !== undefined){ pickTopic(t.dataset.picktopic); return; }
+  if(t.id === "ppAdd"){
+    const name = $("#ppNewName").value.trim();
+    if(!name){ toast("Type the new topic's name first"); return; }
+    const cat = $("#ppNewCat").value, ti = Number($("#ppNewTier").value);
+    if(!DATA.topicBank[cat]) DATA.topicBank[cat] = [];
+    if(!DATA.topicBank[cat].includes(name)) DATA.topicBank[cat].push(name);
+    if(ti) setTier(name, ti);
+    pickTopic(name);                                 // saves, closes, renders, toasts
+    return;
+  }
+  if(t.dataset.tierc !== undefined){                 // cycle a topic's tier
+    const text = t.dataset.tierc;
+    const next = (tierOf(text) + 1) % 4;
+    setTier(text, next);
+    save(); render();
+    toast(next ? `T${next} · ${TIERS[next].name}` : "Tier cleared");
+    return;
+  }
 
   if(t.dataset.section){                               // a bold tab — go to that section's first page
     const home = homeTabOf(t.dataset.section);
@@ -2412,6 +2579,16 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("input", e => {
   if(e.target.id === "q"){ UI.q = e.target.value; clearTimeout(window._qt); window._qt = setTimeout(render, 160); }
+  if(e.target.id === "ppq"){                     // live-filter the picker, no re-render
+    const v = e.target.value.toLowerCase();
+    document.querySelectorAll("#pickPop .pp-item").forEach(b =>
+      b.style.display = b.textContent.toLowerCase().includes(v) ? "" : "none");
+    document.querySelectorAll("#pickPop .pp-cat").forEach(c => {
+      let sib = c.nextElementSibling, any = false;
+      while(sib && sib.classList.contains("pp-item")){ if(sib.style.display !== "none") any = true; sib = sib.nextElementSibling; }
+      c.style.display = any ? "" : "none";
+    });
+  }
 });
 window.addEventListener("hashchange", () => {
   const id = location.hash.slice(1);

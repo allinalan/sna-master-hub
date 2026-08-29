@@ -424,6 +424,7 @@ button.tierchip:hover{filter:brightness(.85)}
 .slot{display:flex;gap:10px;align-items:baseline;padding:6px 10px;margin:2px 0;border-radius:8px;min-width:0}
 .slot+.slot{border-top:1px dashed var(--line-soft)}
 .slot .stime{font-family:var(--monof);font-size:10px;color:var(--ink-faint);flex:none;min-width:44px}
+.slot .sday{font-family:var(--monof);font-size:10px;font-weight:600;color:var(--ink-soft);flex:none}
 .slot .stag{font-family:var(--monof);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;flex:none;min-width:60px;color:var(--ink-faint)}
 .slot.second .stag{color:var(--accent-ink)}
 .slot.hot .stag{color:var(--warn);min-width:78px}
@@ -1868,9 +1869,14 @@ function weekRow(r, idx, wkNum){
   } else {
     main += `<div class="slot main">${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open \u2014 click to plan")}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`;
   }
+  /* an additional call can land on a DIFFERENT DAY inside the same week —
+     an optional day chip ("Thu", "Oct 8") sits ahead of its time */
+  const sday = (path, val) =>
+    EDITING ? `<span class="sday">${ed(path, val, "", "day?")}</span>`
+            : (String(val||"").trim() ? `<span class="sday">${esc(val)}</span>` : "");
   (r.extra || []).forEach((x, j) => {
     const xp = `${p}.extra.${j}`, xt = x.type || "group";
-    main += `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${stime(xp+".time", x.time, "")}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`;
+    main += `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sday(xp+".day", x.day)}${stime(xp+".time", x.time, "")}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`;
     main += noteLines(xp + ".notes", x.notes);
   });
   if(!blocked)
@@ -2457,7 +2463,7 @@ document.addEventListener("focusin", e => {
 });
 /* Optional fields disappear when emptied, rather than leaving a blank chip behind. */
 const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","secondTime","detail","proposed","alt",
-                                 "series","call","hotSeat","hotSeatPresenter","hotSeatTime","lastAsked"]);
+                                 "series","call","hotSeat","hotSeatPresenter","hotSeatTime","lastAsked","day","speaker"]);
 
 /* Save while typing. Blur still does the tidy-up pass and re-renders, but the
    text is already safe by then — closing the tab mid-edit doesn't lose it. */

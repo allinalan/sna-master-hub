@@ -1479,6 +1479,7 @@ function renderTeam(){
   const unassigned = act.filter(r => !String(r.Coach||"").trim()).length;
   const missing = act.filter(r => !r.Phone || !r.Email).length;
   const path = act.filter(r => /path/i.test(r.Program || r.Tier)).length;
+  const dojo = act.filter(r => /dojo/i.test(r.Program || r.Tier)).length;
   const masters = act.filter(r => /master/i.test(r.Program || r.Tier)).length;
 
   html += toolbar(`
@@ -1496,6 +1497,7 @@ function renderTeam(){
   html += printHead("Sharp Ninja Academy — Mentees", `${act.length} active · printed ${fmtFull(todayISO())}`);
   html += `<div class="stats">
     ${statBox("Active mentees", act.length, inactive ? inactive + " former" : "")}
+    ${statBox("The Dojo", dojo, "")}
     ${statBox("The Path", path, "")}
     ${statBox("The Masters", masters, "")}
     ${statBox("Unassigned", unassigned, unassigned ? "pick a coach below" : "everyone covered", unassigned > 0)}

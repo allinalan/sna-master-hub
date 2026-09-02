@@ -1788,8 +1788,43 @@ async function assignSaveForm(){
   await assignWrite({action:"saveAssignment",a},ASSIGN.editing.id?"Saved":"Added");
 }
 function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a)};}
-function openCell(repId,aId){ /* Task 11 */ }
-function closeCell(){ ASSIGN.open=null; }
+function fmtStamp(iso){const d=new Date(iso);return isNaN(d)?esc(String(iso||"")):MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});}
+function openCell(repId,aId){
+  const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===aId);
+  if(!rep||!a)return;
+  ASSIGN.open={repId,aId};
+  const s=cellState(rep,a), d=$("#adrawer"), first=esc(rep.Name.split(" ")[0]);
+  const ovDue=s.override?dueISO(s.override.DueDate):"", isNA=ovDue==="NA", dis=ASSIGN.busy?" disabled":"";
+  const thread=s.versions.length?s.versions.map((v,i)=>{
+    const last=i===s.versions.length-1;
+    return `<div class="ad-ver"${last?' style="border-color:var(--accent)"':""}><div class="vh">v${esc(v.Version)} · ${fmtStamp(v.SubmittedAt)}${last?" · latest":""}</div>`+
+      (v.Text?`<div class="vt">${esc(v.Text)}</div>`:"")+
+      (v.LinkURL?`<div><a href="${esc(v.LinkURL)}" target="_blank" rel="noopener">${esc(v.LinkURL)}</a></div>`:"")+
+      (v.FileURL?`<div><a href="${esc(v.FileURL)}" target="_blank" rel="noopener">📎 ${esc(v.FileName||"file")}</a></div>`:"")+
+      (v.Feedback?`<div class="ad-fb"><div class="vh">${esc(v.ReviewedBy||"Coach")} · ${fmtStamp(v.ReviewedAt)}${String(v.Status||"").toLowerCase()==="approved"?" · approved ✓":""}</div><div class="vt">${esc(v.Feedback)}</div></div>`:"")+`</div>`;
+  }).join("")
+  :`<div class="empty-note" style="padding:18px">${s.state==="na"?"Not applicable to "+first:"Not submitted"+(s.due?` · ${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}`:"")}</div>`;
+  let action="";
+  if(s.latest&&s.state!=="na")action=`<div class="ad-form"><div class="ad-sub">Your feedback on v${esc(s.latest.Version)}</div>
+      <textarea id="adFb" placeholder="What's working, what to change, what to try next…">${esc(s.state==="waiting"?"":(s.latest.Feedback||""))}</textarea>
+      <div class="ad-row"><button class="btn primary" data-review="revise"${dis}>Send feedback · ask for a resubmit</button>
+        <button class="btn" data-review="approved"${dis}>Approve ✓</button>
+        ${rep.HasEmail?"":`<span class="sw-hint">no email on file — they'll see it on their dashboard</span>`}</div></div>`;
+  else if(s.state==="open"||s.state==="late")action=`<div class="ad-row"><button class="btn" data-remind="1"${dis}>Email a reminder</button>${rep.HasEmail?"":`<span class="sw-hint">no email on file</span>`}</div>`;
+  const more=`<details class="ad-more"><summary>Due date &amp; applicability for ${first}</summary>
+    <div class="ad-form" style="margin-top:10px">
+      <div class="ad-row"><label class="ad-sub">Due <input type="date" id="adDue" value="${esc(isNA?"":(ovDue||dueISO(a.DueDate)))}"></label>
+        <span class="sw-hint">default ${dueISO(a.DueDate)?esc(fmtDueHub(dueISO(a.DueDate))):"none"}</span></div>
+      <label class="ad-row" style="font-size:13px"><input type="checkbox" id="adNA"${isNA?" checked":""}> Mark not applicable for ${first}</label>
+      <div class="ad-row"><button class="btn sm primary" data-override="save"${dis}>Save</button>${s.override?`<button class="btn sm" data-override="clear"${dis}>Back to default</button>`:""}</div>
+    </div></details>`;
+  d.innerHTML=`<div class="ad-head"><div><div class="t">${esc(a.Title)}</div>
+      <div class="s"><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span> <span class="apill ${s.state}">${CELL_TITLE[s.state]}</span>${s.due?`<span>${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}</span>`:""}</div></div>
+    <button class="btn sm" data-assignact="close" title="Close">✕</button></div>
+    <div class="ad-body">${thread}${action}${more}</div>`;
+  d.classList.add("on"); d.setAttribute("aria-hidden","false");
+}
+function closeCell(){ASSIGN.open=null;const d=$("#adrawer");if(d){d.classList.remove("on");d.setAttribute("aria-hidden","true");}}
 document.addEventListener("change",e=>{
   const s=e.target.closest("select[data-assigncamp]");
   if(s){ASSIGN.campaign=s.value;ASSIGN.editing=null;render();}
@@ -1819,6 +1854,35 @@ document.addEventListener("change",e=>{
   const r=tierRank(cb.dataset.prog);
   document.querySelectorAll("#aform input[data-prog]").forEach(o=>{if(tierRank(o.dataset.prog)>r)o.checked=true;});
 });
+document.addEventListener("click",async e=>{
+  const cell=e.target.closest("[data-cell]");
+  if(cell){const [r,a]=cell.dataset.cell.split("|");openCell(r,a);return;}
+  if(!ASSIGN.open)return;
+  const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===ASSIGN.open.repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===ASSIGN.open.aId);
+  if(!rep||!a)return;
+  const first=rep.Name.split(" ")[0];
+  const rv=e.target.closest("[data-review]");
+  if(rv){
+    const s=cellState(rep,a); if(!s.latest)return;
+    const fb=$("#adFb").value.trim();
+    if(rv.dataset.review==="revise"&&!fb){toast("Write the feedback first");return;}
+    await assignWrite({action:"reviewSubmission",submissionId:s.latest.SubmissionID,status:rv.dataset.review,feedback:fb},null,
+      out=>toast(out.emailed?`Sent to ${first} ✓`:`Saved · no email on file for ${first}`));
+    return;
+  }
+  if(e.target.closest("[data-remind]")){
+    await assignWrite({action:"remindAssignment",repId:rep.RepID,assignmentId:a.AssignmentID},null,
+      out=>toast(out.emailed?`Reminder sent to ${first} ✓`:`No email on file for ${first} — nothing sent`));
+    return;
+  }
+  const ov=e.target.closest("[data-override]");
+  if(ov){
+    const clear=ov.dataset.override==="clear", na=$("#adNA").checked;
+    const due=clear?"":(na?"NA":$("#adDue").value);
+    await assignWrite({action:"setOverride",repId:rep.RepID,assignmentId:a.AssignmentID,dueDate:due},clear?"Back to the default date":(na?`Marked not applicable for ${first}`:"Due date saved"));
+  }
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASSIGN.open)closeCell();});
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TAB — PERFORMANCE (the mentee dashboard, embedded)

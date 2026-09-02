@@ -502,7 +502,7 @@ table.aboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft
 .ad-head{padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .ad-head .t{font-family:var(--serif);font-size:20px;font-weight:560;letter-spacing:-.01em}
 .ad-head .s{font-size:12px;color:var(--ink-soft);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.ad-body{padding:16px 20px;overflow:auto;flex:1;display:grid;gap:12px;align-content:start}
+.ad-body{padding:16px 20px;overflow:auto;flex:1;min-height:0;display:grid;gap:12px;align-content:start}
 .ad-ver{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;background:var(--card)}
 .ad-ver .vh{font-family:var(--monof);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
 .ad-ver .vt{white-space:pre-wrap}
@@ -1327,8 +1327,8 @@ const TEAM = {
 
 async function teamCall(body){
   const res = await fetch(TEAM_API, {
-    method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"},
-    body: JSON.stringify(Object.assign({key: TEAM.key}, body))
+    method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, cache: "no-store",
+    body: JSON.stringify(Object.assign({key: TEAM.key, _t: Date.now()}, body))
   });
   return res.json();
 }
@@ -1680,7 +1680,7 @@ function assignCounts(){
 }
 function fmtDueHub(iso){const p=String(iso||"").split("-");return p.length<3?String(iso||""):MONTHS[+p[1]-1]+" "+(+p[2]);}
 const CELL_GLYPH={waiting:"●",revise:"✎",approved:"✓",open:"",late:"",na:""};
-const CELL_TITLE={open:"not submitted",late:"OVERDUE",waiting:"submitted · waiting on you",revise:"feedback posted · waiting on them",approved:"approved",na:"not applicable"};
+const CELL_TITLE={open:"not submitted",late:"overdue",waiting:"submitted · waiting on you",revise:"feedback posted · waiting on them",approved:"approved",na:"not applicable"};
 
 function renderAssign(){
   let html=`<div class="page-head no-export no-print"><div>
@@ -1701,7 +1701,7 @@ function renderAssign(){
     <div class="tb-actions"><button class="btn" data-assignact="reload" title="Re-pull from the sheet">Refresh</button>${exportButtons("assignBoard","Assignments")}</div>`);
   html+=`<div id="assignBoard" class="export-frame">`;
   html+=printHead("Assignments · "+ASSIGN.campaign,`${c.waiting} waiting on a coach · printed ${fmtFull(todayISO())}`);
-  html+=`<div class="stats">${statBox("Waiting on you",c.waiting,c.waiting?"open a cell to review":"inbox clear",c.waiting>0)}${statBox("Overdue",c.late,"not in, past due",c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
+  html+=`<div class="stats">${statBox("Waiting on you",c.waiting,c.waiting?"open a cell to review":"inbox clear",c.waiting>0)}${statBox("Overdue",c.late,"not turned in, past due",c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
   html+=UI.assignView==="board"?assignBoardHtml():assignCatalogHtml();
   html+=`</div>`;
   return html;
@@ -1712,7 +1712,7 @@ function assignBoardHtml(){
   if(!list.length)return `<div class="empty-note">No assignments for ${esc(ASSIGN.campaign)} yet — switch to Catalog to add one.</div>`;
   let h=`<div class="tbl"><table class="grid aboard"><thead><tr><th>Mentee</th>${list.map(a=>{
       const d=dueISO(a.DueDate);
-      return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignBase(a)[0])} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
+      return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignPrograms(a).map(p=>p[0]).join(""))} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
   let lastTier="";
   reps.forEach(r=>{
     if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}">The ${esc(r.Tier)}</td></tr>`;}
@@ -1758,7 +1758,7 @@ function assignCatalogHtml(){
 function assignFormHtml(f){
   return `<div class="aform no-export no-print" id="aform">
     <div class="ad-row">${["Dojo","Path","Masters"].map(p=>`<label style="font-size:13px"><input type="checkbox" data-prog="${p}"${f.programs.includes(p)?" checked":""}> ${p}</label>`).join("")}
-      <span class="sw-hint">ticking a base program pre-ticks the ones above it — untick any that shouldn't do this one</span></div>
+      <span class="sw-hint">ticking a program pre-ticks every program after it (Dojo → Path → Masters) — untick any that shouldn't get this one</span></div>
     <div class="ad-row"><label class="ad-sub">Title <input class="search" id="afTitle" value="${esc(f.title)}" placeholder="e.g. Creating Raving Fans" style="width:280px"></label>
       <label class="ad-sub">Due <input type="date" id="afDue" value="${esc(f.dueDate||"")}"></label>
       <label class="ad-sub">Campaign <input class="search" id="afCamp" value="${esc(f.campaign||ASSIGN.campaign)}" style="width:120px"></label></div>
@@ -1786,7 +1786,7 @@ async function assignSaveForm(){
            materialsUrl:$("#afUrl").value.trim(),instructions:$("#afInstr").value.trim(),active:ASSIGN.editing.active!==false};
   if(!progs.length)return toast("Tick at least one program");
   if(!a.title)return toast("Give it a title");
-  if(a.materialsUrl&&!/^https?:\/\//i.test(a.materialsUrl))return toast("The materials link needs http:// or https://");
+  if(a.materialsUrl&&!/^https?:\/\//i.test(a.materialsUrl))return toast("The materials link needs to start with http:// or https://");
   await assignWrite({action:"saveAssignment",a},ASSIGN.editing.id?"Saved":"Added");
 }
 function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a)};}
@@ -1803,7 +1803,7 @@ function openCell(repId,aId){
       (v.Text?`<div class="vt">${esc(v.Text)}</div>`:"")+
       (v.LinkURL?`<div><a href="${esc(v.LinkURL)}" target="_blank" rel="noopener">${esc(v.LinkURL)}</a></div>`:"")+
       (v.FileURL?`<div><a href="${esc(v.FileURL)}" target="_blank" rel="noopener">📎 ${esc(v.FileName||"file")}</a></div>`:"")+
-      (v.Feedback?`<div class="ad-fb"><div class="vh">${esc(v.ReviewedBy||"Coach")} · ${fmtStamp(v.ReviewedAt)}${String(v.Status||"").toLowerCase()==="approved"?" · approved ✓":""}</div><div class="vt">${esc(v.Feedback)}</div></div>`:"")+`</div>`;
+      ((v.Feedback||String(v.Status||"").toLowerCase()==="approved")?`<div class="ad-fb"><div class="vh">${esc(v.ReviewedBy||"Coach")} · ${fmtStamp(v.ReviewedAt)}${String(v.Status||"").toLowerCase()==="approved"?" · approved ✓":""}</div>${v.Feedback?`<div class="vt">${esc(v.Feedback)}</div>`:""}</div>`:"")+`</div>`;
   }).join("")
   :`<div class="empty-note" style="padding:18px">${s.state==="na"?"Not applicable to "+first:"Not submitted"+(s.due?` · ${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}`:"")}</div>`;
   let action="";

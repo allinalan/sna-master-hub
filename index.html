@@ -1658,7 +1658,7 @@ async function assignLoad(force){
     }catch(e){ASSIGN.err="Couldn't reach the assignments feed — it's usually temporary.";if(attempt<3)await new Promise(r=>setTimeout(r,attempt*3000));}
   }
   ASSIGN.loading=false;render();
-  if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);
+  if(ASSIGN.open&&ASSIGN.rows)openCell(ASSIGN.open.repId,ASSIGN.open.aId);
 }
 function assignCampaigns(){const set=new Set([currentCampaignLabel()]);(ASSIGN.rows?ASSIGN.rows.assignments:[]).forEach(a=>{if(a.Campaign)set.add(String(a.Campaign).trim());});return [...set].sort((a,b)=>campKeyHub(b)-campKeyHub(a));}
 const isArchived=a=>String(a.Active||"Y").toUpperCase()==="N";
@@ -1869,12 +1869,12 @@ document.addEventListener("click",async e=>{
     const fb=$("#adFb").value.trim();
     if(rv.dataset.review==="revise"&&!fb){toast("Write the feedback first");return;}
     await assignWrite({action:"reviewSubmission",submissionId:s.latest.SubmissionID,status:rv.dataset.review,feedback:fb},null,
-      out=>toast(out.emailed?`Sent to ${first} ✓`:`Saved · no email on file for ${first}`));
+      out=>toast(out.emailed?`Sent to ${first} ✓`:out.hasEmail?`Saved · rep emails are paused — nothing sent`:`Saved · no email on file for ${first}`));
     return;
   }
   if(e.target.closest("[data-remind]")){
     await assignWrite({action:"remindAssignment",repId:rep.RepID,assignmentId:a.AssignmentID},null,
-      out=>toast(out.emailed?`Reminder sent to ${first} ✓`:`No email on file for ${first} — nothing sent`));
+      out=>toast(out.emailed?`Reminder sent to ${first} ✓`:out.hasEmail?`Rep emails are paused — nothing sent`:`No email on file for ${first} — nothing sent`));
     return;
   }
   const ov=e.target.closest("[data-override]");

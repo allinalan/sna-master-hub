@@ -1835,7 +1835,7 @@ document.addEventListener("click",async e=>{
   const act=e.target.closest("[data-assignact]"); if(!act)return;
   e.preventDefault();
   const k=act.dataset.assignact, find=id=>(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===id);
-  if(k==="reload"){ASSIGN.rows=null;assignLoad(true);}
+  if(k==="reload"){if(ASSIGN.loading)return;ASSIGN.rows=null;assignLoad(true);}
   if(k==="close")closeCell();
   if(k==="archived"){ASSIGN.showArchived=!ASSIGN.showArchived;render();}
   if(k==="new"){const base=act.dataset.prog||"Dojo";ASSIGN.editing={id:"",programs:["Dojo","Path","Masters"].filter(p=>tierRank(p)>=tierRank(base)),campaign:ASSIGN.campaign,title:"",instructions:"",materialsUrl:"",dueDate:"",active:true};render();const t=$("#afTitle");if(t)t.focus();}

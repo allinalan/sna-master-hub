@@ -465,6 +465,51 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
   border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);
   display:flex;flex-direction:column}
 #pickPop.hidden{display:none}
+/* ═══════════ assignments tab ═══════════ */
+table.aboard{min-width:0}
+table.aboard th.ah{text-align:center;max-width:120px;white-space:normal;vertical-align:bottom;padding:10px 6px 8px}
+table.aboard th.ah .at{font-family:var(--sans);font-size:11.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+table.aboard th.ah small{display:block;font-size:9px;color:var(--ink-faint);margin-top:3px;letter-spacing:.04em;text-transform:none}
+table.aboard td.an{white-space:nowrap}
+table.aboard td.ac{text-align:center;padding:6px}
+table.aboard tr.agrp td{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
+table.aboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.sq{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;font-family:var(--monof);font-size:13px;font-weight:600;line-height:1;color:#F4EEDF;transition:transform .12s}
+.sq:hover{transform:scale(1.08)}
+.sq.open{background:#DDAA00}
+.sq.late{background:var(--bad)}
+.sq.na{background:var(--ink)}
+.sq.waiting,.sq.revise,.sq.approved{background:var(--good)}
+.alegend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:12px 2px 0;font-size:12px;color:var(--ink-soft)}
+.alegend span{display:inline-flex;align-items:center;gap:7px}
+.alegend .sq{width:16px;height:16px;border-radius:4px;font-size:9px;cursor:default}
+.alegend .sq:hover{transform:none}
+.apill{display:inline-block;font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 8px;font-weight:500}
+.apill.open{background:var(--warn-bg);color:#7A5E06}
+.apill.late{background:var(--bad-bg);color:var(--bad)}
+.apill.waiting,.apill.revise,.apill.approved{background:var(--good-bg);color:var(--good)}
+.apill.na{background:var(--line-soft);color:var(--ink-faint)}
+.ainstr{font-size:11.5px;color:var(--ink-faint);margin-top:2px;max-width:52ch}
+.aform{background:var(--card);border:1px solid var(--line-strong);border-radius:10px;padding:14px;display:grid;gap:10px;margin-bottom:12px}
+.aform textarea,.ad-form textarea{width:100%;min-height:110px;font-family:var(--sans);font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper);resize:vertical}
+.aform input[type=date],.ad-form input[type=date]{font-family:var(--monof);font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.ad-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ad-sub{font-family:var(--monof);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);display:inline-flex;gap:8px;align-items:center}
+/* review drawer */
+.adrawer{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:96vw;background:var(--card-raised);border-left:1px solid var(--line);box-shadow:-18px 0 44px rgba(28,23,18,.22);z-index:320;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s cubic-bezier(.16,.68,.32,1)}
+.adrawer.on{transform:none}
+@media (prefers-reduced-motion:reduce){.adrawer{transition:none}}
+.ad-head{padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.ad-head .t{font-family:var(--serif);font-size:20px;font-weight:560;letter-spacing:-.01em}
+.ad-head .s{font-size:12px;color:var(--ink-soft);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ad-body{padding:16px 20px;overflow:auto;flex:1;display:grid;gap:12px;align-content:start}
+.ad-ver{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;background:var(--card)}
+.ad-ver .vh{font-family:var(--monof);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+.ad-ver .vt{white-space:pre-wrap}
+.ad-fb{margin-top:8px;border-left:3px solid var(--accent);padding:6px 10px;background:var(--accent-soft);border-radius:0 8px 8px 0}
+.ad-form{display:grid;gap:8px}
+details.ad-more{border-top:1px solid var(--line);padding-top:10px}
+details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
 .pp-head{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
 .pp-head .search{flex:1}
 .pp-list{overflow:auto;max-height:44vh;padding:6px}
@@ -534,6 +579,7 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
 </div>
 
 <div id="pickPop" class="hidden"></div>
+<div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
   <div class="modal">
     <h3 id="mTitle">Data</h3>
@@ -946,7 +992,7 @@ let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
-             tier:"all" };   // show ticked-off items too — hiding them reads as deletion
+             tier:"all", assignView:"board", assignProg:"all" };   // show ticked-off items too — hiding them reads as deletion
 
 function load(){
   let saved = null;
@@ -1036,6 +1082,46 @@ function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
 /* ── tiny helpers ─────────────────────────────────────────────────────── */
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/*ASSIGN_STATE_BEGIN*/
+/* Assignment state rules — ONE rule set, copied verbatim into the dashboard and
+   the hub. $S/assign-state.test.js proves the two copies agree. Spec §5.5. */
+const ASSIGN_RANK={dojo:1,path:2,masters:3};
+function tierRank(t){return ASSIGN_RANK[String(t||"").trim().toLowerCase()]||2;}
+function tierName(t){const k=String(t||"").trim().toLowerCase();return k==="dojo"?"Dojo":k==="masters"?"Masters":"Path";}
+function assignPrograms(a){
+  const out=[];
+  String((a&&a.Programs)||"").split(",").map(s=>s.trim()).filter(Boolean).forEach(s=>{const n=tierName(s);if(out.indexOf(n)<0)out.push(n);});
+  return out;
+}
+function assignBase(a){const ps=assignPrograms(a).slice().sort((x,y)=>tierRank(x)-tierRank(y));return ps[0]||"Path";}
+function dueISO(v){
+  if(v==null||v==="")return "";
+  const pad=n=>String(n).padStart(2,"0");
+  if(v instanceof Date)return isNaN(v)?"":v.getFullYear()+"-"+pad(v.getMonth()+1)+"-"+pad(v.getDate());
+  const s=String(v).trim();
+  if(/^na$/i.test(s))return "NA";
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m)return m[1]+"-"+m[2]+"-"+m[3];
+  m=s.match(/^Date\((\d+),(\d+),(\d+)/); if(m)return m[1]+"-"+pad(+m[2]+1)+"-"+pad(+m[3]);
+  const d=new Date(s); return isNaN(d)?"":d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+}
+function assignState(rep,a,overrides,subs,today){
+  const tier=tierName(rep.tier);
+  const ov=(overrides||[]).find(o=>String(o.AssignmentID)===String(a.AssignmentID)&&String(o.RepID)===String(rep.id))||null;
+  const ovDue=ov?dueISO(ov.DueDate):"";
+  const active=String(a.Active==null||a.Active===""?"Y":a.Active).trim().toUpperCase()!=="N";
+  if(!active||assignPrograms(a).indexOf(tier)<0||ovDue==="NA")return {state:"na",due:null,versions:[],latest:null,override:ov};
+  const due=ovDue||dueISO(a.DueDate)||null;
+  const versions=(subs||[]).filter(s=>String(s.AssignmentID)===String(a.AssignmentID)&&String(s.RepID)===String(rep.id))
+    .slice().sort((x,y)=>(+x.Version||0)-(+y.Version||0));
+  const latest=versions[versions.length-1]||null;
+  let state;
+  if(!latest)state=(due&&today>due)?"late":"open";
+  else{const st=String(latest.Status||"submitted").trim().toLowerCase();state=st==="approved"?"approved":st==="revise"?"revise":"waiting";}
+  return {state,due,versions,latest,override:ov};
+}
+/*ASSIGN_STATE_END*/
+
 const $  = s => document.querySelector(s);
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -1349,6 +1435,15 @@ function coachNames(){
   return names.length ? names : ["Alan", "Ben"];
 }
 
+function keyGateHtml(){
+  return `<div class="empty-note" style="max-width:460px;margin:40px auto;text-align:center">
+    <div class="serif" style="font-size:20px;margin-bottom:8px">Coach access</div>
+    <div style="margin-bottom:14px">This board shows phone numbers and emails, so it stays locked.
+      Enter the coach key once — this browser will remember it.${TEAM.err ? `<div style="color:var(--red,#b3261e);margin-top:8px">${esc(TEAM.err)}</div>` : ""}</div>
+    <input class="search" id="teamKey" type="password" placeholder="coach key" style="width:240px">
+    <button class="btn primary" data-teamact="unlock">Unlock</button>
+  </div>`;
+}
 function renderTeam(){
   let html = `
   <div class="page-head no-export no-print">
@@ -1361,16 +1456,7 @@ function renderTeam(){
   </div>`;
 
   /* ── key gate ── */
-  if(!TEAM.key){
-    html += `<div class="empty-note" style="max-width:460px;margin:40px auto;text-align:center">
-      <div class="serif" style="font-size:20px;margin-bottom:8px">Coach access</div>
-      <div style="margin-bottom:14px">This board shows phone numbers and emails, so it stays locked.
-        Enter the coach key once — this browser will remember it.${TEAM.err ? `<div style="color:var(--red,#b3261e);margin-top:8px">${esc(TEAM.err)}</div>` : ""}</div>
-      <input class="search" id="teamKey" type="password" placeholder="coach key" style="width:240px">
-      <button class="btn primary" data-teamact="unlock">Unlock</button>
-    </div>`;
-    return html;
-  }
+  if(!TEAM.key) return html + keyGateHtml();
   if(TEAM.loading && !TEAM.rows){ return html + `<div class="empty-note">Fetching the roster…</div>`; }
   if(TEAM.err && !TEAM.rows){
     return html + `<div class="empty-note">${esc(TEAM.err)}
@@ -1393,6 +1479,7 @@ function renderTeam(){
   const unassigned = act.filter(r => !String(r.Coach||"").trim()).length;
   const missing = act.filter(r => !r.Phone || !r.Email).length;
   const path = act.filter(r => /path/i.test(r.Program || r.Tier)).length;
+  const dojo = act.filter(r => /dojo/i.test(r.Program || r.Tier)).length;
   const masters = act.filter(r => /master/i.test(r.Program || r.Tier)).length;
 
   html += toolbar(`
@@ -1410,6 +1497,7 @@ function renderTeam(){
   html += printHead("Sharp Ninja Academy — Mentees", `${act.length} active · printed ${fmtFull(todayISO())}`);
   html += `<div class="stats">
     ${statBox("Active mentees", act.length, inactive ? inactive + " former" : "")}
+    ${statBox("The Dojo", dojo, "")}
     ${statBox("The Path", path, "")}
     ${statBox("The Masters", masters, "")}
     ${statBox("Unassigned", unassigned, unassigned ? "pick a coach below" : "everyone covered", unassigned > 0)}
@@ -1465,13 +1553,13 @@ document.addEventListener("click", async e => {
     const v = ($("#teamKey") || {}).value || "";
     if(!v.trim()) return;
     TEAM.key = v.trim(); localStorage.setItem("sna_coach_key", TEAM.key);
-    TEAM.rows = null; teamLoad();
+    TEAM.rows = null; ASSIGN.rows = null; teamLoad();
   }
   if(kind === "reload"){ TEAM.rows = null; teamLoad(); }
   if(kind === "swretry"){ TEAM.sw = null; TEAM.swErr = ""; swLoad(); }
   if(kind === "former"){ UI.teamFormer = !UI.teamFormer; render(); }
   if(kind === "lock"){
-    TEAM.key = ""; TEAM.rows = null; localStorage.removeItem("sna_coach_key");
+    TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; localStorage.removeItem("sna_coach_key");
     render(); toast("Key forgotten on this device");
   }
 });
@@ -1549,6 +1637,256 @@ document.addEventListener("keydown", e => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   TAB — ASSIGNMENTS (coach-key gated; spec §7)
+   Board: mentee × assignment cells coloured by assignState. Catalog: the
+   per-program list the coaches edit. Drawer: read a thread, post feedback.
+   Everything round-trips through the SharpNinja web app (TEAM_API).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const ASSIGN={rows:null,loading:false,err:"",loadedAt:0,campaign:"",open:null,showArchived:false,editing:null,busy:false};
+function currentCampaignLabel(){const d=new Date(),m=d.getMonth();return (m<=3?"Spring":m<=7?"Summer":"Fall")+" "+d.getFullYear();}
+const campKeyHub=c=>{const a=String(c).split(" ");return (+a[1]||0)*3+({Spring:0,Summer:1,Fall:2}[a[0]]??0);};
+async function assignLoad(force){
+  if(ASSIGN.loading||!TEAM.key)return;
+  if(!force&&ASSIGN.rows&&Date.now()-ASSIGN.loadedAt<60000)return;
+  ASSIGN.loading=true;ASSIGN.err="";render();
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const out=await teamCall({action:"assignmentBoard"});
+      if(out.ok){ASSIGN.rows=out;ASSIGN.loadedAt=Date.now();if(!ASSIGN.campaign)ASSIGN.campaign=currentCampaignLabel();break;}
+      if(out.error==="bad key"){TEAM.key="";localStorage.removeItem("sna_coach_key");TEAM.err="That key wasn't right — ask Alan for the current one.";break;}
+      ASSIGN.err=out.error||"The assignments feed said no.";break;
+    }catch(e){ASSIGN.err="Couldn't reach the assignments feed — it's usually temporary.";if(attempt<3)await new Promise(r=>setTimeout(r,attempt*3000));}
+  }
+  ASSIGN.loading=false;render();
+  if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);
+}
+function assignCampaigns(){const set=new Set([currentCampaignLabel()]);(ASSIGN.rows?ASSIGN.rows.assignments:[]).forEach(a=>{if(a.Campaign)set.add(String(a.Campaign).trim());});return [...set].sort((a,b)=>campKeyHub(b)-campKeyHub(a));}
+const isArchived=a=>String(a.Active||"Y").toUpperCase()==="N";
+function assignList(){   // catalog rows for the picked campaign, due-date order
+  return (ASSIGN.rows.assignments||[]).filter(a=>a.AssignmentID&&String(a.Campaign||"").trim()===ASSIGN.campaign)
+    .filter(a=>ASSIGN.showArchived||!isArchived(a))
+    .sort((x,y)=>String(dueISO(x.DueDate)||"9999").localeCompare(String(dueISO(y.DueDate)||"9999"))||String(x.Title||"").localeCompare(String(y.Title||"")));
+}
+function assignReps(){return (ASSIGN.rows.reps||[]).filter(r=>r.Active).sort((a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name));}
+function cellState(rep,a){return assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());}
+function assignCounts(){
+  const c={waiting:0,late:0,week:0,approved:0}; if(!ASSIGN.rows)return c;
+  const weekAgo=new Date(Date.now()-7*86400000).toISOString();
+  const live=assignList().filter(a=>!isArchived(a));
+  assignReps().forEach(r=>live.forEach(a=>{const s=cellState(r,a);
+    if(s.state==="waiting")c.waiting++; if(s.state==="late")c.late++; if(s.state==="approved")c.approved++;
+    s.versions.forEach(v=>{if(String(v.SubmittedAt||"")>=weekAgo)c.week++;});}));
+  return c;
+}
+function fmtDueHub(iso){const p=String(iso||"").split("-");return p.length<3?String(iso||""):MONTHS[+p[1]-1]+" "+(+p[2]);}
+const CELL_GLYPH={waiting:"●",revise:"✎",approved:"✓",open:"",late:"",na:""};
+const CELL_TITLE={open:"not submitted",late:"OVERDUE",waiting:"submitted · waiting on you",revise:"feedback posted · waiting on them",approved:"approved",na:"not applicable"};
+
+function renderAssign(){
+  let html=`<div class="page-head no-export no-print"><div>
+    <div class="eyebrow">Homework, both directions</div><div class="big serif">Assignments</div>
+    <div class="lede">What each program owes this campaign, who has turned it in, and your critiques. Mentees submit from their dashboard; everything you post here lands on theirs.</div></div></div>`;
+  if(!TEAM.key)return html+keyGateHtml();
+  if(!ASSIGN.rows){
+    if(!ASSIGN.loading&&!ASSIGN.err)assignLoad(true);
+    return html+(ASSIGN.err?`<div class="empty-note">${esc(ASSIGN.err)}<div style="margin-top:10px"><button class="btn" data-assignact="reload">Try again</button></div></div>`
+                           :`<div class="empty-note">Fetching assignments…</div>`);
+  }
+  const c=assignCounts();
+  html+=toolbar(`<div class="tb-filters">
+      ${seg("assignView",[{v:"board",l:"Board"},{v:"catalog",l:"Catalog"}],UI.assignView)}
+      <select class="btn sm" data-assigncamp style="padding:5px 8px">${assignCampaigns().map(x=>`<option${x===ASSIGN.campaign?" selected":""}>${esc(x)}</option>`).join("")}</select>
+      ${seg("assignProg",[{v:"all",l:"All"},{v:"Dojo",l:"Dojo"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}],UI.assignProg)}
+    </div>
+    <div class="tb-actions"><button class="btn" data-assignact="reload" title="Re-pull from the sheet">Refresh</button>${exportButtons("assignBoard","Assignments")}</div>`);
+  html+=`<div id="assignBoard" class="export-frame">`;
+  html+=printHead("Assignments · "+ASSIGN.campaign,`${c.waiting} waiting on a coach · printed ${fmtFull(todayISO())}`);
+  html+=`<div class="stats">${statBox("Waiting on you",c.waiting,c.waiting?"open a cell to review":"inbox clear",c.waiting>0)}${statBox("Overdue",c.late,"not in, past due",c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
+  html+=UI.assignView==="board"?assignBoardHtml():assignCatalogHtml();
+  html+=`</div>`;
+  return html;
+}
+function assignBoardHtml(){
+  const list=assignList().filter(a=>!isArchived(a)).filter(a=>UI.assignProg==="all"||assignPrograms(a).includes(UI.assignProg));
+  const reps=assignReps().filter(r=>UI.assignProg==="all"||r.Tier===UI.assignProg);
+  if(!list.length)return `<div class="empty-note">No assignments for ${esc(ASSIGN.campaign)} yet — switch to Catalog to add one.</div>`;
+  let h=`<div class="tbl"><table class="grid aboard"><thead><tr><th>Mentee</th>${list.map(a=>{
+      const d=dueISO(a.DueDate);
+      return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignBase(a)[0])} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
+  let lastTier="";
+  reps.forEach(r=>{
+    if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}">The ${esc(r.Tier)}</td></tr>`;}
+    let inN=0,appN=0;
+    h+=`<tr><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span></td>`;
+    list.forEach(a=>{
+      const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
+      h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
+    });
+    h+=`<td class="tot">${inN}/${appN} in</td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="alegend"><span><i class="sq open"></i> not due yet</span><span><i class="sq late"></i> overdue</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
+  return h;
+}
+function assignBaseOf(progs){return progs.slice().sort((x,y)=>tierRank(x)-tierRank(y))[0]||"Path";}
+function assignCatalogHtml(){
+  const list=assignList().filter(a=>UI.assignProg==="all"||assignPrograms(a).includes(UI.assignProg));
+  let h=`<div class="no-export no-print" style="display:flex;justify-content:flex-end;gap:8px;margin:-24px 0 8px"><button class="btn sm ${ASSIGN.showArchived?"on":""}" data-assignact="archived">Show archived</button></div>`;
+  ["Dojo","Path","Masters"].forEach(p=>{
+    const rows=list.filter(a=>assignBase(a)===p);
+    h+=`<div class="sec-title">The ${p} <span class="n">${rows.length} assignment${rows.length===1?"":"s"}</span></div>`;
+    if(ASSIGN.editing&&!ASSIGN.editing.id&&assignBaseOf(ASSIGN.editing.programs)===p)h+=assignFormHtml(ASSIGN.editing);
+    if(rows.length){
+      h+=`<div class="tbl"><table class="grid acat"><thead><tr><th>Assignment</th><th>Programs</th><th>Due</th><th>Materials</th><th class="no-print no-export"></th></tr></thead><tbody>`;
+      rows.forEach(a=>{
+        if(ASSIGN.editing&&ASSIGN.editing.id===a.AssignmentID){h+=`<tr><td colspan="5">${assignFormHtml(ASSIGN.editing)}</td></tr>`;return;}
+        const arch=isArchived(a), instr=String(a.Instructions||"");
+        h+=`<tr${arch?' style="opacity:.55"':""}><td><b>${esc(a.Title)}</b>${arch?' <span class="chip">archived</span>':""}<div class="ainstr">${esc(instr.slice(0,140))}${instr.length>140?"…":""}</div></td>
+          <td>${assignPrograms(a).map(x=>`<span class="chip">${esc(x)}</span>`).join(" ")}</td>
+          <td class="dt">${dueISO(a.DueDate)?esc(fmtDueHub(dueISO(a.DueDate))):`<span style="color:var(--ink-faint)">&ndash;</span>`}</td>
+          <td class="dt">${a.MaterialsURL?`<a href="${esc(a.MaterialsURL)}" target="_blank" rel="noopener">link ↗</a>`:""}</td>
+          <td class="no-print no-export" style="white-space:nowrap"><button class="btn sm" data-assignact="edit" data-id="${esc(a.AssignmentID)}">edit</button> <button class="btn sm" data-assignact="${arch?"restore":"archive"}" data-id="${esc(a.AssignmentID)}">${arch?"restore":"archive"}</button></td></tr>`;
+      });
+      h+=`</tbody></table></div>`;
+    } else if(!(ASSIGN.editing&&!ASSIGN.editing.id&&assignBaseOf(ASSIGN.editing.programs)===p)){
+      h+=`<div class="empty-note" style="padding:16px">Nothing for The ${p} in ${esc(ASSIGN.campaign)} yet.</div>`;
+    }
+    h+=`<div class="no-export no-print" style="margin:8px 0 22px"><button class="btn sm" data-assignact="new" data-prog="${p}">+ assignment</button></div>`;
+  });
+  return h;
+}
+function assignFormHtml(f){
+  return `<div class="aform no-export no-print" id="aform">
+    <div class="ad-row">${["Dojo","Path","Masters"].map(p=>`<label style="font-size:13px"><input type="checkbox" data-prog="${p}"${f.programs.includes(p)?" checked":""}> ${p}</label>`).join("")}
+      <span class="sw-hint">ticking a base program pre-ticks the ones above it — untick any that shouldn't do this one</span></div>
+    <div class="ad-row"><label class="ad-sub">Title <input class="search" id="afTitle" value="${esc(f.title)}" placeholder="e.g. Creating Raving Fans" style="width:280px"></label>
+      <label class="ad-sub">Due <input type="date" id="afDue" value="${esc(f.dueDate||"")}"></label>
+      <label class="ad-sub">Campaign <input class="search" id="afCamp" value="${esc(f.campaign||ASSIGN.campaign)}" style="width:120px"></label></div>
+    <label class="ad-sub" style="display:grid;gap:4px">Materials link <input class="search" id="afUrl" value="${esc(f.materialsUrl||"")}" placeholder="https://…"></label>
+    <label class="ad-sub" style="display:grid;gap:4px">Instructions <textarea id="afInstr" placeholder="What to do, how to submit it, what good looks like.">${esc(f.instructions||"")}</textarea></label>
+    <div class="ad-row"><button class="btn primary" data-assignact="save"${ASSIGN.busy?" disabled":""}>${f.id?"Save":"Add assignment"}</button><button class="btn" data-assignact="cancel">Cancel</button></div>
+  </div>`;
+}
+/* one write to the web app: optimistic-free, reload after, keep the drawer open */
+async function assignWrite(body,okMsg,onOk){
+  if(ASSIGN.busy)return null;
+  if(whoAmI()==="someone")askWho(true);
+  ASSIGN.busy=true; render(); if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);
+  const out=await teamCall(Object.assign({by:whoAmI()},body)).catch(()=>({ok:false,error:"network"}));
+  ASSIGN.busy=false;
+  if(!out.ok){toast(out.error==="network"?"Couldn't reach the sheet — try again.":"Couldn't save: "+out.error);render();if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);return null;}
+  if(okMsg)toast(okMsg); if(onOk)onOk(out);
+  ASSIGN.editing=null;
+  await assignLoad(true);
+  return out;
+}
+async function assignSaveForm(){
+  const progs=[...document.querySelectorAll("#aform input[data-prog]:checked")].map(i=>i.dataset.prog);
+  const a={id:ASSIGN.editing.id,programs:progs,campaign:$("#afCamp").value.trim(),title:$("#afTitle").value.trim(),dueDate:$("#afDue").value,
+           materialsUrl:$("#afUrl").value.trim(),instructions:$("#afInstr").value.trim(),active:ASSIGN.editing.active!==false};
+  if(!progs.length)return toast("Tick at least one program");
+  if(!a.title)return toast("Give it a title");
+  if(a.materialsUrl&&!/^https?:\/\//i.test(a.materialsUrl))return toast("The materials link needs http:// or https://");
+  await assignWrite({action:"saveAssignment",a},ASSIGN.editing.id?"Saved":"Added");
+}
+function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a)};}
+function fmtStamp(iso){const d=new Date(iso);return isNaN(d)?esc(String(iso||"")):MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});}
+function openCell(repId,aId){
+  const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===aId);
+  if(!rep||!a)return;
+  ASSIGN.open={repId,aId};
+  const s=cellState(rep,a), d=$("#adrawer"), first=esc(rep.Name.split(" ")[0]);
+  const ovDue=s.override?dueISO(s.override.DueDate):"", isNA=ovDue==="NA", dis=ASSIGN.busy?" disabled":"";
+  const thread=s.versions.length?s.versions.map((v,i)=>{
+    const last=i===s.versions.length-1;
+    return `<div class="ad-ver"${last?' style="border-color:var(--accent)"':""}><div class="vh">v${esc(v.Version)} · ${fmtStamp(v.SubmittedAt)}${last?" · latest":""}</div>`+
+      (v.Text?`<div class="vt">${esc(v.Text)}</div>`:"")+
+      (v.LinkURL?`<div><a href="${esc(v.LinkURL)}" target="_blank" rel="noopener">${esc(v.LinkURL)}</a></div>`:"")+
+      (v.FileURL?`<div><a href="${esc(v.FileURL)}" target="_blank" rel="noopener">📎 ${esc(v.FileName||"file")}</a></div>`:"")+
+      (v.Feedback?`<div class="ad-fb"><div class="vh">${esc(v.ReviewedBy||"Coach")} · ${fmtStamp(v.ReviewedAt)}${String(v.Status||"").toLowerCase()==="approved"?" · approved ✓":""}</div><div class="vt">${esc(v.Feedback)}</div></div>`:"")+`</div>`;
+  }).join("")
+  :`<div class="empty-note" style="padding:18px">${s.state==="na"?"Not applicable to "+first:"Not submitted"+(s.due?` · ${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}`:"")}</div>`;
+  let action="";
+  if(s.latest&&s.state!=="na")action=`<div class="ad-form"><div class="ad-sub">Your feedback on v${esc(s.latest.Version)}</div>
+      <textarea id="adFb" placeholder="What's working, what to change, what to try next…">${esc(s.state==="waiting"?"":(s.latest.Feedback||""))}</textarea>
+      <div class="ad-row"><button class="btn primary" data-review="revise"${dis}>Send feedback · ask for a resubmit</button>
+        <button class="btn" data-review="approved"${dis}>Approve ✓</button>
+        ${rep.HasEmail?"":`<span class="sw-hint">no email on file — they'll see it on their dashboard</span>`}</div></div>`;
+  else if(s.state==="open"||s.state==="late")action=`<div class="ad-row"><button class="btn" data-remind="1"${dis}>Email a reminder</button>${rep.HasEmail?"":`<span class="sw-hint">no email on file</span>`}</div>`;
+  const more=`<details class="ad-more"><summary>Due date &amp; applicability for ${first}</summary>
+    <div class="ad-form" style="margin-top:10px">
+      <div class="ad-row"><label class="ad-sub">Due <input type="date" id="adDue" value="${esc(isNA?"":(ovDue||dueISO(a.DueDate)))}"></label>
+        <span class="sw-hint">default ${dueISO(a.DueDate)?esc(fmtDueHub(dueISO(a.DueDate))):"none"}</span></div>
+      <label class="ad-row" style="font-size:13px"><input type="checkbox" id="adNA"${isNA?" checked":""}> Mark not applicable for ${first}</label>
+      <div class="ad-row"><button class="btn sm primary" data-override="save"${dis}>Save</button>${s.override?`<button class="btn sm" data-override="clear"${dis}>Back to default</button>`:""}</div>
+    </div></details>`;
+  d.innerHTML=`<div class="ad-head"><div><div class="t">${esc(a.Title)}</div>
+      <div class="s"><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span> <span class="apill ${s.state}">${CELL_TITLE[s.state]}</span>${s.due?`<span>${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}</span>`:""}</div></div>
+    <button class="btn sm" data-assignact="close" title="Close">✕</button></div>
+    <div class="ad-body">${thread}${action}${more}</div>`;
+  d.classList.add("on"); d.setAttribute("aria-hidden","false");
+}
+function closeCell(){ASSIGN.open=null;const d=$("#adrawer");if(d){d.classList.remove("on");d.setAttribute("aria-hidden","true");}}
+document.addEventListener("change",e=>{
+  const s=e.target.closest("select[data-assigncamp]");
+  if(s){ASSIGN.campaign=s.value;ASSIGN.editing=null;render();}
+});
+document.addEventListener("click",async e=>{
+  const act=e.target.closest("[data-assignact]"); if(!act)return;
+  e.preventDefault();
+  const k=act.dataset.assignact, find=id=>(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===id);
+  if(k==="reload"){ASSIGN.rows=null;assignLoad(true);}
+  if(k==="close")closeCell();
+  if(k==="archived"){ASSIGN.showArchived=!ASSIGN.showArchived;render();}
+  if(k==="new"){const base=act.dataset.prog||"Dojo";ASSIGN.editing={id:"",programs:["Dojo","Path","Masters"].filter(p=>tierRank(p)>=tierRank(base)),campaign:ASSIGN.campaign,title:"",instructions:"",materialsUrl:"",dueDate:"",active:true};render();const t=$("#afTitle");if(t)t.focus();}
+  if(k==="edit"){const a=find(act.dataset.id);if(a){ASSIGN.editing=editingFrom(a);render();}}
+  if(k==="cancel"){ASSIGN.editing=null;render();}
+  if(k==="save")await assignSaveForm();
+  if(k==="archive"||k==="restore"){
+    const a=find(act.dataset.id); if(!a)return;
+    const arch=k==="archive";
+    if(arch&&!confirm(`Archive "${a.Title}"? It disappears from every dashboard and the board. Submissions are kept.`))return;
+    const f=editingFrom(a); f.active=!arch;
+    await assignWrite({action:"saveAssignment",a:f},arch?"Archived":"Restored");
+  }
+});
+/* ladder pre-tick: ticking a base program ticks everything above it */
+document.addEventListener("change",e=>{
+  const cb=e.target.closest("#aform input[data-prog]"); if(!cb||!cb.checked)return;
+  const r=tierRank(cb.dataset.prog);
+  document.querySelectorAll("#aform input[data-prog]").forEach(o=>{if(tierRank(o.dataset.prog)>r)o.checked=true;});
+});
+document.addEventListener("click",async e=>{
+  const cell=e.target.closest("[data-cell]");
+  if(cell){const [r,a]=cell.dataset.cell.split("|");openCell(r,a);return;}
+  if(!ASSIGN.open)return;
+  const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===ASSIGN.open.repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===ASSIGN.open.aId);
+  if(!rep||!a)return;
+  const first=rep.Name.split(" ")[0];
+  const rv=e.target.closest("[data-review]");
+  if(rv){
+    const s=cellState(rep,a); if(!s.latest)return;
+    const fb=$("#adFb").value.trim();
+    if(rv.dataset.review==="revise"&&!fb){toast("Write the feedback first");return;}
+    await assignWrite({action:"reviewSubmission",submissionId:s.latest.SubmissionID,status:rv.dataset.review,feedback:fb},null,
+      out=>toast(out.emailed?`Sent to ${first} ✓`:`Saved · no email on file for ${first}`));
+    return;
+  }
+  if(e.target.closest("[data-remind]")){
+    await assignWrite({action:"remindAssignment",repId:rep.RepID,assignmentId:a.AssignmentID},null,
+      out=>toast(out.emailed?`Reminder sent to ${first} ✓`:`No email on file for ${first} — nothing sent`));
+    return;
+  }
+  const ov=e.target.closest("[data-override]");
+  if(ov){
+    const clear=ov.dataset.override==="clear", na=$("#adNA").checked;
+    const due=clear?"":(na?"NA":$("#adDue").value);
+    await assignWrite({action:"setOverride",repId:rep.RepID,assignmentId:a.AssignmentID,dueDate:due},clear?"Back to the default date":(na?`Marked not applicable for ${first}`:"Due date saved"));
+  }
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASSIGN.open)closeCell();});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    TAB — PERFORMANCE (the mentee dashboard, embedded)
 
    One codebase, three faces: the reps' personal ?rep= links, the standalone
@@ -1614,6 +1952,8 @@ const SECTIONS = [
   {id:"perf", label:"Performance", count:()=>"live"},
   {id:"team", label:"Mentees",
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""},
+  {id:"assign", label:"Assignments",
+   count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : ""},
   {id:"business", label:"Orders of Business",
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"}
 ];
@@ -1645,7 +1985,11 @@ const TABS = [
 
   {id:"team", label:"Mentees", sub:"", section:"team", printable:true,
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : "",
-   render:renderTeam}
+   render:renderTeam},
+
+  {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
+   count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : "",
+   render:renderAssign}
 ];
 
 const tabsIn     = sec => TABS.filter(t => t.section === sec);
@@ -2410,6 +2754,7 @@ function render(){
   const focused = document.activeElement && document.activeElement.id === "q";
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
+  if(TAB!=="assign"&&ASSIGN.open)closeCell();
   $("#view").innerHTML = editBanner() + currentTab().render();
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();

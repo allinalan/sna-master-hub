@@ -1726,16 +1726,98 @@ function assignBoardHtml(){
   h+=`<div class="alegend"><span><i class="sq open"></i> not due yet</span><span><i class="sq late"></i> overdue</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
   return h;
 }
-function assignCatalogHtml(){ return `<div class="empty-note">Catalog arrives in Task 10.</div>`; }   // Task 10 replaces this
+function assignBaseOf(progs){return progs.slice().sort((x,y)=>tierRank(x)-tierRank(y))[0]||"Path";}
+function assignCatalogHtml(){
+  const list=assignList().filter(a=>UI.assignProg==="all"||assignPrograms(a).includes(UI.assignProg));
+  let h=`<div class="no-export no-print" style="display:flex;justify-content:flex-end;gap:8px;margin:-24px 0 8px"><button class="btn sm ${ASSIGN.showArchived?"on":""}" data-assignact="archived">Show archived</button></div>`;
+  ["Dojo","Path","Masters"].forEach(p=>{
+    const rows=list.filter(a=>assignBase(a)===p);
+    h+=`<div class="sec-title">The ${p} <span class="n">${rows.length} assignment${rows.length===1?"":"s"}</span></div>`;
+    if(ASSIGN.editing&&!ASSIGN.editing.id&&assignBaseOf(ASSIGN.editing.programs)===p)h+=assignFormHtml(ASSIGN.editing);
+    if(rows.length){
+      h+=`<div class="tbl"><table class="grid acat"><thead><tr><th>Assignment</th><th>Programs</th><th>Due</th><th>Materials</th><th class="no-print no-export"></th></tr></thead><tbody>`;
+      rows.forEach(a=>{
+        if(ASSIGN.editing&&ASSIGN.editing.id===a.AssignmentID){h+=`<tr><td colspan="5">${assignFormHtml(ASSIGN.editing)}</td></tr>`;return;}
+        const arch=isArchived(a), instr=String(a.Instructions||"");
+        h+=`<tr${arch?' style="opacity:.55"':""}><td><b>${esc(a.Title)}</b>${arch?' <span class="chip">archived</span>':""}<div class="ainstr">${esc(instr.slice(0,140))}${instr.length>140?"…":""}</div></td>
+          <td>${assignPrograms(a).map(x=>`<span class="chip">${esc(x)}</span>`).join(" ")}</td>
+          <td class="dt">${dueISO(a.DueDate)?esc(fmtDueHub(dueISO(a.DueDate))):`<span style="color:var(--ink-faint)">&ndash;</span>`}</td>
+          <td class="dt">${a.MaterialsURL?`<a href="${esc(a.MaterialsURL)}" target="_blank" rel="noopener">link ↗</a>`:""}</td>
+          <td class="no-print no-export" style="white-space:nowrap"><button class="btn sm" data-assignact="edit" data-id="${esc(a.AssignmentID)}">edit</button> <button class="btn sm" data-assignact="${arch?"restore":"archive"}" data-id="${esc(a.AssignmentID)}">${arch?"restore":"archive"}</button></td></tr>`;
+      });
+      h+=`</tbody></table></div>`;
+    } else if(!(ASSIGN.editing&&!ASSIGN.editing.id&&assignBaseOf(ASSIGN.editing.programs)===p)){
+      h+=`<div class="empty-note" style="padding:16px">Nothing for The ${p} in ${esc(ASSIGN.campaign)} yet.</div>`;
+    }
+    h+=`<div class="no-export no-print" style="margin:8px 0 22px"><button class="btn sm" data-assignact="new" data-prog="${p}">+ assignment</button></div>`;
+  });
+  return h;
+}
+function assignFormHtml(f){
+  return `<div class="aform no-export no-print" id="aform">
+    <div class="ad-row">${["Dojo","Path","Masters"].map(p=>`<label style="font-size:13px"><input type="checkbox" data-prog="${p}"${f.programs.includes(p)?" checked":""}> ${p}</label>`).join("")}
+      <span class="sw-hint">ticking a base program pre-ticks the ones above it — untick any that shouldn't do this one</span></div>
+    <div class="ad-row"><label class="ad-sub">Title <input class="search" id="afTitle" value="${esc(f.title)}" placeholder="e.g. Creating Raving Fans" style="width:280px"></label>
+      <label class="ad-sub">Due <input type="date" id="afDue" value="${esc(f.dueDate||"")}"></label>
+      <label class="ad-sub">Campaign <input class="search" id="afCamp" value="${esc(f.campaign||ASSIGN.campaign)}" style="width:120px"></label></div>
+    <label class="ad-sub" style="display:grid;gap:4px">Materials link <input class="search" id="afUrl" value="${esc(f.materialsUrl||"")}" placeholder="https://…"></label>
+    <label class="ad-sub" style="display:grid;gap:4px">Instructions <textarea id="afInstr" placeholder="What to do, how to submit it, what good looks like.">${esc(f.instructions||"")}</textarea></label>
+    <div class="ad-row"><button class="btn primary" data-assignact="save"${ASSIGN.busy?" disabled":""}>${f.id?"Save":"Add assignment"}</button><button class="btn" data-assignact="cancel">Cancel</button></div>
+  </div>`;
+}
+/* one write to the web app: optimistic-free, reload after, keep the drawer open */
+async function assignWrite(body,okMsg,onOk){
+  if(ASSIGN.busy)return null;
+  if(whoAmI()==="someone")askWho(true);
+  ASSIGN.busy=true; render(); if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);
+  const out=await teamCall(Object.assign({by:whoAmI()},body)).catch(()=>({ok:false,error:"network"}));
+  ASSIGN.busy=false;
+  if(!out.ok){toast(out.error==="network"?"Couldn't reach the sheet — try again.":"Couldn't save: "+out.error);render();if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);return null;}
+  if(okMsg)toast(okMsg); if(onOk)onOk(out);
+  ASSIGN.editing=null;
+  await assignLoad(true);
+  return out;
+}
+async function assignSaveForm(){
+  const progs=[...document.querySelectorAll("#aform input[data-prog]:checked")].map(i=>i.dataset.prog);
+  const a={id:ASSIGN.editing.id,programs:progs,campaign:$("#afCamp").value.trim(),title:$("#afTitle").value.trim(),dueDate:$("#afDue").value,
+           materialsUrl:$("#afUrl").value.trim(),instructions:$("#afInstr").value.trim(),active:ASSIGN.editing.active!==false};
+  if(!progs.length)return toast("Tick at least one program");
+  if(!a.title)return toast("Give it a title");
+  if(a.materialsUrl&&!/^https?:\/\//i.test(a.materialsUrl))return toast("The materials link needs http:// or https://");
+  await assignWrite({action:"saveAssignment",a},ASSIGN.editing.id?"Saved":"Added");
+}
+function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a)};}
 function openCell(repId,aId){ /* Task 11 */ }
 function closeCell(){ ASSIGN.open=null; }
 document.addEventListener("change",e=>{
   const s=e.target.closest("select[data-assigncamp]");
   if(s){ASSIGN.campaign=s.value;ASSIGN.editing=null;render();}
 });
-document.addEventListener("click",e=>{
-  const act=e.target.closest("[data-assignact]");
-  if(act&&act.dataset.assignact==="reload"){e.preventDefault();ASSIGN.rows=null;assignLoad(true);}
+document.addEventListener("click",async e=>{
+  const act=e.target.closest("[data-assignact]"); if(!act)return;
+  e.preventDefault();
+  const k=act.dataset.assignact, find=id=>(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===id);
+  if(k==="reload"){ASSIGN.rows=null;assignLoad(true);}
+  if(k==="close")closeCell();
+  if(k==="archived"){ASSIGN.showArchived=!ASSIGN.showArchived;render();}
+  if(k==="new"){const base=act.dataset.prog||"Dojo";ASSIGN.editing={id:"",programs:["Dojo","Path","Masters"].filter(p=>tierRank(p)>=tierRank(base)),campaign:ASSIGN.campaign,title:"",instructions:"",materialsUrl:"",dueDate:"",active:true};render();const t=$("#afTitle");if(t)t.focus();}
+  if(k==="edit"){const a=find(act.dataset.id);if(a){ASSIGN.editing=editingFrom(a);render();}}
+  if(k==="cancel"){ASSIGN.editing=null;render();}
+  if(k==="save")await assignSaveForm();
+  if(k==="archive"||k==="restore"){
+    const a=find(act.dataset.id); if(!a)return;
+    const arch=k==="archive";
+    if(arch&&!confirm(`Archive "${a.Title}"? It disappears from every dashboard and the board. Submissions are kept.`))return;
+    const f=editingFrom(a); f.active=!arch;
+    await assignWrite({action:"saveAssignment",a:f},arch?"Archived":"Restored");
+  }
+});
+/* ladder pre-tick: ticking a base program ticks everything above it */
+document.addEventListener("change",e=>{
+  const cb=e.target.closest("#aform input[data-prog]"); if(!cb||!cb.checked)return;
+  const r=tierRank(cb.dataset.prog);
+  document.querySelectorAll("#aform input[data-prog]").forEach(o=>{if(tierRank(o.dataset.prog)>r)o.checked=true;});
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

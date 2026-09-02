@@ -465,6 +465,51 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
   border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);
   display:flex;flex-direction:column}
 #pickPop.hidden{display:none}
+/* ═══════════ assignments tab ═══════════ */
+table.aboard{min-width:0}
+table.aboard th.ah{text-align:center;max-width:120px;white-space:normal;vertical-align:bottom;padding:10px 6px 8px}
+table.aboard th.ah .at{font-family:var(--sans);font-size:11.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+table.aboard th.ah small{display:block;font-size:9px;color:var(--ink-faint);margin-top:3px;letter-spacing:.04em;text-transform:none}
+table.aboard td.an{white-space:nowrap}
+table.aboard td.ac{text-align:center;padding:6px}
+table.aboard tr.agrp td{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
+table.aboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.sq{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;font-family:var(--monof);font-size:13px;font-weight:600;line-height:1;color:#F4EEDF;transition:transform .12s}
+.sq:hover{transform:scale(1.08)}
+.sq.open{background:#DDAA00}
+.sq.late{background:var(--bad)}
+.sq.na{background:var(--ink)}
+.sq.waiting,.sq.revise,.sq.approved{background:var(--good)}
+.alegend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:12px 2px 0;font-size:12px;color:var(--ink-soft)}
+.alegend span{display:inline-flex;align-items:center;gap:7px}
+.alegend .sq{width:16px;height:16px;border-radius:4px;font-size:9px;cursor:default}
+.alegend .sq:hover{transform:none}
+.apill{display:inline-block;font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 8px;font-weight:500}
+.apill.open{background:var(--warn-bg);color:#7A5E06}
+.apill.late{background:var(--bad-bg);color:var(--bad)}
+.apill.waiting,.apill.revise,.apill.approved{background:var(--good-bg);color:var(--good)}
+.apill.na{background:var(--line-soft);color:var(--ink-faint)}
+.ainstr{font-size:11.5px;color:var(--ink-faint);margin-top:2px;max-width:52ch}
+.aform{background:var(--card);border:1px solid var(--line-strong);border-radius:10px;padding:14px;display:grid;gap:10px;margin-bottom:12px}
+.aform textarea,.ad-form textarea{width:100%;min-height:110px;font-family:var(--sans);font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper);resize:vertical}
+.aform input[type=date],.ad-form input[type=date]{font-family:var(--monof);font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.ad-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ad-sub{font-family:var(--monof);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);display:inline-flex;gap:8px;align-items:center}
+/* review drawer */
+.adrawer{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:96vw;background:var(--card-raised);border-left:1px solid var(--line);box-shadow:-18px 0 44px rgba(28,23,18,.22);z-index:320;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s cubic-bezier(.16,.68,.32,1)}
+.adrawer.on{transform:none}
+@media (prefers-reduced-motion:reduce){.adrawer{transition:none}}
+.ad-head{padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.ad-head .t{font-family:var(--serif);font-size:20px;font-weight:560;letter-spacing:-.01em}
+.ad-head .s{font-size:12px;color:var(--ink-soft);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ad-body{padding:16px 20px;overflow:auto;flex:1;display:grid;gap:12px;align-content:start}
+.ad-ver{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;background:var(--card)}
+.ad-ver .vh{font-family:var(--monof);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+.ad-ver .vt{white-space:pre-wrap}
+.ad-fb{margin-top:8px;border-left:3px solid var(--accent);padding:6px 10px;background:var(--accent-soft);border-radius:0 8px 8px 0}
+.ad-form{display:grid;gap:8px}
+details.ad-more{border-top:1px solid var(--line);padding-top:10px}
+details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
 .pp-head{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
 .pp-head .search{flex:1}
 .pp-list{overflow:auto;max-height:44vh;padding:6px}
@@ -534,6 +579,7 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
 </div>
 
 <div id="pickPop" class="hidden"></div>
+<div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
   <div class="modal">
     <h3 id="mTitle">Data</h3>
@@ -946,7 +992,7 @@ let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
-             tier:"all" };   // show ticked-off items too — hiding them reads as deletion
+             tier:"all", assignView:"board", assignProg:"all" };   // show ticked-off items too — hiding them reads as deletion
 
 function load(){
   let saved = null;
@@ -1389,6 +1435,15 @@ function coachNames(){
   return names.length ? names : ["Alan", "Ben"];
 }
 
+function keyGateHtml(){
+  return `<div class="empty-note" style="max-width:460px;margin:40px auto;text-align:center">
+    <div class="serif" style="font-size:20px;margin-bottom:8px">Coach access</div>
+    <div style="margin-bottom:14px">This board shows phone numbers and emails, so it stays locked.
+      Enter the coach key once — this browser will remember it.${TEAM.err ? `<div style="color:var(--red,#b3261e);margin-top:8px">${esc(TEAM.err)}</div>` : ""}</div>
+    <input class="search" id="teamKey" type="password" placeholder="coach key" style="width:240px">
+    <button class="btn primary" data-teamact="unlock">Unlock</button>
+  </div>`;
+}
 function renderTeam(){
   let html = `
   <div class="page-head no-export no-print">
@@ -1401,16 +1456,7 @@ function renderTeam(){
   </div>`;
 
   /* ── key gate ── */
-  if(!TEAM.key){
-    html += `<div class="empty-note" style="max-width:460px;margin:40px auto;text-align:center">
-      <div class="serif" style="font-size:20px;margin-bottom:8px">Coach access</div>
-      <div style="margin-bottom:14px">This board shows phone numbers and emails, so it stays locked.
-        Enter the coach key once — this browser will remember it.${TEAM.err ? `<div style="color:var(--red,#b3261e);margin-top:8px">${esc(TEAM.err)}</div>` : ""}</div>
-      <input class="search" id="teamKey" type="password" placeholder="coach key" style="width:240px">
-      <button class="btn primary" data-teamact="unlock">Unlock</button>
-    </div>`;
-    return html;
-  }
+  if(!TEAM.key) return html + keyGateHtml();
   if(TEAM.loading && !TEAM.rows){ return html + `<div class="empty-note">Fetching the roster…</div>`; }
   if(TEAM.err && !TEAM.rows){
     return html + `<div class="empty-note">${esc(TEAM.err)}
@@ -1505,13 +1551,13 @@ document.addEventListener("click", async e => {
     const v = ($("#teamKey") || {}).value || "";
     if(!v.trim()) return;
     TEAM.key = v.trim(); localStorage.setItem("sna_coach_key", TEAM.key);
-    TEAM.rows = null; teamLoad();
+    TEAM.rows = null; ASSIGN.rows = null; teamLoad();
   }
   if(kind === "reload"){ TEAM.rows = null; teamLoad(); }
   if(kind === "swretry"){ TEAM.sw = null; TEAM.swErr = ""; swLoad(); }
   if(kind === "former"){ UI.teamFormer = !UI.teamFormer; render(); }
   if(kind === "lock"){
-    TEAM.key = ""; TEAM.rows = null; localStorage.removeItem("sna_coach_key");
+    TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; localStorage.removeItem("sna_coach_key");
     render(); toast("Key forgotten on this device");
   }
 });
@@ -1589,6 +1635,110 @@ document.addEventListener("keydown", e => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   TAB — ASSIGNMENTS (coach-key gated; spec §7)
+   Board: mentee × assignment cells coloured by assignState. Catalog: the
+   per-program list the coaches edit. Drawer: read a thread, post feedback.
+   Everything round-trips through the SharpNinja web app (TEAM_API).
+   ═══════════════════════════════════════════════════════════════════════════ */
+const ASSIGN={rows:null,loading:false,err:"",loadedAt:0,campaign:"",open:null,showArchived:false,editing:null,busy:false};
+function currentCampaignLabel(){const d=new Date(),m=d.getMonth();return (m<=3?"Spring":m<=7?"Summer":"Fall")+" "+d.getFullYear();}
+const campKeyHub=c=>{const a=String(c).split(" ");return (+a[1]||0)*3+({Spring:0,Summer:1,Fall:2}[a[0]]??0);};
+async function assignLoad(force){
+  if(ASSIGN.loading||!TEAM.key)return;
+  if(!force&&ASSIGN.rows&&Date.now()-ASSIGN.loadedAt<60000)return;
+  ASSIGN.loading=true;ASSIGN.err="";render();
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const out=await teamCall({action:"assignmentBoard"});
+      if(out.ok){ASSIGN.rows=out;ASSIGN.loadedAt=Date.now();if(!ASSIGN.campaign)ASSIGN.campaign=currentCampaignLabel();break;}
+      if(out.error==="bad key"){TEAM.key="";localStorage.removeItem("sna_coach_key");TEAM.err="That key wasn't right — ask Alan for the current one.";break;}
+      ASSIGN.err=out.error||"The assignments feed said no.";break;
+    }catch(e){ASSIGN.err="Couldn't reach the assignments feed — it's usually temporary.";if(attempt<3)await new Promise(r=>setTimeout(r,attempt*3000));}
+  }
+  ASSIGN.loading=false;render();
+  if(ASSIGN.open)openCell(ASSIGN.open.repId,ASSIGN.open.aId);
+}
+function assignCampaigns(){const set=new Set([currentCampaignLabel()]);(ASSIGN.rows?ASSIGN.rows.assignments:[]).forEach(a=>{if(a.Campaign)set.add(String(a.Campaign).trim());});return [...set].sort((a,b)=>campKeyHub(b)-campKeyHub(a));}
+const isArchived=a=>String(a.Active||"Y").toUpperCase()==="N";
+function assignList(){   // catalog rows for the picked campaign, due-date order
+  return (ASSIGN.rows.assignments||[]).filter(a=>a.AssignmentID&&String(a.Campaign||"").trim()===ASSIGN.campaign)
+    .filter(a=>ASSIGN.showArchived||!isArchived(a))
+    .sort((x,y)=>String(dueISO(x.DueDate)||"9999").localeCompare(String(dueISO(y.DueDate)||"9999"))||String(x.Title||"").localeCompare(String(y.Title||"")));
+}
+function assignReps(){return (ASSIGN.rows.reps||[]).filter(r=>r.Active).sort((a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name));}
+function cellState(rep,a){return assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());}
+function assignCounts(){
+  const c={waiting:0,late:0,week:0,approved:0}; if(!ASSIGN.rows)return c;
+  const weekAgo=new Date(Date.now()-7*86400000).toISOString();
+  const live=assignList().filter(a=>!isArchived(a));
+  assignReps().forEach(r=>live.forEach(a=>{const s=cellState(r,a);
+    if(s.state==="waiting")c.waiting++; if(s.state==="late")c.late++; if(s.state==="approved")c.approved++;
+    s.versions.forEach(v=>{if(String(v.SubmittedAt||"")>=weekAgo)c.week++;});}));
+  return c;
+}
+function fmtDueHub(iso){const p=String(iso||"").split("-");return p.length<3?String(iso||""):MONTHS[+p[1]-1]+" "+(+p[2]);}
+const CELL_GLYPH={waiting:"●",revise:"✎",approved:"✓",open:"",late:"",na:""};
+const CELL_TITLE={open:"not submitted",late:"OVERDUE",waiting:"submitted · waiting on you",revise:"feedback posted · waiting on them",approved:"approved",na:"not applicable"};
+
+function renderAssign(){
+  let html=`<div class="page-head no-export no-print"><div>
+    <div class="eyebrow">Homework, both directions</div><div class="big serif">Assignments</div>
+    <div class="lede">What each program owes this campaign, who has turned it in, and your critiques. Mentees submit from their dashboard; everything you post here lands on theirs.</div></div></div>`;
+  if(!TEAM.key)return html+keyGateHtml();
+  if(!ASSIGN.rows){
+    if(!ASSIGN.loading&&!ASSIGN.err)assignLoad(true);
+    return html+(ASSIGN.err?`<div class="empty-note">${esc(ASSIGN.err)}<div style="margin-top:10px"><button class="btn" data-assignact="reload">Try again</button></div></div>`
+                           :`<div class="empty-note">Fetching assignments…</div>`);
+  }
+  const c=assignCounts();
+  html+=toolbar(`<div class="tb-filters">
+      ${seg("assignView",[{v:"board",l:"Board"},{v:"catalog",l:"Catalog"}],UI.assignView)}
+      <select class="btn sm" data-assigncamp style="padding:5px 8px">${assignCampaigns().map(x=>`<option${x===ASSIGN.campaign?" selected":""}>${esc(x)}</option>`).join("")}</select>
+      ${seg("assignProg",[{v:"all",l:"All"},{v:"Dojo",l:"Dojo"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}],UI.assignProg)}
+    </div>
+    <div class="tb-actions"><button class="btn" data-assignact="reload" title="Re-pull from the sheet">Refresh</button>${exportButtons("assignBoard","Assignments")}</div>`);
+  html+=`<div id="assignBoard" class="export-frame">`;
+  html+=printHead("Assignments · "+ASSIGN.campaign,`${c.waiting} waiting on a coach · printed ${fmtFull(todayISO())}`);
+  html+=`<div class="stats">${statBox("Waiting on you",c.waiting,c.waiting?"open a cell to review":"inbox clear",c.waiting>0)}${statBox("Overdue",c.late,"not in, past due",c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
+  html+=UI.assignView==="board"?assignBoardHtml():assignCatalogHtml();
+  html+=`</div>`;
+  return html;
+}
+function assignBoardHtml(){
+  const list=assignList().filter(a=>!isArchived(a)).filter(a=>UI.assignProg==="all"||assignPrograms(a).includes(UI.assignProg));
+  const reps=assignReps().filter(r=>UI.assignProg==="all"||r.Tier===UI.assignProg);
+  if(!list.length)return `<div class="empty-note">No assignments for ${esc(ASSIGN.campaign)} yet — switch to Catalog to add one.</div>`;
+  let h=`<div class="tbl"><table class="grid aboard"><thead><tr><th>Mentee</th>${list.map(a=>{
+      const d=dueISO(a.DueDate);
+      return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignBase(a)[0])} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
+  let lastTier="";
+  reps.forEach(r=>{
+    if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}">The ${esc(r.Tier)}</td></tr>`;}
+    let inN=0,appN=0;
+    h+=`<tr><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span></td>`;
+    list.forEach(a=>{
+      const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
+      h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
+    });
+    h+=`<td class="tot">${inN}/${appN} in</td></tr>`;
+  });
+  h+=`</tbody></table></div>`;
+  h+=`<div class="alegend"><span><i class="sq open"></i> not due yet</span><span><i class="sq late"></i> overdue</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
+  return h;
+}
+function assignCatalogHtml(){ return `<div class="empty-note">Catalog arrives in Task 10.</div>`; }   // Task 10 replaces this
+function openCell(repId,aId){ /* Task 11 */ }
+function closeCell(){ ASSIGN.open=null; }
+document.addEventListener("change",e=>{
+  const s=e.target.closest("select[data-assigncamp]");
+  if(s){ASSIGN.campaign=s.value;ASSIGN.editing=null;render();}
+});
+document.addEventListener("click",e=>{
+  const act=e.target.closest("[data-assignact]");
+  if(act&&act.dataset.assignact==="reload"){e.preventDefault();ASSIGN.rows=null;assignLoad(true);}
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    TAB — PERFORMANCE (the mentee dashboard, embedded)
 
    One codebase, three faces: the reps' personal ?rep= links, the standalone
@@ -1654,6 +1804,8 @@ const SECTIONS = [
   {id:"perf", label:"Performance", count:()=>"live"},
   {id:"team", label:"Mentees",
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""},
+  {id:"assign", label:"Assignments",
+   count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : ""},
   {id:"business", label:"Orders of Business",
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"}
 ];
@@ -1685,7 +1837,11 @@ const TABS = [
 
   {id:"team", label:"Mentees", sub:"", section:"team", printable:true,
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : "",
-   render:renderTeam}
+   render:renderTeam},
+
+  {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
+   count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : "",
+   render:renderAssign}
 ];
 
 const tabsIn     = sec => TABS.filter(t => t.section === sec);
@@ -2450,6 +2606,7 @@ function render(){
   const focused = document.activeElement && document.activeElement.id === "q";
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
+  if(TAB!=="assign"&&ASSIGN.open)closeCell();
   $("#view").innerHTML = editBanner() + currentTab().render();
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();

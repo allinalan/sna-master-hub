@@ -52,6 +52,7 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | Plan a week | Click the "+ open — click to plan" line |
 | Move a call to a different night | Click that call's date and pick the night — see below |
 | Change a call's time | Click its time and pick one — all times are Central |
+| Change who's on a call | Click the name chip and pick — Alan, Ben, both, or any wording already in use |
 | Move every call's time at once | Click the standing time in the line under the page title |
 | Remove a week entirely | `×` next to the weekday |
 | Add a track, 2nd call, note, or long detail to a week | The small `+ track` / `+ 2nd call` / `+ note` / `+ detail` buttons under it |
@@ -108,6 +109,19 @@ sideways, and the week the call already sits in is shaded so you can see where i
 `‹` and `›` change month. Today has a ring around it. Where it makes sense the footer
 offers a shortcut — **Today**, **Clear**, or, on an added call, **On the week's night**,
 which drops the call back onto whatever night its week runs.
+
+### Who's on the call
+
+**Presenters are picked too.** Click the name chip on any call — **Alan**, **Ben** and
+**Alan & Ben** sit at the top, and everything already in use on the board is listed
+underneath: `Ben (no Alan)`, `Alan (Ben tiny part)`, `Alan–Ben (hunting)` and the rest,
+spelled exactly the way they already are. The shades matter, so the picker keeps them
+rather than flattening every call to one of three names. Clearing puts a call back to
+**TBD**, and the Host TBD count at the top of the board follows.
+
+The same chip does the job on the **Call Archive**, and on **Orders of Business** — where
+it says who owns an item, offers just Alan and Ben, and works without turning Edit on,
+same as the due date beside it.
 
 ### Moving a call
 

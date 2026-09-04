@@ -555,7 +555,7 @@ table.grid tr.grp:hover td{background:var(--paper-deep)}
    green = call · purple = 1-1 call · blue = voice note / texts · red = missed ·
    black = not needed. Blank squares are outlined; a past blank goes dashed. */
 #ciBoard table.grid{min-width:0}
-table.ciboard th.cw{text-align:center;padding:10px 3px 8px;min-width:34px}
+table.ciboard th.cw{text-align:center;padding:10px 3px 8px;min-width:44px}
 table.ciboard th.cw .wn{display:block;font-size:8.5px;color:var(--ink-faint);letter-spacing:.12em}
 table.ciboard th.cw .wd{display:block;font-family:var(--monof);font-size:9.5px;color:var(--ink-soft);letter-spacing:.02em;text-transform:none;margin-top:2px}
 table.ciboard th.cw.cur .wn,table.ciboard th.cw.cur .wd{color:var(--accent);font-weight:600}
@@ -667,7 +667,7 @@ const SEED = {
   },
 
   /* ── Weekly check-ins (Mentees ▸ Weekly Check-ins) ─────────────────────
-     checkins[campaign][RepID][mondayISO] = "yes" | "one" | "text" | "no" | "off"
+     checkins[campaign][RepID][tuesdayISO] = "yes" | "one" | "text" | "no" | "off"   (Vector week, Tue–Mon)
      Keyed by campaign so each one starts from a clean board while the old
      ones stay readable. Lives here in the shared hub data rather than the
      private roster sheet so both coaches see every mark. */
@@ -1686,29 +1686,35 @@ const CI_STATES = {
 const CI_ORDER = ["yes", "one", "text", "no", "off"];
 const CI_DONE  = new Set(["yes", "one", "text"]);      // all three count as "checked in"
 
-/* ── weeks run Mon–Sun. A week belongs to the campaign its Thursday falls in
-   (the majority rule ISO weeks use), so the week that straddles a campaign
-   boundary lands in exactly one campaign instead of showing up on both. ── */
+/* ── weeks are Vector weeks: Tuesday through Monday. A week is keyed by its
+   Tuesday and belongs to the campaign its Friday (the week's middle day)
+   falls in, so the week straddling a campaign boundary lands on exactly one
+   board. Fall 2026 therefore opens with Wk 1 = 9/1–9/7, and a campaign whose
+   1st lands late in a week starts the following Tuesday. ── */
 const isoOf = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-function mondayOf(d){
+function weekStartOf(d){                      // the Tuesday on or before d
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  x.setDate(x.getDate() - ((x.getDay() + 5) % 7));
   return x;
 }
 function campaignLabelOf(d){ const m = d.getMonth(); return (m <= 3 ? "Spring" : m <= 7 ? "Summer" : "Fall") + " " + d.getFullYear(); }
-function weekCampaign(monISO){ const t = parseDate(monISO); t.setDate(t.getDate() + 3); return campaignLabelOf(t); }
+function weekCampaign(tueISO){ const t = parseDate(tueISO); t.setDate(t.getDate() + 3); return campaignLabelOf(t); }
 function campaignWeeks(label){
   const [season, y] = String(label).split(" ");
   const first = {Spring:0, Summer:4, Fall:8}[season], yr = Number(y);
   if(first === undefined || !yr) return [];
-  const d = mondayOf(new Date(yr, first, 1));
+  const d = weekStartOf(new Date(yr, first, 1));
   if(weekCampaign(isoOf(d)) !== label) d.setDate(d.getDate() + 7);   // that week belongs to the campaign before
   const out = [];
   while(weekCampaign(isoOf(d)) === label){ out.push(isoOf(d)); d.setDate(d.getDate() + 7); }
   return out;
 }
-const thisMonday   = () => isoOf(mondayOf(new Date()));
-const thisCampaign = () => weekCampaign(thisMonday());
+const thisWeekStart = () => isoOf(weekStartOf(new Date()));
+const thisCampaign  = () => weekCampaign(thisWeekStart());
+/* "9/1–9/7" — the way the campaign calendar is read out loud */
+const fmtMD = d => (d.getMonth() + 1) + "/" + d.getDate();
+function weekRange(tueISO){ const a = parseDate(tueISO), b = new Date(a); b.setDate(b.getDate() + 6); return fmtMD(a) + "–" + fmtMD(b); }
+function weekLabel(camp, tueISO){ const i = campaignWeeks(camp).indexOf(tueISO); return (i < 0 ? "Week" : "Wk " + (i + 1)) + " · " + weekRange(tueISO); }
 
 /* campaigns worth showing: the current one, plus any that have marks */
 function ciCampaigns(){
@@ -1737,7 +1743,7 @@ function setCheckin(camp, rep, week, state){
 }
 /* this week, everyone eligible, no filters — feeds the tab-bar count */
 function ciWeekTally(){
-  const mon = thisMonday(), camp = thisCampaign();
+  const mon = thisWeekStart(), camp = thisCampaign();
   let open = 0, done = 0;
   const rows = ciEligible();
   for(const r of rows){ const s = getCheckin(camp, r.RepID, mon); if(CI_DONE.has(s)) done++; else if(!s) open++; }
@@ -1750,7 +1756,7 @@ function renderCheckins(){
     <div>
       <div class="eyebrow">Week by week</div>
       <div class="big serif">Weekly Check-ins</div>
-      <div class="lede">One square per mentee per week — click it to say how that week's check-in went.
+      <div class="lede">One square per mentee per Vector week (Tuesday to Monday) — click it to say how that week's check-in went.
         Only The Path and The Masters get check-in calls, so The Dojo isn't on this board.
         The board starts clean every campaign; older campaigns stay in the picker.</div>
     </div>
@@ -1759,7 +1765,7 @@ function renderCheckins(){
   const gate = teamGateHtml(html);
   if(gate) return gate;
 
-  const todayMon = thisMonday(), nowCamp = thisCampaign();
+  const todayMon = thisWeekStart(), nowCamp = thisCampaign();
   const camps = ciCampaigns();
   if(!camps.includes(UI.ciCampaign)) UI.ciCampaign = nowCamp;
   const camp = UI.ciCampaign, isNow = camp === nowCamp;
@@ -1802,7 +1808,7 @@ function renderCheckins(){
   html += `<div id="ciBoard" class="export-frame">`;
   html += printHead("Weekly Check-ins · " + camp, `${visible.length} mentees · printed ${fmtFull(todayISO())}`);
   html += `<div class="stats">
-    ${isNow ? statBox("This week", wkDone + "/" + visible.length, "checked in so far · week of " + fmtDate(todayMon))
+    ${isNow ? statBox("This week", wkDone + "/" + visible.length, "checked in so far · " + weekLabel(camp, todayMon))
             : statBox("Campaign", camp, weeks.length + " weeks")}
     ${isNow ? statBox("Still open this week", wkOpen, wkOpen ? "no mark yet" : "everyone's marked", wkOpen > 0)
             : statBox("Checked in", done, "green, purple or blue")}
@@ -1816,7 +1822,7 @@ function renderCheckins(){
   else{
     html += `<div class="tbl"><table class="grid ciboard"><thead><tr><th>Mentee</th>${weeks.map((w, i) => {
       const d = parseDate(w), e = new Date(d); e.setDate(e.getDate() + 6);
-      return `<th class="cw${w === todayMon ? " cur" : ""}" title="Week ${i + 1} · ${fmtDate(w)} – ${fmtDate(isoOf(e))}"><span class="wn">W${i + 1}</span><span class="wd">${MONTHS[d.getMonth()]} ${d.getDate()}</span></th>`;
+      return `<th class="cw${w === todayMon ? " cur" : ""}" title="Week ${i + 1} · ${fmtDay(w)} ${fmtDate(w)} – ${fmtDay(isoOf(e))} ${fmtDate(isoOf(e))}"><span class="wn">Wk ${i + 1}</span><span class="wd">${weekRange(w)}</span></th>`;
     }).join("")}<th></th></tr></thead><tbody>`;
     for(const g of groups){
       if(g.label) html += `<tr class="grp"><td colspan="${weeks.length + 2}">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
@@ -1830,7 +1836,7 @@ function renderCheckins(){
           const cls = s ? s : "blank" + (cur ? " cur" : past ? " due" : " fut");
           const st = CI_STATES[s];
           html += `<td class="cc${cur ? " cur" : ""}"><button class="ci ${cls}" data-ci="${esc(camp)}|${esc(r.RepID)}|${w}"
-            title="${esc(r.Name)} · week of ${fmtDate(w)} · ${st ? st.label : "not marked yet"}">${st ? st.glyph : ""}</button></td>`;
+            title="${esc(r.Name)} · ${weekLabel(camp, w)} · ${st ? st.label : "not marked yet"}">${st ? st.glyph : ""}</button></td>`;
         }
         html += `<td class="tot" title="checked in / weeks that needed one, so far">${rd}/${rn}</td></tr>`;
       }
@@ -1850,9 +1856,8 @@ function openCiPop(btn){
   if(!row) return;
   CI_OPEN = {camp, rep, week};
   const cur = getCheckin(camp, rep, week);
-  const d = parseDate(week), e = new Date(d); e.setDate(e.getDate() + 6);
   const pop = $("#ciPop");
-  pop.innerHTML = `<div class="cp-head"><b>${esc(row.Name)}</b>${fmtDate(week)} – ${fmtDate(isoOf(e))} · ${esc(camp)}</div>` +
+  pop.innerHTML = `<div class="cp-head"><b>${esc(row.Name)}</b>${esc(weekLabel(camp, week))} · ${esc(camp)}</div>` +
     CI_ORDER.map(k => `<button class="cp-opt${cur === k ? " on" : ""}" data-cistate="${k}"><i class="ci ${k}">${CI_STATES[k].glyph}</i><span>${CI_STATES[k].label}<small>${CI_STATES[k].hint}</small></span></button>`).join("") +
     `<button class="cp-opt" data-cistate=""><i class="ci blank"></i><span>Clear<small>back to not marked</small></span></button>`;
   pop.classList.remove("hidden");
@@ -1872,7 +1877,7 @@ document.addEventListener("click", e => {
     const row = (TEAM.rows || []).find(r => r.RepID === rep);
     setCheckin(camp, rep, week, st);
     closeCiPop(); render();
-    toast(`${row ? row.Name.split(" ")[0] : rep} · ${fmtDate(week)} · ${st ? CI_STATES[st].label : "cleared"}`);
+    toast(`${row ? row.Name.split(" ")[0] : rep} · ${weekLabel(camp, week)} · ${st ? CI_STATES[st].label : "cleared"}`);
     return;
   }
   const pop = $("#ciPop");

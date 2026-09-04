@@ -129,8 +129,14 @@ A week belongs to the campaign its **Friday** (the week's middle day) falls in
 (Spring Jan–Apr · Summer May–Aug · Fall Sep–Dec), so the week that straddles a campaign
 boundary shows up on exactly one board: Fall 2026 opens with Wk 1 = 9/1–9/7 and runs 17
 weeks to 12/22–12/28. If Vector ever counts a boundary week differently, `weekCampaign()`
-in `index.html` is the one place that decides. The current week's column is highlighted; a past
-week left blank gets a dashed outline so an unrecorded check-in is easy to spot.
+in `index.html` is the one place that decides. A month band runs across the top of the board.
+Vector months aren't calendar months: each month of a campaign is **four weeks** and the
+campaign's last month takes what's left, so Fall is Sep · Wk 1–4, Oct · Wk 5–8, Nov · Wk 9–12,
+Dec · Wk 13–17 (Wk 13 starts 11/24 but counts as December). A heavier rule marks where each
+month starts and alternate months are faintly shaded. `MONTH_SPLIT` in `index.html` holds the
+split per campaign length; an 18-week campaign currently gives its last month six weeks —
+change that line if the Vector calendar says otherwise. The current week's column is
+highlighted; a past week left blank gets a dashed outline so an unrecorded check-in is easy to spot.
 
 The stat strip counts what's on screen after filters: this week's tally, how many squares
 are still blank this week, red squares this campaign, and coverage (green + purple + blue,

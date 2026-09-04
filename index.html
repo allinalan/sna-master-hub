@@ -488,6 +488,16 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
 .dp-hint{font-family:var(--monof);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--ink-faint);text-align:center;padding:2px 10px 8px}
 .dp-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line);flex-wrap:wrap}
+/* the time picker — every call time is Central, so the popup says so once */
+#timePop{position:fixed;z-index:320;width:178px;max-width:94vw;background:var(--card,#fff);
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
+#timePop.hidden{display:none}
+.tp-list{overflow:auto;max-height:46vh;padding:5px}
+.tp-item{display:block;width:100%;text-align:left;background:none;border:1px solid transparent;
+  border-radius:7px;cursor:pointer;font-family:var(--monof);font-size:11.5px;padding:5px 9px;color:var(--ink)}
+.tp-item:hover{background:var(--paper-deep,#f1ede4)}
+.tp-item.hour{font-weight:700}
+.tp-item.on{background:var(--accent);color:#fff;font-weight:700}
 /* the thing you click to open it — a dashed outline says "this is settable" */
 .dpick{font:inherit;color:inherit;background:none;border:1px dashed transparent;border-radius:6px;
   cursor:pointer;padding:1px 5px;text-align:left}
@@ -688,6 +698,7 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 
 <div id="pickPop" class="hidden"></div>
 <div id="datePop" class="hidden"></div>
+<div id="timePop" class="hidden"></div>
 <div id="ciPop" class="hidden" role="dialog" aria-label="Mark this week's check-in"></div>
 <div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
@@ -719,7 +730,7 @@ const SEED = {
     sheetUrl: "https://docs.google.com/spreadsheets/d/1-GS8NfuURZFTqLI9qSjT6TcBj4VeTFr79j1gPYt8HsA/edit",
     dashboardUrl: "https://allinalan.github.io/sna-dashboard/",
     snapshot: "2026-08-18",
-    callTime: "10AM Central Time"   // the standing time; any week can override it
+    callTime: "10:00"   // the standing time, Central, 24h — any week can override it
   },
 
   /* ── Weekly check-ins (Mentees ▸ Weekly Check-ins) ─────────────────────
@@ -1166,11 +1177,18 @@ function migrate(d){
       const iso = readCallDate(x.day, r.date);
       if(iso){ x.date = iso; delete x.day; }
     });
+    /* canonical times (2026-09-04): "10AM Central Time" and "7PM" become
+       "10:00" and "19:00". Anything that won't read as a time stays put. */
+    for(const c of [r, ...r.extra]){
+      const t = parseTimeText(c.time);
+      if(t) c.time = t;
+    }
   });
   // meta gains fields over time (callTime, …). It already exists on any saved
   // board, so the loop above skips it — backfill its new keys individually or a
   // board saved before a field existed comes back blank instead of defaulted.
   if(d.meta) for(const k of Object.keys(base.meta)) if(!(k in d.meta)) d.meta[k] = base.meta[k];
+  if(d.meta){ const t = parseTimeText(d.meta.callTime); if(t) d.meta.callTime = t; }
   ensureYears(d);
   return d;
 }
@@ -1336,6 +1354,30 @@ function callDateOf(r, x){ return (x && String(x.date || "").trim()) || r.date; 
 /* A field that has held free text in the past ("last spring") reads as a date
    when it can and stays itself when it can't, so nobody's note is lost. */
 function dateISO(v){ const i = dueISO(v); return i === "NA" ? "" : i; }
+
+/* ── call times ────────────────────────────────────────────────────────
+   Every call time in the hub is CENTRAL, and stored canonically as 24-hour
+   "HH:MM" so two boards can't disagree about what "7PM" meant. Text that
+   won't read as a time is kept exactly as written rather than thrown away. */
+function parseTimeText(v){
+  const s = String(v == null ? "" : v).trim().toLowerCase();
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b/.exec(s);
+  if(!m) return "";
+  let h = Number(m[1]);
+  const mi = m[2] ? Number(m[2]) : 0;
+  const ap = (m[3] || "").replace(/\./g, "");
+  if(ap === "pm" && h < 12) h += 12;
+  if(ap === "am" && h === 12) h = 0;
+  if(h > 23 || mi > 59) return "";
+  return String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0");
+}
+function fmtTime(v){
+  const s = String(v == null ? "" : v).trim();
+  const m = /^(\d{2}):(\d{2})$/.exec(s);
+  if(!m) return s;                                  // free text — show it as whoever wrote it meant it
+  const h = Number(m[1]);
+  return (h % 12 || 12) + ":" + m[2] + " " + (h < 12 ? "AM" : "PM") + " CT";
+}
 function fmtMaybeDate(v){ const i = dateISO(v); return i ? fmtFull(i) : String(v == null ? "" : v); }
 function isLiveCall(x){ return !!(String(x.topic || "").trim() || String(x.speaker || "").trim()); }
 
@@ -2645,9 +2687,11 @@ function renderCalendar(){
       <div class="lede">Every call night of the year. This year and next are always here —
         the board rolls itself forward, so Spring is plannable months ahead. Turn on
         <b>Edit</b> to plan straight into the page, then <b>Export PNG</b> for a clean image.</div>
-      <div class="lede" style="margin-top:6px">Calls run at <b>${ed("meta.callTime", callTime(), "", "set a time")}</b>
-        — click it in <b>Edit</b> to change every night at once, or give one week its own
-        time with <b>+ time</b>.</div>
+      <div class="lede" style="margin-top:6px">Calls run at <b>${
+        EDITING ? tbtn("meta.callTime", callTime(), {ph:"set a time", title:"The standing time for every call (Central)"})
+                : esc(fmtTime(callTime()) || "no set time")}</b>
+        — in <b>Edit</b>, click it to move every call at once, or click any single call's
+        time to give that one its own. Every time on this board is Central.</div>
       <div class="lede" style="margin-top:6px">Nothing is stuck on a Tuesday. In <b>Edit</b>, every call
         on a week has its own date — <b>click it and pick the night off the calendar</b>. Each row of that
         calendar is a Vector week, Tue&nbsp;→&nbsp;Mon. The first call's date moves the whole week; any
@@ -2659,7 +2703,7 @@ function renderCalendar(){
         <div class="nc-lab">Next call night</div>
         <div class="nc-date">${fmtDay(next.date)} · ${fmtDate(next.date)}</div>
         <div class="nc-topic">${next.planned ? esc(next.topic) : `<span class="nc-open">open — nothing planned yet</span>`}</div>
-        <div class="nc-meta">${(next.time || callTime()) ? `<span class="nc-time">${esc(next.time || callTime())}</span>` : ""}${
+        <div class="nc-meta">${(next.time || callTime()) ? `<span class="nc-time">${esc(fmtTime(next.time || callTime()))}</span>` : ""}${
           next.presenter ? `<span class="chip ${presenterClass(next.presenter)}">${esc(next.presenter)}</span>` : ""}</div>
       </div>`;
     })()}
@@ -2682,7 +2726,7 @@ function renderCalendar(){
   html += `<div id="calBoard" class="export-frame">`;
   html += printHead(scopeName + " Campaign Calendar",
       `${planned} of ${scope.length} weeks planned · ${open} open${
-        callTime() ? " · calls at " + esc(callTime()) : ""} · printed ${fmtFull(todayISO())}`);
+        callTime() ? " · calls at " + esc(fmtTime(callTime())) : ""} · printed ${fmtFull(todayISO())}`);
 
   html += `<div class="stats">
     ${statBox("Weeks planned", planned + " / " + scope.length, Math.round(planned/(scope.length||1)*100) + "% of " + (UI.season==="all"? UI.year : UI.season))}
@@ -2741,9 +2785,13 @@ function weekRow(r, idx, wkNum){
   const liveExtras = (r.extra || []).filter(isLiveCall);
   const nCalls = (planned ? 1 : 0) + liveExtras.length;
 
-  const stime = (path, val, fallback) =>
-    EDITING ? `<span class="stime">${ed(path, val, "", "time?")}</span>`
-            : (String(val || fallback || "").trim() ? `<span class="stime">${esc(val || fallback)}</span>` : "");
+  const stime = (path, val, fallback) => {
+    if(EDITING) return tbtn(path, val, {cls:"stime", fallback,
+      title: fallback ? "Pick this call's time — blank means the standing " + fmtTime(fallback)
+                      : "Pick this call's time (Central)"});
+    const shown = fmtTime(val || fallback);
+    return shown ? `<span class="stime">${esc(shown)}</span>` : "";
+  };
   /* Every call gets its own night. In Edit mode each slot opens with a clickable
      date — the main call's IS the week's, so retyping it moves the week; an extra
      call keeps its own. With Edit off the chip only shows on a call that has
@@ -3568,7 +3616,11 @@ function openDatePicker(el){
   DP = {kind:el.dataset.datepick, path:el.dataset.path || "", iso, anchor:el.dataset.anchor || "",
         month:(iso || el.dataset.anchor || todayISO()).slice(0, 7), el};
   paintDatePicker();
-  const pop = $("#datePop"), r = el.getBoundingClientRect();
+  popAt($("#datePop"), el);
+}
+/* park a popup under whatever was clicked, kept on screen */
+function popAt(pop, el){
+  const r = el.getBoundingClientRect();
   pop.style.top  = Math.max(10, Math.min(window.innerHeight - pop.offsetHeight - 12, r.bottom + 6)) + "px";
   pop.style.left = Math.max(10, Math.min(window.innerWidth  - pop.offsetWidth  - 12, r.left)) + "px";
 }
@@ -3679,9 +3731,84 @@ document.addEventListener("click", e => {
   }
   if(e.target.closest("[data-dpclose]") || !pop.contains(e.target)) closeDatePicker();
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE TIME PICKER — every call time in the hub, in Central
+   Same deal as the dates: a button says what it sets, you click a time off a
+   list, nobody types anything. Quarter-hour steps around the clock, opened
+   scrolled to the time it's on now.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let TP = null;                                     // {path, val, fallback}
+
+function tbtn(path, val, opts){
+  const o = opts || {};
+  const shown = val ? fmtTime(val) : "";
+  const ghost = !shown && o.fallback ? fmtTime(o.fallback) : "";     // what it inherits, shown faintly
+  return `<button type="button" class="dpick ${o.cls || ""}${shown ? "" : " empty"}" data-timepick="1"
+    data-path="${esc(path)}" data-val="${esc(val || "")}"${o.fallback ? ` data-fallback="${esc(o.fallback)}"` : ""
+    } title="${esc(o.title || "Pick a time — all call times are Central")}">${esc(shown || ghost || o.ph || "time?")}</button>`;
+}
+function openTimePicker(el){
+  TP = {path:el.dataset.path, val:el.dataset.val || "", fallback:el.dataset.fallback || ""};
+  const cur = TP.val || TP.fallback || "09:00";
+  let items = "";
+  for(let m = 0; m < 24 * 60; m += 15){
+    const v = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+    items += `<button type="button" class="tp-item${m % 60 === 0 ? " hour" : ""}${v === TP.val ? " on" : ""}" data-tpval="${v}">${esc(fmtTime(v))}</button>`;
+  }
+  /* what clearing MEANS depends on what the field falls back to: the main call
+     inherits the standing time, an added call simply shows no time at all. */
+  const foot = [];
+  if(TP.val) foot.push(`<button class="btn sm" data-tpclear="1">${
+    TP.path === "meta.callTime" ? "Clear"
+      : TP.fallback ? "Standing time \u00b7 " + esc(fmtTime(TP.fallback))
+      : "No set time"}</button>`);
+
+  const pop = $("#timePop");
+  pop.innerHTML = `<div class="dp-head"><span class="m">Central time</span>
+      <button class="dp-nav" data-tpclose="1" title="Close">\u2715</button></div>
+    <div class="tp-list">${items}</div>
+    ${foot.length ? `<div class="dp-foot">${foot.join("")}</div>` : ""}`;
+  pop.classList.remove("hidden");
+  popAt(pop, el);
+  const list = pop.querySelector(".tp-list");
+  const sel  = pop.querySelector(".tp-item.on") || pop.querySelector(`[data-tpval="${cur}"]`);
+  if(sel) list.scrollTop = sel.offsetTop - list.clientHeight / 2 + sel.offsetHeight / 2;
+}
+function closeTimePicker(){ $("#timePop").classList.add("hidden"); TP = null; }
+
+function applyTimePick(v){
+  const t = TP;
+  if(!t) return;
+  closeTimePicker();
+  const {node, key} = parentOf(t.path);
+  if(!node) return;
+  /* the standing time is a real setting — it empties rather than disappearing,
+     or migrate() would hand it back from the seed on the next load */
+  if(!v && t.path === "meta.callTime") node[key] = "";
+  else if(!v) delete node[key];
+  else node[key] = v;
+  save(); render();
+  toast(v ? "Calls at " + fmtTime(v)
+          : t.path === "meta.callTime" ? "Standing time cleared"
+          : t.fallback ? "Back on the standing time \u2014 " + fmtTime(t.fallback)
+          : "No time on this call now");
+}
+
+document.addEventListener("click", e => {
+  const open = e.target.closest("[data-timepick]");
+  if(open){ e.preventDefault(); openTimePicker(open); return; }
+  const pop = $("#timePop");
+  if(pop.classList.contains("hidden")) return;
+  const hit = e.target.closest("[data-tpval]");
+  if(hit){ applyTimePick(hit.dataset.tpval); return; }
+  if(e.target.closest("[data-tpclear]")){ applyTimePick(""); return; }
+  if(e.target.closest("[data-tpclose]") || !pop.contains(e.target)) closeTimePicker();
+});
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("#pickPop").classList.contains("hidden")) closePicker();
   if(e.key === "Escape" && !$("#datePop").classList.contains("hidden")) closeDatePicker();
+  if(e.key === "Escape" && !$("#timePop").classList.contains("hidden")) closeTimePicker();
 });
 
 /* ── clicks ───────────────────────────────────────────────────────────── */

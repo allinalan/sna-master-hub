@@ -51,6 +51,8 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 |---|---|
 | Plan a week | Click the "+ open — click to plan" line |
 | Move a call to a different night | Click that call's date and pick the night — see below |
+| Change a call's time | Click its time and pick one — all times are Central |
+| Move every call's time at once | Click the standing time in the line under the page title |
 | Remove a week entirely | `×` next to the weekday |
 | Add a track, 2nd call, note, or long detail to a week | The small `+ track` / `+ 2nd call` / `+ note` / `+ detail` buttons under it |
 | Wipe a week back to open | `clear` on that week |
@@ -79,12 +81,25 @@ Filters across the top: **Everything** (the default), **Hide done**, **Has a dat
 **Done only**, plus Alan / Ben / Unassigned. Sections sort open items first, soonest
 date first, undated last, done at the bottom.
 
-### Dates are picked, never typed
+### Dates and times are picked, never typed
 
 **Every date in the hub is a button.** Click it and a small calendar opens — pick the day
 and you're done. Nothing anywhere asks you to type a date: not call nights, not due dates
 on Orders of Business, not "last asked" on the guest bench, not the due dates in
 Assignments.
+
+**Times work the same way, and they are all Central.** Click any call's time and pick one
+off the list — quarter-hour steps around the clock, opened scrolled to whatever it's on
+now, every entry labelled `CT`. Times are stored as plain 24-hour values behind the
+scenes, so Alan's board and Ben's can never disagree about what "7PM" meant.
+
+There are two levels:
+
+- **The standing time**, in the line under the page title. Change it and every call moves
+  with it — that's the one to touch when the whole programme shifts an hour.
+- **One call's time.** Click the time on that call. The footer says what clearing it does:
+  the first call on a week goes back to the standing time; an added call simply shows no
+  time at all, which is what it does today when you never set one.
 
 The calendar's columns run **Tue → Mon**, so **every row of it is one Vector week** — the
 same week the check-in board counts in. Moving a call inside its own week is one step

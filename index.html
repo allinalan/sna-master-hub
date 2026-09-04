@@ -544,6 +544,9 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;l
 .sw-toggle[disabled]{opacity:.55;cursor:default}
 .sw-toggle:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
 
+/* ── Dojo rows: no coach picker, just the rule ── */
+.nocoach{font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+.chip.stale{border-style:dashed;background:transparent;color:var(--ink-faint)}
 /* ── labelled filter groups (Mentees) + grouped board rows ── */
 .fgroup{display:flex;align-items:center;gap:7px}
 .flab{font-family:var(--monof);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
@@ -1522,12 +1525,21 @@ function programOf(r){
   return /dojo/i.test(s) ? "Dojo" : /master/i.test(s) ? "Masters" : /path/i.test(s) ? "Path" : "";
 }
 function coachOf(r){ return String(r.Coach || "").trim().split(" ")[0]; }
+/* The Dojo doesn't get check-in calls, so nobody there is assigned a coach —
+   that happens the day they graduate to The Path. Everyone else (Path,
+   Masters, and anyone whose program is blank) is expected to have one. */
+function needsCoach(r){ return programOf(r) !== "Dojo"; }
 
 /* Program and coach filters are multi-select: an empty list means "everyone",
    two programs lit means "those two side by side". Coach "none" = unassigned. */
 function passesFilters(r, progs, coaches){
   if(progs.length && !progs.includes(programOf(r))) return false;
-  if(coaches.length && !coaches.includes(coachOf(r) || "none")) return false;
+  if(coaches.length){
+    const c = coachOf(r);
+    /* "Unassigned" means "needs a coach and hasn't got one" — a Dojo row
+       without a coach is correct, not a gap, so it only shows under All */
+    if(!(c ? coaches.includes(c) : coaches.includes("none") && needsCoach(r))) return false;
+  }
   return true;
 }
 /* Split rows into labelled groups for the board. Coach order follows the
@@ -1535,10 +1547,12 @@ function passesFilters(r, progs, coaches){
 function groupRows(rows, mode){
   if(mode === "coach"){
     const known = coachNames();
-    const names = [...new Set(rows.map(coachOf).filter(Boolean))]
+    const dojo = rows.filter(r => !needsCoach(r)), rest = rows.filter(needsCoach);
+    const names = [...new Set(rest.map(coachOf).filter(Boolean))]
       .sort((a, b) => (known.indexOf(a) + 1 || 99) - (known.indexOf(b) + 1 || 99) || a.localeCompare(b));
-    const groups = names.map(n => ({label: n + "’s mentees", rows: rows.filter(r => coachOf(r) === n)}));
-    groups.push({label: "Unassigned", rows: rows.filter(r => !coachOf(r))});
+    const groups = names.map(n => ({label: n + "’s mentees", rows: rest.filter(r => coachOf(r) === n)}));
+    groups.push({label: "Unassigned", rows: rest.filter(r => !coachOf(r))});
+    groups.push({label: "The Dojo · no coach", rows: dojo});     // whatever the sheet says — the rule wins
     return groups.filter(g => g.rows.length);
   }
   if(mode === "program"){
@@ -1552,9 +1566,21 @@ function coachChip(r){
   return c ? `<span class="chip ${esc(c.toLowerCase())}">${esc(c)}</span>` : "";
 }
 
-function teamRowHtml(r){
-  const first = coachNames();
+function coachCellHtml(r){
   const coach = String(r.Coach || "").trim();
+  if(!needsCoach(r)){
+    /* no picker to feel guilty about. A name still on the sheet from before
+       the rule (or from someone who moved down) stays visible, with a way out. */
+    return `<span class="nocoach" title="The Dojo doesn't get check-in calls — a coach is assigned the day they graduate to The Path">Dojo · no coach</span>${
+      coach ? ` <span class="chip stale" title="Still on the sheet — clear it, or leave it until they graduate">${esc(coach.split(" ")[0])}</span>
+      <a href="#" class="no-print no-export" data-coachclear="${esc(r.RepID)}" style="font-size:10.5px;color:var(--ink-faint)">clear</a>` : ""}`;
+  }
+  return `<select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
+      <option value=""${coach ? "" : " selected"}>—</option>
+      ${coachNames().map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
+    </select>`;
+}
+function teamRowHtml(r){
   return `<tr${r.Active ? "" : ` style="opacity:.55"`}>
     <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
         <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
@@ -1565,10 +1591,7 @@ function teamRowHtml(r){
     <td style="font-size:12px">${r.Manager ? esc(r.Manager) : `<span style="color:var(--ink-faint)">&ndash;</span>`}
         ${r.ManagerPhone || r.ManagerEmail ? `<div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div>` : ""}</td>
     <td class="dt" style="font-size:12px">${fmtJoined(r.Joined)}</td>
-    <td><select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
-      <option value=""${coach ? "" : " selected"}>—</option>
-      ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
-    </select></td>
+    <td>${coachCellHtml(r)}</td>
     <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
         href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>${
       r.OnRoster ? `<div style="margin-top:6px"><a href="#" data-repactive="${esc(r.RepID)}" data-to="${r.Active ? 0 : 1}"
@@ -1599,7 +1622,8 @@ function renderTeam(){
       <div class="big serif">Mentees</div>
       <div class="lede">Everyone on Sharp Ninja Academy, straight from the private contacts sheet —
         onboarding form submissions land here on their own. Filter by program or coach (light up more than one to
-        see them side by side), group the board by who's coaching, and pick a coach on any row to assign the mentorship.</div>
+        see them side by side), group the board by who's coaching, and pick a coach on any Path or Masters row to assign
+        the mentorship. The Dojo doesn't get check-in calls, so nobody there has a coach until they graduate to The Path.</div>
     </div>
   </div>`;
 
@@ -1616,7 +1640,7 @@ function renderTeam(){
   const groups = groupRows(visible, UI.teamGroup);
 
   const act = TEAM.rows.filter(r => r.Active);
-  const unassigned = act.filter(r => !coachOf(r)).length;
+  const unassigned = act.filter(r => needsCoach(r) && !coachOf(r)).length;
   const missing = act.filter(r => !r.Phone || !r.Email).length;
   const path = act.filter(r => programOf(r) === "Path").length;
   const dojo = act.filter(r => programOf(r) === "Dojo").length;
@@ -1642,7 +1666,7 @@ function renderTeam(){
     ${statBox("The Dojo", dojo, "")}
     ${statBox("The Path", path, "")}
     ${statBox("The Masters", masters, "")}
-    ${statBox("Unassigned", unassigned, unassigned ? "pick a coach below" : "everyone covered", unassigned > 0)}
+    ${statBox("Unassigned", unassigned, unassigned ? "Path & Masters · pick a coach below" : "every Path & Masters mentee has one", unassigned > 0)}
     ${statBox("Missing contact info", missing, missing ? "can't text or email them" : "all reachable", missing > 0)}
   </div>`;
 
@@ -1945,10 +1969,17 @@ document.addEventListener("change", e => {
     return;
   }
 });
-document.addEventListener("change", async e => {
+document.addEventListener("change", e => {
   const sel = e.target.closest("select[data-coach]");
-  if(!sel) return;
-  const repId = sel.dataset.coach, coach = sel.value;
+  if(sel) assignCoachUI(sel.dataset.coach, sel.value);
+});
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-coachclear]");
+  if(!a) return;
+  e.preventDefault();
+  assignCoachUI(a.dataset.coachclear, "");
+});
+async function assignCoachUI(repId, coach){
   const row = (TEAM.rows || []).find(r => r.RepID === repId);
   const before = row ? row.Coach : "";
   if(row) row.Coach = coach;
@@ -1959,7 +1990,7 @@ document.addEventListener("change", async e => {
     if(row) row.Coach = before;
     render(); toast("Couldn't save that — try again.");
   }
-});
+}
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-swkey]");
   if(!b) return;

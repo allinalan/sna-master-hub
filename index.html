@@ -1276,10 +1276,11 @@ function parseLooseDate(text, defaultYear){
   return null;
 }
 
-/* "Monday" — or just "mon" — on a call that currently sits on Tue Sep 1 means
-   Mon Aug 31: the Monday of that same Mon–Sun week, the way people say it out
-   loud. It's the shortcut for nudging a call a night or two; typing a real date
-   always wins. */
+/* A bare weekday lands inside the call's own VECTOR week — Tuesday through
+   Monday, the same week the check-in board counts in, not a Mon–Sun one. So on
+   a call sitting on Tue Sep 8, "Thursday" is Sep 10 and "Monday" is Sep 14: the
+   Monday that CLOSES that week, six nights on, not the Sep 7 before it. Typing a
+   real date always wins, and the toast names the full date it landed on. */
 function parseWeekday(text, anchorISO){
   const t = String(text || "").trim().toLowerCase().replace(/\.$/, "");
   if(!t || !anchorISO) return null;
@@ -1287,8 +1288,8 @@ function parseWeekday(text, anchorISO){
   if(i < 0) return null;
   const a = parseDate(anchorISO);
   if(isNaN(a)) return null;
-  const d = new Date(a);
-  d.setDate(a.getDate() - ((a.getDay() + 6) % 7) + ((i + 6) % 7));   // back to Monday, then out to the day asked for
+  const d = weekStartOf(a);                  // the one definition of a Vector week — the Tuesday on or before
+  d.setDate(d.getDate() + ((i + 5) % 7));    // ...then out to the night asked for: Tue 0 · Wed 1 … Mon 6
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 /* Every call date typed anywhere on the board comes through here: a weekday

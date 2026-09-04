@@ -92,9 +92,11 @@ Format is forgiving. All of these work:
 Monday     Mon      Jan 6      January 6th      6 Jan      1/6      1/6/27      01-06-2027      2026-01-06
 ```
 
-A bare weekday means that weekday in the same Mon–Sun week — so typing `Monday` on a call
-sitting on Tue Sep 8 moves it to Mon Sep 7. It's the quick way to nudge a call a night or
-two; type a real date to send it anywhere.
+A bare weekday lands inside that call's own **Vector week — Tuesday through Monday**, the
+same week the check-in board counts in. So on a call sitting on Tue Sep 8, `Thursday` is
+Sep 10 and `Monday` is **Sep 14** — the Monday that closes that week, not the Sep 7 before
+it. It's the quick way to move a call within its week; type a real date to send it
+anywhere. Either way the confirmation names the full date it landed on.
 
 Leave the year off a date and the call keeps the year it's already in, so nudging a 2027
 call to "Jan 13" won't drag it back to this year.

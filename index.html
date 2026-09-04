@@ -466,6 +466,34 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
   border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);
   display:flex;flex-direction:column}
 #pickPop.hidden{display:none}
+/* ═══════════ the date picker — every date on the board is clicked, not typed ═══════════ */
+#datePop{position:fixed;z-index:320;width:272px;max-width:94vw;background:var(--card,#fff);
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
+#datePop.hidden{display:none}
+.dp-head{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.dp-head .m{flex:1;text-align:center;font-family:var(--serif);font-size:14px;font-weight:600}
+.dp-nav{border:1px solid var(--line);background:none;border-radius:7px;cursor:pointer;font:inherit;
+  font-size:12px;line-height:1;padding:5px 8px;color:var(--ink-soft)}
+.dp-nav:hover{background:var(--paper-deep,#f1ede4);color:var(--ink)}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px 8px 4px}
+.dp-dow{font-family:var(--monof);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  text-align:center;color:var(--ink-faint);padding:2px 0}
+.dp-d{border:1px solid transparent;background:none;border-radius:7px;cursor:pointer;
+  font-family:var(--monof);font-size:11.5px;padding:6px 0;color:var(--ink)}
+.dp-d:hover{background:var(--paper-deep,#f1ede4)}
+.dp-d.out{color:var(--ink-faint)}
+.dp-d.wk{background:var(--accent-soft)}
+.dp-d.today{border-color:var(--accent)}
+.dp-d.on{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent)}
+.dp-hint{font-family:var(--monof);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-faint);text-align:center;padding:2px 10px 8px}
+.dp-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line);flex-wrap:wrap}
+/* the thing you click to open it — a dashed outline says "this is settable" */
+.dpick{font:inherit;color:inherit;background:none;border:1px dashed transparent;border-radius:6px;
+  cursor:pointer;padding:1px 5px;text-align:left}
+.dpick:hover,.dpick:focus-visible{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+body.editing .dpick,.dpick.always{border-color:var(--line)}
+.dpick.empty{color:var(--ink-faint)}
 /* ═══════════ assignments tab ═══════════ */
 table.aboard{min-width:0}
 table.aboard th.ah{text-align:center;max-width:120px;white-space:normal;vertical-align:bottom;padding:10px 6px 8px}
@@ -659,6 +687,7 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 </div>
 
 <div id="pickPop" class="hidden"></div>
+<div id="datePop" class="hidden"></div>
 <div id="ciPop" class="hidden" role="dialog" aria-label="Mark this week's check-in"></div>
 <div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
@@ -1304,6 +1333,10 @@ function readCallDate(text, anchorISO){
    board sorts, numbers and groups by. Any additional call may carry its own
    `date` instead; blank means it rides along on the week's night. ── */
 function callDateOf(r, x){ return (x && String(x.date || "").trim()) || r.date; }
+/* A field that has held free text in the past ("last spring") reads as a date
+   when it can and stays itself when it can't, so nobody's note is lost. */
+function dateISO(v){ const i = dueISO(v); return i === "NA" ? "" : i; }
+function fmtMaybeDate(v){ const i = dateISO(v); return i ? fmtFull(i) : String(v == null ? "" : v); }
 function isLiveCall(x){ return !!(String(x.topic || "").trim() || String(x.speaker || "").trim()); }
 
 /* Spring = Jan–Apr (I) · Summer = May–Aug (II) · Fall = Sep–Dec (III) —
@@ -2270,7 +2303,8 @@ function assignFormHtml(f){
     <div class="ad-row">${["Dojo","Path","Masters"].map(p=>`<label style="font-size:13px"><input type="checkbox" data-prog="${p}"${f.programs.includes(p)?" checked":""}> ${p}</label>`).join("")}
       <span class="sw-hint">ticking a program pre-ticks every program after it (Dojo → Path → Masters) — untick any that shouldn't get this one</span></div>
     <div class="ad-row"><label class="ad-sub">Title <input class="search" id="afTitle" value="${esc(f.title)}" placeholder="e.g. Creating Raving Fans" style="width:280px"></label>
-      <label class="ad-sub">Due <input type="date" id="afDue" value="${esc(f.dueDate||"")}"></label>
+      <label class="ad-sub">Due ${dbtn("field", "", f.dueDate || "", f.dueDate ? fmtFull(f.dueDate) : "",
+        {id:"afDue", cls:"always", ph:"pick a date"})}</label>
       <label class="ad-sub">Campaign <input class="search" id="afCamp" value="${esc(f.campaign||ASSIGN.campaign)}" style="width:120px"></label></div>
     <label class="ad-sub" style="display:grid;gap:4px">Materials link <input class="search" id="afUrl" value="${esc(f.materialsUrl||"")}" placeholder="https://…"></label>
     <label class="ad-sub" style="display:grid;gap:4px">Instructions <textarea id="afInstr" placeholder="What to do, how to submit it, what good looks like.">${esc(f.instructions||"")}</textarea></label>
@@ -2292,7 +2326,7 @@ async function assignWrite(body,okMsg,onOk){
 }
 async function assignSaveForm(){
   const progs=[...document.querySelectorAll("#aform input[data-prog]:checked")].map(i=>i.dataset.prog);
-  const a={id:ASSIGN.editing.id,programs:progs,campaign:$("#afCamp").value.trim(),title:$("#afTitle").value.trim(),dueDate:$("#afDue").value,
+  const a={id:ASSIGN.editing.id,programs:progs,campaign:$("#afCamp").value.trim(),title:$("#afTitle").value.trim(),dueDate:$("#afDue").dataset.iso||"",
            materialsUrl:$("#afUrl").value.trim(),instructions:$("#afInstr").value.trim(),active:ASSIGN.editing.active!==false};
   if(!progs.length)return toast("Tick at least one program");
   if(!a.title)return toast("Give it a title");
@@ -2325,7 +2359,8 @@ function openCell(repId,aId){
   else if(s.state==="open"||s.state==="late")action=`<div class="ad-row"><button class="btn" data-remind="1"${dis}>Email a reminder</button>${rep.HasEmail?"":`<span class="sw-hint">no email on file</span>`}</div>`;
   const more=`<details class="ad-more"><summary>Due date &amp; applicability for ${first}</summary>
     <div class="ad-form" style="margin-top:10px">
-      <div class="ad-row"><label class="ad-sub">Due <input type="date" id="adDue" value="${esc(isNA?"":(ovDue||dueISO(a.DueDate)))}"></label>
+      <div class="ad-row"><label class="ad-sub">Due ${(dd => dbtn("field", "", dd, dd ? fmtFull(dd) : "",
+        {id:"adDue", cls:"always", ph:"pick a date"}))(isNA ? "" : (ovDue || dueISO(a.DueDate)))}</label>
         <span class="sw-hint">default ${dueISO(a.DueDate)?esc(fmtDueHub(dueISO(a.DueDate))):"none"}</span></div>
       <label class="ad-row" style="font-size:13px"><input type="checkbox" id="adNA"${isNA?" checked":""}> Mark not applicable for ${first}</label>
       <div class="ad-row"><button class="btn sm primary" data-override="save"${dis}>Save</button>${s.override?`<button class="btn sm" data-override="clear"${dis}>Back to default</button>`:""}</div>
@@ -2390,7 +2425,7 @@ document.addEventListener("click",async e=>{
   const ov=e.target.closest("[data-override]");
   if(ov){
     const clear=ov.dataset.override==="clear", na=$("#adNA").checked;
-    const due=clear?"":(na?"NA":$("#adDue").value);
+    const due=clear?"":(na?"NA":($("#adDue").dataset.iso||""));
     await assignWrite({action:"setOverride",repId:rep.RepID,assignmentId:a.AssignmentID,dueDate:due},clear?"Back to the default date":(na?`Marked not applicable for ${first}`:"Due date saved"));
   }
 });
@@ -2613,9 +2648,10 @@ function renderCalendar(){
       <div class="lede" style="margin-top:6px">Calls run at <b>${ed("meta.callTime", callTime(), "", "set a time")}</b>
         — click it in <b>Edit</b> to change every night at once, or give one week its own
         time with <b>+ time</b>.</div>
-      <div class="lede" style="margin-top:6px">Nothing is stuck on a Tuesday. In <b>Edit</b>, every
-        call on a week starts with its own date — click it and type <b>Monday</b>, <b>Jan 6</b> or
-        <b>1/6</b>. The first call's date moves the whole week; any call under it moves on its own.</div>
+      <div class="lede" style="margin-top:6px">Nothing is stuck on a Tuesday. In <b>Edit</b>, every call
+        on a week has its own date — <b>click it and pick the night off the calendar</b>. Each row of that
+        calendar is a Vector week, Tue&nbsp;→&nbsp;Mon. The first call's date moves the whole week; any
+        call under it moves on its own.</div>
     </div>${(() => {
       const next = upcomingCalls()[0];
       if(!next) return "";
@@ -2714,8 +2750,11 @@ function weekRow(r, idx, wkNum){
      broken away from the week's night, so the printed board stays clean. */
   const sdate = (path, iso, anchor) => {
     const shown = iso ? fmtDay(iso) + " " + fmtDate(iso) : "";
-    if(EDITING) return ed(path, shown, "sdate", "date?");
-    return (shown && iso !== anchor) ? `<span class="sdate">${esc(shown)}</span>` : "";
+    if(!EDITING) return (shown && iso !== anchor) ? `<span class="sdate">${esc(shown)}</span>` : "";
+    const own = /\.extra\.\d+\.date$/.test(path);
+    return dbtn(own ? "extra" : "week", path, iso, shown, {cls:"sdate", anchor,
+      title: own ? "Pick this call's night — only this call moves"
+                 : "Pick the week's night — its calls move with it"});
   };
   const spick = field =>
     `<button class="slot-pick edit-only no-export no-print" data-pick="${idx}" data-pickfield="${field}" title="Pick from the topic bank">\u25be</button>`;
@@ -2796,7 +2835,9 @@ function weekRow(r, idx, wkNum){
 
   return `<div class="week ${state}">
     <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span>
-      <b>${ed(p+".date", fmtDate(r.date))}</b>${fmtDay(r.date)}${
+      <b>${EDITING ? dbtn("week", p+".date", r.date, fmtDate(r.date),
+            {anchor:r.date, title:"Pick the week's night — its calls move with it"})
+          : esc(fmtDate(r.date))}</b>${fmtDay(r.date)}${
         off ? `<span class="count offb">OFF WEEK</span>` :
         nCalls > 1 ? `<span class="count">${nCalls} calls</span>` : ""}${del(p, "this week")}</div>
     <div class="wk-main">${main}</div>
@@ -3002,7 +3043,9 @@ function renderSpeakers(){
     html += `<tr>
       <td style="font-weight:500">${ed(p+".name", r.name)}</td>
       <td>${ed(p+".topic", r.topic, "", "— to decide —")}</td>
-      <td class="dt">${ed(p+".lastAsked", r.lastAsked, "", "—")}</td>
+      <td class="dt">${EDITING ? dbtn("asked", p+".lastAsked", dateISO(r.lastAsked), fmtMaybeDate(r.lastAsked),
+            {ph:"\u2014", title:"When did we last ask them?"})
+          : esc(fmtMaybeDate(r.lastAsked) || "\u2014")}</td>
       <td class="edit-only">${del(p, "speaker")}</td>
     </tr>`;
   }
@@ -3104,7 +3147,8 @@ function renderBusiness(){
           ${i.note ? `<div class="biz-note">${ed(p+".note", i.note)}</div>` : ""}
         </div>
         <span class="chip ${presenterClass(i.who)} who">${edLive(p+".who", i.who, "", "assign")}</span>
-        <span class="due ${st}">${edLive(p+".due", i.due ? fmtDate(i.due) : "", "", "add date")}</span>
+        <span class="due ${st}">${dbtn("due", p+".due", i.due || "", i.due ? fmtDate(i.due) : "",
+            {cls:"always", ph:"add date", title:"Set a due date"})}</span>
         ${i.done ? `<button class="del always" data-del="${p}" title="Delete this item">×</button>` : del(p, "this item")}
       </div>`;
     }
@@ -3383,7 +3427,7 @@ document.addEventListener("input", e => {
   const el = e.target.closest && e.target.closest("[data-edit]");
   if(!el || !(EDITING || el.hasAttribute("data-live"))) return;
   const path = el.dataset.edit;
-  if(path.startsWith("__key.") || path.endsWith(".date") || path.endsWith(".due")) return;   // these only apply once you're done
+  if(path.startsWith("__key.")) return;           // renaming only applies once you're done
   clearTimeout(INPUT_TIMER);
   INPUT_TIMER = setTimeout(() => {
     setPath(path, el.textContent.replace(/\s+/g, " ").trim());
@@ -3397,42 +3441,6 @@ document.addEventListener("focusout", e => {
   clearTimeout(INPUT_TIMER);
   const val = el.textContent.replace(/\s+/g, " ").trim();
   const path = el.dataset.edit;
-  if(path.endsWith(".due")){                     // a due date on an order of business
-    const item = getPath(path.slice(0, path.lastIndexOf(".")));
-    if(!val){ item.due = ""; save(); render(); return; }
-    const iso = parseLooseDate(val, new Date().getFullYear());
-    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Sep 3" or "9/3"`); }
-    item.due = iso; save(); render();
-    return toast("Due " + fmtFull(iso));
-  }
-  if(/\.extra\.\d+\.date$/.test(path)){        // ONE call moved nights, on its own
-    const call = getPath(path.slice(0, path.lastIndexOf(".")));
-    const week = getPath(path.slice(0, path.indexOf(".extra.")));
-    if(!val){ delete call.date; save(); render(); return toast("Back on the week's night — " + fmtFull(week.date)); }
-    const iso = readCallDate(val, callDateOf(week, call));
-    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Monday", "Jan 6" or "1/6"`); }
-    if(iso === week.date) delete call.date; else call.date = iso;   // back on the week's night = no override to keep
-    save(); render();
-    return toast("Moved to " + fmtFull(iso) + " (" + fmtDay(iso) + ")");
-  }
-  if(path.endsWith(".date")){                    // the week's own night — its calls move with it
-    const row = getPath(path.slice(0, path.lastIndexOf(".")));
-    const iso = readCallDate(val, row.date);
-    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Monday", "Jan 6" or "1/6"`); }
-    /* unchanged — no repaint. The week header and the call slot show the same
-       date two ways, so put back whichever one was being edited. */
-    if(iso === row.date){
-      el.textContent = el.classList.contains("sdate") ? fmtDay(row.date) + " " + fmtDate(row.date) : fmtDate(row.date);
-      return;
-    }
-    const clash = DATA.calendar.some(r => r !== row && r.date === iso);
-    row.date = iso;
-    DATA.calendar.sort((a, b) => a.date.localeCompare(b.date));
-    UI.year = Number(iso.slice(0, 4));           // follow the week if it crossed a year
-    save(); render();
-    return toast("Moved to " + fmtFull(iso) + " (" + fmtDay(iso) + ")" +
-                 (clash ? " — heads up, there's already a call that night" : ""));
-  }
   if(path.startsWith("__key.")){                 // renaming a category / backlog list
     const rest = path.slice(6);
     const oldKey = rest.slice(rest.indexOf(".") + 1);
@@ -3527,8 +3535,153 @@ document.addEventListener("click", e => {           // click-away closes the pic
   if(pop.contains(e.target) || e.target.closest("[data-pick]")) return;
   closePicker();
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE DATE PICKER — one calendar for every date in the hub
+   Dates are CLICKED, never typed. The grid's columns run Tuesday → Monday, so
+   every row of it is a Vector week: moving a call inside its own week is one
+   step sideways, and the call's week is banded so you can see where it ends.
+
+   A button opens it by describing itself in data- attributes, so nothing holds
+   a reference to a live object across a re-render or a sync:
+     data-datepick  what the pick MEANS — week · extra · due · asked · field
+     data-path      dot-path into DATA (every kind but `field`)
+     data-iso       the date it's on now, "" for none
+     data-anchor    the week's night, for the calls that hang off one
+   ═══════════════════════════════════════════════════════════════════════════ */
+let DP = null;                                     // {kind, path, iso, anchor, month, el}
+
+function isoOfDate(d){
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+/* the button that opens it — this is what replaces every typed-in date field */
+function dbtn(kind, path, iso, label, opts){
+  const o = opts || {};
+  return `<button type="button" class="dpick ${o.cls || ""}${label ? "" : " empty"}" data-datepick="${kind}"${
+    path ? ` data-path="${esc(path)}"` : ""} data-iso="${esc(iso || "")}"${
+    o.anchor ? ` data-anchor="${esc(o.anchor)}"` : ""}${o.id ? ` id="${o.id}"` : ""}${
+    o.ph ? ` data-ph="${esc(o.ph)}"` : ""} title="${
+    esc(o.title || "Pick a date")}">${esc(label || o.ph || "pick a date")}</button>`;
+}
+function openDatePicker(el){
+  const iso = el.dataset.iso || "";
+  DP = {kind:el.dataset.datepick, path:el.dataset.path || "", iso, anchor:el.dataset.anchor || "",
+        month:(iso || el.dataset.anchor || todayISO()).slice(0, 7), el};
+  paintDatePicker();
+  const pop = $("#datePop"), r = el.getBoundingClientRect();
+  pop.style.top  = Math.max(10, Math.min(window.innerHeight - pop.offsetHeight - 12, r.bottom + 6)) + "px";
+  pop.style.left = Math.max(10, Math.min(window.innerWidth  - pop.offsetWidth  - 12, r.left)) + "px";
+}
+function closeDatePicker(){ $("#datePop").classList.add("hidden"); DP = null; }
+
+function paintDatePicker(){
+  if(!DP) return;
+  const [my, mm] = DP.month.split("-").map(Number);
+  const first = new Date(my, mm - 1, 1), last = new Date(my, mm, 0);
+  const today = todayISO();
+  const wkOf = i => isoOfDate(weekStartOf(parseDate(i)));      // which Vector week a night belongs to
+  const band = DP.anchor ? wkOf(DP.anchor) : null;             // ...the one this call already sits in
+
+  let cells = "";
+  for(const d of ["Tue","Wed","Thu","Fri","Sat","Sun","Mon"]) cells += `<div class="dp-dow">${d}</div>`;
+  const end = new Date(last);
+  end.setDate(end.getDate() + (6 - ((end.getDay() + 5) % 7)));   // out to the Monday that closes the last week
+  for(let c = weekStartOf(first); c <= end; c.setDate(c.getDate() + 1)){
+    const i = isoOfDate(c), cls = [
+      c.getMonth() === mm - 1 ? "" : "out",
+      band && wkOf(i) === band ? "wk" : "",
+      i === today ? "today" : "",
+      i === DP.iso ? "on" : ""].filter(Boolean).join(" ");
+    cells += `<button type="button" class="dp-d ${cls}" data-dpday="${i}" title="${esc(fmtDay(i) + " " + fmtFull(i))}">${c.getDate()}</button>`;
+  }
+
+  const foot = [];
+  if(DP.kind === "extra" && DP.iso && DP.anchor && DP.iso !== DP.anchor)
+    foot.push(`<button class="btn sm" data-dpclear="1">On the week's night · ${esc(fmtDate(DP.anchor))}</button>`);
+  if(["due","asked","field"].includes(DP.kind)){
+    foot.push(`<button class="btn sm" data-dpday="${today}">Today</button>`);
+    if(DP.iso) foot.push(`<button class="btn sm" data-dpclear="1">Clear</button>`);
+  }
+
+  const pop = $("#datePop");
+  pop.innerHTML = `<div class="dp-head">
+      <button class="dp-nav" data-dpmonth="-1" title="Previous month">\u2039</button>
+      <span class="m">${MONTHS[mm - 1]} ${my}</span>
+      <button class="dp-nav" data-dpmonth="1" title="Next month">\u203a</button>
+      <button class="dp-nav" data-dpclose="1" title="Close">\u2715</button>
+    </div>
+    <div class="dp-grid">${cells}</div>
+    <div class="dp-hint">rows are Vector weeks \u00b7 Tue \u2192 Mon</div>
+    ${foot.length ? `<div class="dp-foot">${foot.join("")}</div>` : ""}`;
+  pop.classList.remove("hidden");
+}
+
+/* what a pick MEANS, one branch per kind. "" clears. */
+function applyDatePick(iso){
+  const d = DP;
+  if(!d) return;
+  if(d.kind === "field"){                          // a form field — no board data behind it
+    d.el.dataset.iso = iso;
+    d.el.textContent = iso ? fmtFull(iso) : (d.el.dataset.ph || "pick a date");
+    d.el.classList.toggle("empty", !iso);
+    closeDatePicker();
+    return;
+  }
+  const node = getPath(d.path.slice(0, d.path.lastIndexOf(".")));
+  if(!node){ closeDatePicker(); return; }
+  closeDatePicker();
+
+  if(d.kind === "week"){
+    if(!iso || iso === node.date) return;          // a week always has a night — nothing to clear
+    return moveWeekTo(node, iso);
+  }
+  if(d.kind === "extra"){
+    const week = getPath(d.path.slice(0, d.path.indexOf(".extra.")));
+    if(!iso || iso === week.date){                 // back onto the week's night — no override to keep
+      delete node.date; save(); render();
+      return toast("Back on the week's night \u2014 " + fmtFull(week.date));
+    }
+    node.date = iso; save(); render();
+    return toast("Moved to " + fmtFull(iso) + " (" + fmtDay(iso) + ")");
+  }
+  const key = d.path.slice(d.path.lastIndexOf(".") + 1);
+  if(!iso) delete node[key]; else node[key] = iso;
+  save(); render();
+  return toast(iso ? (d.kind === "asked" ? "Last asked " : "Due ") + fmtFull(iso) : "Date cleared");
+}
+/* moving a whole week — its calls come with it unless they carry their own night */
+function moveWeekTo(row, iso){
+  const clash = DATA.calendar.some(r => r !== row && r.date === iso);
+  row.date = iso;
+  DATA.calendar.sort((a, b) => a.date.localeCompare(b.date));
+  UI.year = Number(iso.slice(0, 4));                // follow the week if it crossed a year
+  if(UI.season !== "all") UI.season = seasonOf(iso).key;   // ...and its campaign, or it vanishes behind the filter
+  save(); render();
+  toast("Moved to " + fmtFull(iso) + " (" + fmtDay(iso) + ")" +
+        (clash ? " \u2014 heads up, there's already a call that night" : ""));
+}
+
+document.addEventListener("click", e => {
+  const open = e.target.closest("[data-datepick]");
+  if(open){ e.preventDefault(); openDatePicker(open); return; }
+  const pop = $("#datePop");
+  if(pop.classList.contains("hidden")) return;
+  const day = e.target.closest("[data-dpday]");
+  if(day){ applyDatePick(day.dataset.dpday); return; }
+  if(e.target.closest("[data-dpclear]")){ applyDatePick(""); return; }
+  const mv = e.target.closest("[data-dpmonth]");
+  if(mv){
+    const [y, m] = DP.month.split("-").map(Number);
+    const n = new Date(y, m - 1 + Number(mv.dataset.dpmonth), 1);
+    DP.month = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0");
+    paintDatePicker();
+    return;
+  }
+  if(e.target.closest("[data-dpclose]") || !pop.contains(e.target)) closeDatePicker();
+});
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("#pickPop").classList.contains("hidden")) closePicker();
+  if(e.key === "Escape" && !$("#datePop").classList.contains("hidden")) closeDatePicker();
 });
 
 /* ── clicks ───────────────────────────────────────────────────────────── */

@@ -50,7 +50,7 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | To do this | Where |
 |---|---|
 | Plan a week | Click the "+ open — click to plan" line |
-| Move a call to a different night | Click that call's date and retype it — see below |
+| Move a call to a different night | Click that call's date and pick the night — see below |
 | Remove a week entirely | `×` next to the weekday |
 | Add a track, 2nd call, note, or long detail to a week | The small `+ track` / `+ 2nd call` / `+ note` / `+ detail` buttons under it |
 | Wipe a week back to open | `clear` on that week |
@@ -68,7 +68,7 @@ leaving a blank chip behind.
 
 Ticking a box, assigning an owner and setting a due date are the whole point of that
 tab, so they stay clickable with Edit **off**. Edit mode there is only for adding and
-deleting. Due dates take the same forgiving formats as call dates ("Sep 3", "9/3").
+deleting. Click a due date to pick one off the calendar, same as anywhere else in the hub.
 
 Ticking something off does **not** hide it. It gets crossed out, sinks to the bottom of
 its section, and flashes for a moment so you can see where it went. Click the box again
@@ -79,45 +79,44 @@ Filters across the top: **Everything** (the default), **Hide done**, **Has a dat
 **Done only**, plus Alan / Ben / Unassigned. Sections sort open items first, soonest
 date first, undated last, done at the bottom.
 
+### Dates are picked, never typed
+
+**Every date in the hub is a button.** Click it and a small calendar opens — pick the day
+and you're done. Nothing anywhere asks you to type a date: not call nights, not due dates
+on Orders of Business, not "last asked" on the guest bench, not the due dates in
+Assignments.
+
+The calendar's columns run **Tue → Mon**, so **every row of it is one Vector week** — the
+same week the check-in board counts in. Moving a call inside its own week is one step
+sideways, and the week the call already sits in is shaded so you can see where it ends.
+
+`‹` and `›` change month. Today has a ring around it. Where it makes sense the footer
+offers a shortcut — **Today**, **Clear**, or, on an added call, **On the week's night**,
+which drops the call back onto whatever night its week runs.
+
 ### Moving a call
 
-**Every call has its own night.** In Edit mode each call on a week starts with its date —
-`Mon Sep 7`, `Tue Sep 8` — click it and type the new one. A week isn't locked to Tuesday,
-and neither is anything on it: a week can hold a Monday call, a Tuesday call and a
-Thursday hot seat.
-
-Format is forgiving. All of these work:
-
-```
-Monday     Mon      Jan 6      January 6th      6 Jan      1/6      1/6/27      01-06-2027      2026-01-06
-```
-
-A bare weekday lands inside that call's own **Vector week — Tuesday through Monday**, the
-same week the check-in board counts in. So on a call sitting on Tue Sep 8, `Thursday` is
-Sep 10 and `Monday` is **Sep 14** — the Monday that closes that week, not the Sep 7 before
-it. It's the quick way to move a call within its week; type a real date to send it
-anywhere. Either way the confirmation names the full date it landed on.
-
-Leave the year off a date and the call keeps the year it's already in, so nudging a 2027
-call to "Jan 13" won't drag it back to this year.
+**Every call has its own night.** In Edit mode each call on a week shows its date —
+`Mon Sep 14`, `Tue Sep 8` — click it to pick a new one. A week isn't locked to Tuesday,
+and neither is anything on it: a week can hold a Tuesday call, a Thursday hot seat and a
+Monday call.
 
 **Which date you click matters:**
 
 - **The first (main) call's date** — or the big date on the left of the row — moves the
   **whole week**. Everything on it that hasn't been given its own night comes along, the
-  weekday label and week numbers update themselves, and the board re-sorts. Put a year on
-  it and the week moves to that year's board, taking you with it.
-- **Any additional call's date** moves **just that call**. Clear the field to put it back
-  on the week's night.
+  weekday label and week numbers update themselves, and the board re-sorts. Page the
+  picker into another year and the week moves to that year's board, taking you with it.
+- **Any additional call's date** moves **just that call**. **On the week's night** in the
+  picker's footer puts it back.
 
 With Edit off, a date only shows on a call that has moved off the week's night — so the
-printed board stays clean. The week lists its calls in the order they actually run, and
-**Next call night** counts them one by one, so a Monday call comes up before the Tuesday
-it was planned under.
+printed board stays clean. The week lists its calls in the order they actually run —
+Tuesday, then the Thursday hot seat, then the Monday that closes it — and **Next call
+night** counts them one by one, so a call that has moved shows up when it actually runs.
 
-Nonsense ("Feb 30", "next tuesday") is rejected and nothing moves. If you move a call onto
-a night that already has one, it lets you — two calls in a night is a real thing — but it
-says so.
+If you move a call onto a night that already has one, it lets you — two calls in a night
+is a real thing — but it says so.
 
 ### Shared editing is ON
 

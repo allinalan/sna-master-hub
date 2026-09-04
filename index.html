@@ -559,15 +559,38 @@ table.grid tr.grp:hover td{background:var(--paper-deep)}
    green = call · purple = 1-1 call · blue = voice note / texts · red = missed ·
    black = not needed. Blank squares are outlined; a past blank goes dashed. */
 #ciBoard table.grid{min-width:0}
-table.ciboard th.cw{text-align:center;padding:10px 3px 8px;min-width:44px}
-table.ciboard th.cw .wn{display:block;font-size:8.5px;color:var(--ink-faint);letter-spacing:.12em}
-table.ciboard th.cw .wd{display:block;font-family:var(--monof);font-size:9.5px;color:var(--ink-soft);letter-spacing:.02em;text-transform:none;margin-top:2px}
+/* every week is its own bordered lane — the labels had 6px between them and
+   read as one run-on string. The current week's lane is tinted top to bottom. */
+table.ciboard th.cw{text-align:center;padding:10px 7px 9px;min-width:56px;border-left:1px solid var(--line-soft);vertical-align:bottom}
+table.ciboard th.cw .wn{display:block;font-size:9px;color:var(--ink-faint);letter-spacing:.14em}
+table.ciboard th.cw .wd{display:block;font-family:var(--monof);font-size:10.5px;font-weight:500;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:4px}
+table.ciboard th.cw.cur,table.ciboard th.cw.cur.m1{background:rgba(174,59,21,.07);box-shadow:inset 0 3px 0 var(--accent)}
 table.ciboard th.cw.cur .wn,table.ciboard th.cw.cur .wd{color:var(--accent);font-weight:600}
-table.ciboard th:first-child,table.ciboard td.an{position:sticky;left:0;z-index:1;background:var(--card)}
+table.ciboard th.tt,table.ciboard td.tot{border-left:1px solid var(--line-soft)}
+table.ciboard th.mentee,table.ciboard td.an{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
+table.ciboard th.mentee{vertical-align:bottom;z-index:2}
+/* month bands: a heavier rule where a Vector month starts, alternate months faintly shaded */
+table.ciboard tr.mrow th.mb{text-align:center;font-family:var(--serif);font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink);
+  padding:10px 8px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.ciboard tr.mrow th.mb small{font-family:var(--monof);font-size:9px;font-weight:500;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-left:7px}
+table.ciboard th.mstart,table.ciboard td.cc.mstart{border-left:2px solid var(--line-strong)}
+table.ciboard th.m1,table.ciboard td.cc.m1{background:rgba(28,23,18,.035)}
 table.ciboard tbody tr:hover td.an{background:var(--paper-deep)}
-table.ciboard td.an{white-space:nowrap}
-table.ciboard td.cc{text-align:center;padding:5px 3px}
-table.ciboard td.cc.cur{background:rgba(174,59,21,.06)}
+table.ciboard td.an{white-space:nowrap;padding-right:18px}
+table.ciboard td.an .an-sub{display:flex;gap:5px;margin-top:4px}
+table.ciboard td.an .an-sub .chip{font-size:9px;padding:2px 7px}
+table.ciboard td.cc{text-align:center;padding:7px 5px;border-left:1px solid var(--line-soft)}
+.ci-scroll{font-family:var(--monof);font-size:10px;letter-spacing:.06em;color:var(--ink-faint);text-align:right;margin-top:6px;min-height:14px}
+/* a PNG export widens to fit the whole board; paper can't, so it compresses the lanes instead */
+body.exporting .tbl{overflow:visible}
+@media print{
+  table.ciboard th.cw{padding:6px 3px;min-width:0}
+  table.ciboard th.cw .wd{font-size:8.5px}
+  table.ciboard td.cc{padding:3px 2px}
+  table.ciboard td.an{padding-right:8px}
+  table.ciboard tr.mrow th.mb{font-size:11px;padding:6px 3px 4px}
+}
+table.ciboard td.cc.cur,table.ciboard td.cc.cur.m1{background:rgba(174,59,21,.06)}
 table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap}
 .ci{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;border:1.5px solid transparent;cursor:pointer;
   font-family:var(--monof);font-size:12px;font-weight:600;line-height:1;color:#F4EEDF;background:var(--line-soft);padding:0;
@@ -1800,6 +1823,31 @@ const fmtMD = d => (d.getMonth() + 1) + "/" + d.getDate();
 function weekRange(tueISO){ const a = parseDate(tueISO), b = new Date(a); b.setDate(b.getDate() + 6); return fmtMD(a) + "–" + fmtMD(b); }
 function weekLabel(camp, tueISO){ const i = campaignWeeks(camp).indexOf(tueISO); return (i < 0 ? "Week" : "Wk " + (i + 1)) + " · " + weekRange(tueISO); }
 
+/* ── Vector months aren't calendar months. Each month of a campaign is four
+   weeks and the campaign's last month takes whatever is left, so Fall 2026
+   runs Sep · Wk 1–4, Oct · Wk 5–8, Nov · Wk 9–12, Dec · Wk 13–17 — even
+   though Wk 13 starts on 11/24. MONTH_SPLIT is the one place to change that
+   if the Vector calendar ever counts an 18-week campaign differently. ── */
+const SEASON_MONTHS = {Spring:["January","February","March","April"], Summer:["May","June","July","August"], Fall:["September","October","November","December"]};
+const MONTH_SPLIT = {17:[4,4,4,5], 18:[4,4,4,6]};
+function campaignMonths(label){
+  const weeks = campaignWeeks(label), names = SEASON_MONTHS[String(label).split(" ")[0]] || [];
+  const split = MONTH_SPLIT[weeks.length] || [4, 4, 4, weeks.length - 12];
+  const out = []; let at = 0;
+  names.forEach((name, m) => {
+    const n = m === names.length - 1 ? weeks.length - at : Math.max(0, split[m]);
+    out.push({name, short: name.slice(0, 3), from: at + 1, to: at + n, weeks: weeks.slice(at, at + n)});
+    at += n;
+  });
+  return out.filter(m => m.weeks.length);
+}
+/* week → {month, first-of-month, odd/even} lookup for the board */
+function monthIndex(camp){
+  const idx = {};
+  campaignMonths(camp).forEach((m, i) => m.weeks.forEach((w, j) => { idx[w] = {m, i, first: j === 0}; }));
+  return idx;
+}
+
 /* campaigns worth showing: the current one, plus any that have marks */
 function ciCampaigns(){
   const set = new Set([thisCampaign(), ...Object.keys(DATA.checkins || {})]);
@@ -1904,28 +1952,34 @@ function renderCheckins(){
   if(!eligible.length) html += `<div class="empty-note">Nobody on The Path or The Masters is active right now — the board fills in the moment someone is.</div>`;
   else if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
   else{
-    html += `<div class="tbl"><table class="grid ciboard"><thead><tr><th>Mentee</th>${weeks.map((w, i) => {
+    const months = campaignMonths(camp), mIdx = monthIndex(camp);
+    const mcls = w => { const x = mIdx[w] || {}; return (x.first ? " mstart" : "") + (x.i % 2 ? " m1" : ""); };
+    html += `<div class="tbl citbl"><table class="grid ciboard"><thead>
+      <tr class="mrow"><th class="mentee" rowspan="2">Mentee</th>${months.map((m, i) =>
+        `<th class="mb mstart${i % 2 ? " m1" : ""}" colspan="${m.weeks.length}" title="${esc(m.name)} on the Vector calendar · Wk ${m.from}–${m.to} · ${weekRange(m.weeks[0]).split("–")[0]} – ${weekRange(m.weeks[m.weeks.length - 1]).split("–")[1]}">${esc(m.name)} <small>Wk ${m.from}–${m.to}</small></th>`).join("")}<th class="tt" rowspan="2"></th></tr>
+      <tr>${weeks.map((w, i) => {
       const d = parseDate(w), e = new Date(d); e.setDate(e.getDate() + 6);
-      return `<th class="cw${w === todayMon ? " cur" : ""}" title="Week ${i + 1} · ${fmtDay(w)} ${fmtDate(w)} – ${fmtDay(isoOf(e))} ${fmtDate(isoOf(e))}"><span class="wn">Wk ${i + 1}</span><span class="wd">${weekRange(w)}</span></th>`;
-    }).join("")}<th></th></tr></thead><tbody>`;
+      const mo = mIdx[w] ? mIdx[w].m.name : "";
+      return `<th class="cw${w === todayMon ? " cur" : ""}${mcls(w)}" title="Week ${i + 1}${mo ? " · " + mo : ""} · ${fmtDay(w)} ${fmtDate(w)} – ${fmtDay(isoOf(e))} ${fmtDate(isoOf(e))}"><span class="wn">Wk ${i + 1}</span><span class="wd">${weekRange(w)}</span></th>`;
+    }).join("")}</tr></thead><tbody>`;
     for(const g of groups){
       if(g.label) html += `<tr class="grp"><td colspan="${weeks.length + 2}">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
       for(const r of g.rows){
         let rd = 0, rn = 0;
-        html += `<tr><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(programOf(r))}</span> ${coachChip(r)}</td>`;
+        html += `<tr><td class="an"><b>${esc(r.Name)}</b><div class="an-sub"><span class="chip">${esc(programOf(r))}</span>${coachChip(r)}</div></td>`;
         for(const w of weeks){
           const s = getCheckin(camp, r.RepID, w);
           const cur = w === todayMon, past = w < todayMon;
           if(w <= todayMon){ if(CI_DONE.has(s)) rd++; if(s !== "off") rn++; }
           const cls = s ? s : "blank" + (cur ? " cur" : past ? " due" : " fut");
           const st = CI_STATES[s];
-          html += `<td class="cc${cur ? " cur" : ""}"><button class="ci ${cls}" data-ci="${esc(camp)}|${esc(r.RepID)}|${w}"
+          html += `<td class="cc${cur ? " cur" : ""}${mcls(w)}"><button class="ci ${cls}" data-ci="${esc(camp)}|${esc(r.RepID)}|${w}"
             title="${esc(r.Name)} · ${weekLabel(camp, w)} · ${st ? st.label : "not marked yet"}">${st ? st.glyph : ""}</button></td>`;
         }
         html += `<td class="tot" title="checked in / weeks that needed one, so far">${rd}/${rn}</td></tr>`;
       }
     }
-    html += `</tbody></table></div>`;
+    html += `</tbody></table></div><div class="ci-scroll no-print no-export" id="ciScroll"></div>`;
     html += `<div class="cilegend">${CI_ORDER.map(k => `<span><i class="ci ${k}">${CI_STATES[k].glyph}</i> ${CI_STATES[k].label}</span>`).join("")}<span><i class="ci blank due"></i> not marked yet</span></div>`;
   }
   html += `</div>`;
@@ -1952,6 +2006,24 @@ function openCiPop(btn){
   pop.style.left = left + "px"; pop.style.top = top + "px";
 }
 function closeCiPop(){ $("#ciPop").classList.add("hidden"); CI_OPEN = null; }
+/* 17 lanes at a readable size are wider than the page, so the board scrolls
+   sideways under the frozen name column. Say which weeks are in view so
+   nobody wonders where Wk 16 went. */
+function ciScrollHint(){
+  const tbl = document.querySelector("#ciBoard .tbl.citbl"), cap = $("#ciScroll");
+  if(!tbl || !cap) return;
+  const ths = [...tbl.querySelectorAll("th.cw")];
+  if(!ths.length) return;
+  const box = tbl.getBoundingClientRect(), nameW = tbl.querySelector("th.mentee").getBoundingClientRect().width;
+  const vis = ths.filter(t => { const r = t.getBoundingClientRect(); return r.left >= box.left + nameW - 2 && r.right <= box.right + 2; });
+  if(!vis.length || vis.length === ths.length){ cap.textContent = ""; return; }
+  const a = ths.indexOf(vis[0]) + 1, b = ths.indexOf(vis[vis.length - 1]) + 1;
+  const mIdx = monthIndex(UI.ciCampaign), wk = i => ths[i - 1].querySelector(".wd") && Object.keys(mIdx)[i - 1];
+  const ma = (mIdx[wk(a)] || {m:{}}).m.short, mb = (mIdx[wk(b)] || {m:{}}).m.short;
+  cap.textContent = `Showing Wk ${a}–${b} of ${ths.length}${ma ? ` (${ma === mb ? ma : ma + "–" + mb})` : ""} · scroll sideways for the rest`;
+}
+document.addEventListener("scroll", e => { if(e.target && e.target.classList && e.target.classList.contains("citbl")) ciScrollHint(); }, true);
+window.addEventListener("resize", ciScrollHint);
 document.addEventListener("click", e => {
   const b = e.target.closest("button[data-ci]");
   if(b){ e.preventDefault(); openCiPop(b); return; }
@@ -3250,6 +3322,7 @@ function render(){
   $("#view").innerHTML = editBanner() + currentTab().render();
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();
+  if(TAB === "checkins") ciScrollHint();
   if(focused){
     const q = $("#q");
     if(q){ q.focus(); try{ q.setSelectionRange(caret, caret); }catch(e){} }
@@ -3664,14 +3737,18 @@ async function exportPNG(id, label){
       if(n.classList.contains("no-export")) n.remove(); else n.removeAttribute("contenteditable");
     });
 
-    const width = Math.ceil(node.getBoundingClientRect().width);
+    /* a board with a sideways-scrolling table (the check-ins lanes) exports at
+       its full width rather than the slice that happened to be on screen */
+    let width = Math.ceil(Math.max(node.getBoundingClientRect().width,
+      ...[...node.querySelectorAll(".tbl")].map(t => t.scrollWidth)));
     const pageCSS = [...document.querySelectorAll("style")].map(s => s.textContent).join("\n");
 
     const holder = document.createElement("div");
     holder.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
     holder.style.cssText = `width:${width}px;background:#F3EFE6;padding:28px;font-family:"Hanken Grotesk",-apple-system,sans-serif`;
     const st = document.createElement("style");
-    st.textContent = fonts + "\n" + pageCSS + "\n.print-head{display:block!important}";
+    /* the clone has no body.exporting ancestor, so un-scroll its tables here */
+    st.textContent = fonts + "\n" + pageCSS + "\n.print-head{display:block!important}.tbl{overflow:visible!important}";
     holder.appendChild(st);
     holder.appendChild(clone);
 
@@ -3680,6 +3757,16 @@ async function exportPNG(id, label){
     probe.style.cssText = `position:fixed;left:-99999px;top:0;width:${width + 56}px`;
     probe.appendChild(holder.cloneNode(true));
     document.body.appendChild(probe);
+    /* if the fonts rendered wider than the on-screen measurement (a fallback
+       face, say), a table may still poke out — widen to the real extent and
+       measure the height again so nothing gets clipped */
+    const need = Math.ceil(probe.firstChild.scrollWidth) - 56;
+    if(need > width){
+      width = need;
+      holder.style.width = width + "px";
+      probe.style.width = (width + 56) + "px";
+      probe.replaceChild(holder.cloneNode(true), probe.firstChild);
+    }
     const height = Math.ceil(probe.firstChild.getBoundingClientRect().height);
     probe.remove();
 

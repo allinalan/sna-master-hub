@@ -498,10 +498,19 @@ li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
 .tp-item:hover{background:var(--paper-deep,#f1ede4)}
 .tp-item.hour{font-weight:700}
 .tp-item.on{background:var(--accent);color:#fff;font-weight:700}
+/* who's on the call — the same shell again, listing chips instead of times */
+#whoPop{position:fixed;z-index:320;width:236px;max-width:94vw;background:var(--card,#fff);
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
+#whoPop.hidden{display:none}
+#whoPop .pp-list{max-height:46vh}
+#whoPop .pp-item.on{background:var(--paper-deep,#f1ede4)}
 /* the thing you click to open it — a dashed outline says "this is settable" */
 .dpick{font:inherit;color:inherit;background:none;border:1px dashed transparent;border-radius:6px;
   cursor:pointer;padding:1px 5px;text-align:left}
-.dpick:hover,.dpick:focus-visible{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.dpick:not(.chip):hover,.dpick:not(.chip):focus-visible{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.chip.dpick{cursor:pointer;line-height:1.35}
+.chip.dpick:hover,.chip.dpick:focus-visible{filter:brightness(.93)}
+body.editing .chip.dpick.empty{border-style:dashed;border-color:var(--line-strong)}
 body.editing .dpick,.dpick.always{border-color:var(--line)}
 .dpick.empty{color:var(--ink-faint)}
 /* ═══════════ assignments tab ═══════════ */
@@ -699,6 +708,7 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 <div id="pickPop" class="hidden"></div>
 <div id="datePop" class="hidden"></div>
 <div id="timePop" class="hidden"></div>
+<div id="whoPop" class="hidden"></div>
 <div id="ciPop" class="hidden" role="dialog" aria-label="Mark this week's check-in"></div>
 <div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
@@ -2806,9 +2816,7 @@ function weekRow(r, idx, wkNum){
   };
   const spick = field =>
     `<button class="slot-pick edit-only no-export no-print" data-pick="${idx}" data-pickfield="${field}" title="Pick from the topic bank">\u25be</button>`;
-  const pchip = (path, val) =>
-    (EDITING || String(val||"").trim())
-      ? `<span class="chip ${presenterClass(val)}">${ed(path, val || "", "", "who?")}</span>` : "";
+  const pchip = (path, val) => whoChip(path, val);
   /* the call type is a DROPDOWN in Edit mode, a plain tag otherwise */
   const stag = (path, type) =>
     EDITING ? `<select class="typesel no-export no-print" data-typesel="${path}">
@@ -3039,9 +3047,9 @@ function renderArchive(){
         <td>${ed(p+".topic", r.topic)}${r.note?`<div style="font-size:11.5px;color:var(--ink-faint);margin-top:3px">${ed(p+".note", r.note)}</div>`:""}</td>
         <td>${r.series?`<span class="chip">${ed(p+".series", r.series)}</span>`:""}</td>
         <td>${r.call?`<span class="chip">${ed(p+".call", r.call)}</span>`:""}</td>
-        <td>${r.presenter?`<span class="chip ${presenterClass(r.presenter)}">${ed(p+".presenter", r.presenter)}</span>`:""}</td>
+        <td>${whoChip(p+".presenter", r.presenter)}</td>
         <td>${r.hotSeat?`<div style="font-size:12px">${ed(p+".hotSeat", r.hotSeat)}</div>${
-              r.hotSeatPresenter?`<span class="chip ${presenterClass(r.hotSeatPresenter)}" style="margin-top:4px;display:inline-block">${ed(p+".hotSeatPresenter", r.hotSeatPresenter)}</span>`:""}`:""}</td>
+              whoChip(p+".hotSeatPresenter", r.hotSeatPresenter, {style:"margin-top:4px;display:inline-block"})}`:""}</td>
         <td class="edit-only">${del(p, "call")}</td>
       </tr>`;
     }
@@ -3194,7 +3202,7 @@ function renderBusiness(){
           <div class="biz-t">${ed(p+".t", i.t)}</div>
           ${i.note ? `<div class="biz-note">${ed(p+".note", i.note)}</div>` : ""}
         </div>
-        <span class="chip ${presenterClass(i.who)} who">${edLive(p+".who", i.who, "", "assign")}</span>
+        ${whoChip(p+".who", i.who, {kind:"who", live:true, cls:"who", ph:"assign"})}
         <span class="due ${st}">${dbtn("due", p+".due", i.due || "", i.due ? fmtDate(i.due) : "",
             {cls:"always", ph:"add date", title:"Set a due date"})}</span>
         ${i.done ? `<button class="del always" data-del="${p}" title="Delete this item">×</button>` : del(p, "this item")}
@@ -3795,6 +3803,83 @@ function applyTimePick(v){
           : "No time on this call now");
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   WHO'S ON IT — the presenter picker
+   Alan and Ben are the answer nearly every time, so those are one click. But
+   the board has always carried the shades that matter — "Ben (no Alan)",
+   "Alan (Ben tiny part)" — and a dropdown that only offered the tidy three
+   would have quietly flattened them. So whatever is already in use on the
+   board is listed underneath, one click away and spelled the way it already is.
+   ═══════════════════════════════════════════════════════════════════════════ */
+let WP = null;                                     // {path, kind, val}
+const WHO_CORE = {presenter:["Alan", "Ben", "Alan & Ben"], who:["Alan", "Ben"]};
+
+function whoInUse(kind){
+  const seen = new Set();
+  if(kind === "who"){
+    for(const list of Object.values(DATA.business || {})) for(const it of list) seen.add(String(it.who || "").trim());
+  } else {
+    for(const r of DATA.calendar || []){
+      seen.add(String(r.presenter || "").trim());
+      for(const x of (r.extra || [])) seen.add(String(x.presenter || "").trim());
+    }
+    for(const r of DATA.archive || []){
+      seen.add(String(r.presenter || "").trim());
+      seen.add(String(r.hotSeatPresenter || "").trim());
+    }
+  }
+  for(const c of WHO_CORE[kind] || []) seen.delete(c);
+  return [...seen].filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
+/* the chip you click. In Edit (or always, where assigning IS the job) it opens
+   the picker; otherwise it's the plain chip the board has always shown. */
+function whoChip(path, val, opts){
+  const o = opts || {}, kind = o.kind || "presenter";
+  const set = String(val || "").trim();
+  const cls = "chip " + presenterClass(val) + (o.cls ? " " + o.cls : "");
+  if(!(EDITING || o.live)) return set ? `<span class="${cls}"${o.style ? ` style="${o.style}"` : ""}>${esc(set)}</span>` : "";
+  return `<button type="button" class="dpick ${cls}${set ? "" : " empty"}" data-whopick="${kind}"
+    data-path="${esc(path)}" data-val="${esc(set)}"${o.style ? ` style="${esc(o.style)}"` : ""} title="${
+    esc(kind === "who" ? "Pick who owns this" : "Pick who's on this call")}">${esc(set || o.ph || "who?")}</button>`;
+}
+function openWhoPicker(el){
+  WP = {path:el.dataset.path, kind:el.dataset.whopick, val:el.dataset.val || ""};
+  const item = v => `<button type="button" class="pp-item${v === WP.val ? " on" : ""}" data-whoval="${esc(v)}"><span class="chip ${presenterClass(v)}">${esc(v)}</span></button>`;
+  const used = whoInUse(WP.kind);
+  let inner = `<div class="dp-head"><span class="m">${WP.kind === "who" ? "Who owns it" : "Who's on the call"}</span>
+      <button class="dp-nav" data-whoclose="1" title="Close">\u2715</button></div><div class="pp-list">`;
+  inner += (WHO_CORE[WP.kind] || WHO_CORE.presenter).map(item).join("");
+  if(used.length) inner += `<div class="pp-cat">already on the board</div>` + used.map(item).join("");
+  inner += `</div>`;
+  if(WP.val) inner += `<div class="dp-foot"><button class="btn sm" data-whoclear="1">${WP.kind === "who" ? "Unassigned" : "No host \u2014 TBD"}</button></div>`;
+  const pop = $("#whoPop");
+  pop.innerHTML = inner;
+  pop.classList.remove("hidden");
+  popAt(pop, el);
+}
+function closeWhoPicker(){ $("#whoPop").classList.add("hidden"); WP = null; }
+function applyWhoPick(v){
+  const w = WP;
+  if(!w) return;
+  closeWhoPicker();
+  const {node, key} = parentOf(w.path);
+  if(!node) return;
+  node[key] = v;                                   // "" rather than gone — every board already stores it that way
+  save(); render();
+  toast(v ? (w.kind === "who" ? "Assigned to " + v : v + " on this call")
+          : (w.kind === "who" ? "Unassigned" : "Host cleared \u2014 back to TBD"));
+}
+document.addEventListener("click", e => {
+  const open = e.target.closest("[data-whopick]");
+  if(open){ e.preventDefault(); openWhoPicker(open); return; }
+  const pop = $("#whoPop");
+  if(pop.classList.contains("hidden")) return;
+  const hit = e.target.closest("[data-whoval]");
+  if(hit){ applyWhoPick(hit.dataset.whoval); return; }
+  if(e.target.closest("[data-whoclear]")){ applyWhoPick(""); return; }
+  if(e.target.closest("[data-whoclose]") || !pop.contains(e.target)) closeWhoPicker();
+});
+
 document.addEventListener("click", e => {
   const open = e.target.closest("[data-timepick]");
   if(open){ e.preventDefault(); openTimePicker(open); return; }
@@ -3809,6 +3894,7 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("#pickPop").classList.contains("hidden")) closePicker();
   if(e.key === "Escape" && !$("#datePop").classList.contains("hidden")) closeDatePicker();
   if(e.key === "Escape" && !$("#timePop").classList.contains("hidden")) closeTimePicker();
+  if(e.key === "Escape" && !$("#whoPop").classList.contains("hidden")) closeWhoPicker();
 });
 
 /* ── clicks ───────────────────────────────────────────────────────────── */

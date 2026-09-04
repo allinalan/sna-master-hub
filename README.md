@@ -20,6 +20,8 @@ Everything else lives as a sub-tab under Campaign Calendar.
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
 | **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date. Overdue goes red, due-within-a-fortnight goes amber. |
 | **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab and every rep's private `?rep=` link — so they can never drift out of sync. A bare visit to the old standalone URL redirects here. |
+| **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any row. |
+| ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not due, red overdue, black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved). Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Mentees submit from their dashboard; they get an email when you reply. |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
@@ -119,6 +121,27 @@ someone who went looking could write to the sheet. The exposure is a planning ca
 every save is versioned, and the sheet's history can roll anything back — but that's the
 trade for a free, no-login, works-anywhere setup. If you'd rather not take it, leave
 `SYNC.url` empty and use the Data ▸ Copy / Load hand-off instead.
+
+## Weekly check-ins
+
+Weeks are Vector weeks, **Tuesday to Monday**, headed with their dates ("Wk 1 · 9/1–9/7").
+A week belongs to the campaign its **Friday** (the week's middle day) falls in
+(Spring Jan–Apr · Summer May–Aug · Fall Sep–Dec), so the week that straddles a campaign
+boundary shows up on exactly one board: Fall 2026 opens with Wk 1 = 9/1–9/7 and runs 17
+weeks to 12/22–12/28. If Vector ever counts a boundary week differently, `weekCampaign()`
+in `index.html` is the one place that decides. The current week's column is highlighted; a past
+week left blank gets a dashed outline so an unrecorded check-in is easy to spot.
+
+The stat strip counts what's on screen after filters: this week's tally, how many squares
+are still blank this week, red squares this campaign, and coverage (green + purple + blue,
+over every past week that wasn't marked black). The number at the end of each row is the
+same thing per mentee.
+
+Marks live in the shared hub data (`checkins[campaign][RepID][week]`), synced like the
+calendar, so both coaches see the same board. Because you two will often be marking the
+same board on the same call, a check-in mark never triggers the "Both of you edited this"
+prompt: if a save collides, the hub takes the other person's copy, puts your marks back on
+top, and saves again. Any other kind of edit still asks, as before.
 
 ## Adding a tab
 

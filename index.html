@@ -543,6 +543,59 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;l
 .sw-toggle.on .sw-state{color:var(--green,#2a7d4f)}
 .sw-toggle[disabled]{opacity:.55;cursor:default}
 .sw-toggle:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
+
+/* ── labelled filter groups (Mentees) + grouped board rows ── */
+.fgroup{display:flex;align-items:center;gap:7px}
+.flab{font-family:var(--monof);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+table.grid tr.grp td{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
+table.grid tr.grp td .n{color:var(--ink-faint);letter-spacing:.04em}
+table.grid tr.grp:hover td{background:var(--paper-deep)}
+
+/* ═══════════ weekly check-ins ═══════════
+   green = call · purple = 1-1 call · blue = voice note / texts · red = missed ·
+   black = not needed. Blank squares are outlined; a past blank goes dashed. */
+#ciBoard table.grid{min-width:0}
+table.ciboard th.cw{text-align:center;padding:10px 3px 8px;min-width:44px}
+table.ciboard th.cw .wn{display:block;font-size:8.5px;color:var(--ink-faint);letter-spacing:.12em}
+table.ciboard th.cw .wd{display:block;font-family:var(--monof);font-size:9.5px;color:var(--ink-soft);letter-spacing:.02em;text-transform:none;margin-top:2px}
+table.ciboard th.cw.cur .wn,table.ciboard th.cw.cur .wd{color:var(--accent);font-weight:600}
+table.ciboard th:first-child,table.ciboard td.an{position:sticky;left:0;z-index:1;background:var(--card)}
+table.ciboard tbody tr:hover td.an{background:var(--paper-deep)}
+table.ciboard td.an{white-space:nowrap}
+table.ciboard td.cc{text-align:center;padding:5px 3px}
+table.ciboard td.cc.cur{background:rgba(174,59,21,.06)}
+table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+.ci{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;border:1.5px solid transparent;cursor:pointer;
+  font-family:var(--monof);font-size:12px;font-weight:600;line-height:1;color:#F4EEDF;background:var(--line-soft);padding:0;
+  transition:transform .12s,box-shadow .12s}
+.ci:hover{transform:scale(1.1);box-shadow:0 2px 6px rgba(28,23,18,.22)}
+.ci.yes{background:#2E7D4F}
+.ci.one{background:#7A3FA8}
+.ci.text{background:#2C6BB5}
+.ci.no{background:#C0392B}
+.ci.off{background:#1C1712}
+.ci.blank{background:var(--card-raised);border-color:var(--line)}
+.ci.blank.due{border-style:dashed;border-color:var(--ink-faint)}
+.ci.blank.fut{opacity:.5}
+.ci.blank.cur{border-color:var(--accent)}
+.cilegend{display:flex;flex-wrap:wrap;gap:10px 20px;margin:12px 2px 0;font-size:12px;color:var(--ink-soft)}
+.cilegend span{display:inline-flex;align-items:center;gap:7px}
+.cilegend .ci{width:16px;height:16px;border-radius:4px;font-size:9px;cursor:default}
+.cilegend .ci:hover{transform:none;box-shadow:none}
+#ciPop{position:fixed;z-index:300;width:264px;max-width:94vw;background:var(--card-raised);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);padding:8px}
+#ciPop.hidden{display:none}
+.cp-head{font-family:var(--monof);font-size:10px;letter-spacing:.06em;color:var(--ink-soft);padding:6px 8px 8px;border-bottom:1px solid var(--line-soft);margin-bottom:4px}
+.cp-head b{display:block;font-family:var(--sans);font-size:13px;letter-spacing:0;color:var(--ink);font-weight:600;margin-bottom:2px}
+.cp-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;
+  padding:7px 8px;cursor:pointer;font:inherit;font-size:12.5px;color:var(--ink);line-height:1.3}
+.cp-opt:hover{background:var(--paper-deep)}
+.cp-opt.on{background:var(--accent-soft)}
+.cp-opt .ci{width:20px;height:20px;border-radius:5px;font-size:10px;flex:none}
+.cp-opt .ci:hover{transform:none;box-shadow:none}
+.cp-opt small{display:block;font-size:10.5px;color:var(--ink-faint)}
+@media (max-width:760px){.fgroup{flex:none}}
+@media print{.ci{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
@@ -579,6 +632,7 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;l
 </div>
 
 <div id="pickPop" class="hidden"></div>
+<div id="ciPop" class="hidden" role="dialog" aria-label="Mark this week's check-in"></div>
 <div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
   <div class="modal">
@@ -611,6 +665,13 @@ const SEED = {
     snapshot: "2026-08-18",
     callTime: "10AM Central Time"   // the standing time; any week can override it
   },
+
+  /* ── Weekly check-ins (Mentees ▸ Weekly Check-ins) ─────────────────────
+     checkins[campaign][RepID][tuesdayISO] = "yes" | "one" | "text" | "no" | "off"   (Vector week, Tue–Mon)
+     Keyed by campaign so each one starts from a clean board while the old
+     ones stay readable. Lives here in the shared hub data rather than the
+     private roster sheet so both coaches see every mark. */
+  checkins: {},
 
   /* ── Tab 1: the 2026 group-call calendar ──────────────────────────────
      one row per Tuesday. `alt` = the earlier 2026 draft that lives at the
@@ -992,7 +1053,14 @@ let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
-             tier:"all", assignView:"board", assignProg:"all" };   // show ticked-off items too — hiding them reads as deletion
+             tier:"all", assignView:"board", assignProg:"all",   // show ticked-off items too — hiding them reads as deletion
+             teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
+             ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"" };   // Mentees ▸ Weekly Check-ins
+/* Check-in marks made since the last successful sync, and how many other
+   kinds of edit happened alongside them. Two coaches marking the same board
+   on the same call is the normal case, so a colliding save replays these on
+   top of the other person's copy instead of asking who wins — see push(). */
+let CI_JOURNAL = [], OTHER_EDITS = 0, CI_OPEN = null;
 
 function load(){
   let saved = null;
@@ -1071,8 +1139,9 @@ function blankYear(cal, year){
   }
   return out;
 }
-function save(){
+function save(kind){
   try{
+    if(kind !== "checkin") OTHER_EDITS++;          // anything but a check-in mark still gets the conflict prompt
     localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
     DIRTY = true; DF = null; paintSaveState();   // topic weights are rebuilt from the edited data
     if(typeof scheduleSync === "function") scheduleSync();
@@ -1445,6 +1514,83 @@ function keyGateHtml(){
     <button class="btn primary" data-teamact="unlock">Unlock</button>
   </div>`;
 }
+/* ── program / coach, normalised off the roster row ──
+   The sheet's Program column is free text ("The Path", "Masters", …) and
+   older rows only have Tier. One place decides which bucket a row is in. */
+function programOf(r){
+  const s = String(r.Program || r.Tier || "");
+  return /dojo/i.test(s) ? "Dojo" : /master/i.test(s) ? "Masters" : /path/i.test(s) ? "Path" : "";
+}
+function coachOf(r){ return String(r.Coach || "").trim().split(" ")[0]; }
+
+/* Program and coach filters are multi-select: an empty list means "everyone",
+   two programs lit means "those two side by side". Coach "none" = unassigned. */
+function passesFilters(r, progs, coaches){
+  if(progs.length && !progs.includes(programOf(r))) return false;
+  if(coaches.length && !coaches.includes(coachOf(r) || "none")) return false;
+  return true;
+}
+/* Split rows into labelled groups for the board. Coach order follows the
+   coaches list (Alan, Ben, …), anyone else alphabetical, unassigned last. */
+function groupRows(rows, mode){
+  if(mode === "coach"){
+    const known = coachNames();
+    const names = [...new Set(rows.map(coachOf).filter(Boolean))]
+      .sort((a, b) => (known.indexOf(a) + 1 || 99) - (known.indexOf(b) + 1 || 99) || a.localeCompare(b));
+    const groups = names.map(n => ({label: n + "’s mentees", rows: rows.filter(r => coachOf(r) === n)}));
+    groups.push({label: "Unassigned", rows: rows.filter(r => !coachOf(r))});
+    return groups.filter(g => g.rows.length);
+  }
+  if(mode === "program"){
+    return ["Dojo", "Path", "Masters", ""].map(p => ({label: p ? "The " + p : "No program", rows: rows.filter(r => programOf(r) === p)}))
+      .filter(g => g.rows.length);
+  }
+  return [{label: "", rows}];
+}
+function coachChip(r){
+  const c = coachOf(r);
+  return c ? `<span class="chip ${esc(c.toLowerCase())}">${esc(c)}</span>` : "";
+}
+
+function teamRowHtml(r){
+  const first = coachNames();
+  const coach = String(r.Coach || "").trim();
+  return `<tr${r.Active ? "" : ` style="opacity:.55"`}>
+    <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
+        <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
+    <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
+    <td class="dt">${fmtCareer(r.CareerSales) ? `<span title="${esc(r.CareerSales)}">${fmtCareer(r.CareerSales)}</span>` : (r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`)}</td>
+    <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--red,#b3261e)">no phone</span>`}
+        <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
+    <td style="font-size:12px">${r.Manager ? esc(r.Manager) : `<span style="color:var(--ink-faint)">&ndash;</span>`}
+        ${r.ManagerPhone || r.ManagerEmail ? `<div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div>` : ""}</td>
+    <td class="dt" style="font-size:12px">${fmtJoined(r.Joined)}</td>
+    <td><select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
+      <option value=""${coach ? "" : " selected"}>—</option>
+      ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
+    </select></td>
+    <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
+        href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>${
+      r.OnRoster ? `<div style="margin-top:6px"><a href="#" data-repactive="${esc(r.RepID)}" data-to="${r.Active ? 0 : 1}"
+        style="font-size:10.5px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
+  </tr>`;
+}
+
+/* the roster tab shares its gate + loading states with the check-ins tab */
+function teamGateHtml(html){
+  if(!TEAM.key) return html + keyGateHtml();
+  if(TEAM.loading && !TEAM.rows) return html + `<div class="empty-note">Fetching the roster…</div>`;
+  if(TEAM.err && !TEAM.rows){
+    return html + `<div class="empty-note">${esc(TEAM.err)}
+      <div style="margin-top:10px"><button class="btn" data-teamact="reload">Try again</button></div></div>`;
+  }
+  if(!TEAM.rows){ teamLoad(); return html + `<div class="empty-note">Fetching the roster…</div>`; }
+  return null;
+}
+function coachFilterOpts(){
+  return [{v:"", l:"All"}].concat(coachNames().map(n => ({v:n, l:n}))).concat([{v:"none", l:"Unassigned"}]);
+}
+
 function renderTeam(){
   let html = `
   <div class="page-head no-export no-print">
@@ -1452,40 +1598,35 @@ function renderTeam(){
       <div class="eyebrow">Who we're coaching</div>
       <div class="big serif">Mentees</div>
       <div class="lede">Everyone on Sharp Ninja Academy, straight from the private contacts sheet —
-        onboarding form submissions land here on their own. Pick a coach on any row to assign the mentorship.</div>
+        onboarding form submissions land here on their own. Filter by program or coach (light up more than one to
+        see them side by side), group the board by who's coaching, and pick a coach on any row to assign the mentorship.</div>
     </div>
   </div>`;
 
-  /* ── key gate ── */
-  if(!TEAM.key) return html + keyGateHtml();
-  if(TEAM.loading && !TEAM.rows){ return html + `<div class="empty-note">Fetching the roster…</div>`; }
-  if(TEAM.err && !TEAM.rows){
-    return html + `<div class="empty-note">${esc(TEAM.err)}
-      <div style="margin-top:10px"><button class="btn" data-teamact="reload">Try again</button></div></div>`;
-  }
-  if(!TEAM.rows){ teamLoad(); return html + `<div class="empty-note">Fetching the roster…</div>`; }
+  const gate = teamGateHtml(html);
+  if(gate) return gate;
 
   const q = UI.q.toLowerCase();
   const former = !!UI.teamFormer;
-  const coachSeg = UI.teamCoach || "all";
   let rows = TEAM.rows.slice().sort((a,b) => a.Name.localeCompare(b.Name));
   const inactive = rows.filter(r => !r.Active).length;
   if(!former) rows = rows.filter(r => r.Active);
-  if(coachSeg !== "all") rows = rows.filter(r =>
-    coachSeg === "none" ? !String(r.Coach||"").trim()
-                        : String(r.Coach||"").split(" ")[0] === coachSeg);
+  rows = rows.filter(r => passesFilters(r, UI.teamProgs, UI.teamCoaches));
   const visible = rows.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+  const groups = groupRows(visible, UI.teamGroup);
 
   const act = TEAM.rows.filter(r => r.Active);
-  const unassigned = act.filter(r => !String(r.Coach||"").trim()).length;
+  const unassigned = act.filter(r => !coachOf(r)).length;
   const missing = act.filter(r => !r.Phone || !r.Email).length;
-  const path = act.filter(r => /path/i.test(r.Program || r.Tier)).length;
-  const dojo = act.filter(r => /dojo/i.test(r.Program || r.Tier)).length;
-  const masters = act.filter(r => /master/i.test(r.Program || r.Tier)).length;
+  const path = act.filter(r => programOf(r) === "Path").length;
+  const dojo = act.filter(r => programOf(r) === "Dojo").length;
+  const masters = act.filter(r => programOf(r) === "Masters").length;
 
   html += toolbar(`
     <div class="tb-filters">
-      ${seg("teamCoach", [{v:"all",l:"All"}].concat(coachNames().map(n => ({v:n,l:n}))).concat([{v:"none",l:"Unassigned"}]), coachSeg)}
+      ${fgroup("Program", mseg("teamProgs", [{v:"",l:"All"},{v:"Dojo",l:"Dojo"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}], UI.teamProgs))}
+      ${fgroup("Coach", mseg("teamCoaches", coachFilterOpts(), UI.teamCoaches))}
+      ${fgroup("Group", seg("teamGroup", [{v:"none",l:"None"},{v:"coach",l:"By coach"},{v:"program",l:"By program"}], UI.teamGroup))}
       <button class="btn ${former?"on":""}" data-teamact="former">Show former</button>
     </div>
     <input class="search" id="q" placeholder="Search ${rows.length} mentees…" value="${esc(UI.q)}">
@@ -1512,28 +1653,9 @@ function renderTeam(){
     html += `<div class="tbl"><table class="grid"><thead><tr>
       <th>Mentee</th><th>Program</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export"></th>
     </tr></thead><tbody>`;
-    for(const r of visible){
-      const first = coachNames();
-      const coach = String(r.Coach || "").trim();
-      html += `<tr${r.Active ? "" : ` style="opacity:.55"`}>
-        <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
-            <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
-        <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
-        <td class="dt">${fmtCareer(r.CareerSales) ? `<span title="${esc(r.CareerSales)}">${fmtCareer(r.CareerSales)}</span>` : (r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`)}</td>
-        <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--red,#b3261e)">no phone</span>`}
-            <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
-        <td style="font-size:12px">${r.Manager ? esc(r.Manager) : `<span style="color:var(--ink-faint)">&ndash;</span>`}
-            ${r.ManagerPhone || r.ManagerEmail ? `<div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div>` : ""}</td>
-        <td class="dt" style="font-size:12px">${fmtJoined(r.Joined)}</td>
-        <td><select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
-          <option value=""${coach ? "" : " selected"}>—</option>
-          ${first.map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
-        </select></td>
-        <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
-            href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>${
-          r.OnRoster ? `<div style="margin-top:6px"><a href="#" data-repactive="${esc(r.RepID)}" data-to="${r.Active ? 0 : 1}"
-            style="font-size:10.5px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
-      </tr>`;
+    for(const g of groups){
+      if(g.label) html += `<tr class="grp"><td colspan="8">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      for(const r of g.rows) html += teamRowHtml(r);
     }
     html += `</tbody></table></div>`;
   }
@@ -1543,6 +1665,229 @@ function renderTeam(){
     <a href="#" data-teamact="lock" style="margin-left:10px">Forget key on this device</a></div>`;
   return html;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB — WEEKLY CHECK-INS (Mentees ▸ Weekly Check-ins)
+
+   One square per mentee per week. The marks live in DATA.checkins — the
+   shared hub data, synced like the calendar — keyed campaign → RepID → week,
+   so every campaign starts from a clean board and the old ones stay readable
+   from the picker. Only The Path and The Masters get check-in calls, so The
+   Dojo isn't on this board at all. Names still come from the private roster
+   behind the coach key; the shared blob only ever holds RepIDs and colours.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const CI_STATES = {
+  yes:  {label:"Check-in call",      hint:"Green · we called and talked",                      glyph:"✓"},
+  one:  {label:"1-1 call",           hint:"Purple · had a one-on-one, so no check-in needed",  glyph:"1"},
+  text: {label:"Voice note / texts", hint:"Blue · back-and-forth by voice note or text",       glyph:"✉"},
+  no:   {label:"Missed",             hint:"Red · no check-in that week",                       glyph:"✕"},
+  off:  {label:"Not needed",         hint:"Black · vacation, out of town, another reason",     glyph:"–"}
+};
+const CI_ORDER = ["yes", "one", "text", "no", "off"];
+const CI_DONE  = new Set(["yes", "one", "text"]);      // all three count as "checked in"
+
+/* ── weeks are Vector weeks: Tuesday through Monday. A week is keyed by its
+   Tuesday and belongs to the campaign its Friday (the week's middle day)
+   falls in, so the week straddling a campaign boundary lands on exactly one
+   board. Fall 2026 therefore opens with Wk 1 = 9/1–9/7, and a campaign whose
+   1st lands late in a week starts the following Tuesday. ── */
+const isoOf = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+function weekStartOf(d){                      // the Tuesday on or before d
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 5) % 7));
+  return x;
+}
+function campaignLabelOf(d){ const m = d.getMonth(); return (m <= 3 ? "Spring" : m <= 7 ? "Summer" : "Fall") + " " + d.getFullYear(); }
+function weekCampaign(tueISO){ const t = parseDate(tueISO); t.setDate(t.getDate() + 3); return campaignLabelOf(t); }
+function campaignWeeks(label){
+  const [season, y] = String(label).split(" ");
+  const first = {Spring:0, Summer:4, Fall:8}[season], yr = Number(y);
+  if(first === undefined || !yr) return [];
+  const d = weekStartOf(new Date(yr, first, 1));
+  if(weekCampaign(isoOf(d)) !== label) d.setDate(d.getDate() + 7);   // that week belongs to the campaign before
+  const out = [];
+  while(weekCampaign(isoOf(d)) === label){ out.push(isoOf(d)); d.setDate(d.getDate() + 7); }
+  return out;
+}
+const thisWeekStart = () => isoOf(weekStartOf(new Date()));
+const thisCampaign  = () => weekCampaign(thisWeekStart());
+/* "9/1–9/7" — the way the campaign calendar is read out loud */
+const fmtMD = d => (d.getMonth() + 1) + "/" + d.getDate();
+function weekRange(tueISO){ const a = parseDate(tueISO), b = new Date(a); b.setDate(b.getDate() + 6); return fmtMD(a) + "–" + fmtMD(b); }
+function weekLabel(camp, tueISO){ const i = campaignWeeks(camp).indexOf(tueISO); return (i < 0 ? "Week" : "Wk " + (i + 1)) + " · " + weekRange(tueISO); }
+
+/* campaigns worth showing: the current one, plus any that have marks */
+function ciCampaigns(){
+  const set = new Set([thisCampaign(), ...Object.keys(DATA.checkins || {})]);
+  return [...set].filter(c => campaignWeeks(c).length).sort((a, b) => campKeyHub(b) - campKeyHub(a));
+}
+function ciEligible(){
+  return (TEAM.rows || []).filter(r => r.Active && (programOf(r) === "Path" || programOf(r) === "Masters"));
+}
+function getCheckin(camp, rep, week){
+  const c = (DATA.checkins || {})[camp];
+  return (c && c[rep] && c[rep][week]) || "";
+}
+function applyCheckin(camp, rep, week, state){
+  if(!DATA.checkins) DATA.checkins = {};
+  const c = DATA.checkins[camp] || (DATA.checkins[camp] = {});
+  const p = c[rep] || (c[rep] = {});
+  if(state) p[week] = state; else delete p[week];
+  if(!Object.keys(p).length) delete c[rep];
+  if(!Object.keys(c).length) delete DATA.checkins[camp];
+}
+function setCheckin(camp, rep, week, state){
+  applyCheckin(camp, rep, week, state);
+  CI_JOURNAL.push({camp, rep, week, state});   // replayed if the save collides with the other coach's
+  save("checkin");
+}
+/* this week, everyone eligible, no filters — feeds the tab-bar count */
+function ciWeekTally(){
+  const mon = thisWeekStart(), camp = thisCampaign();
+  let open = 0, done = 0;
+  const rows = ciEligible();
+  for(const r of rows){ const s = getCheckin(camp, r.RepID, mon); if(CI_DONE.has(s)) done++; else if(!s) open++; }
+  return {total: rows.length, open, done};
+}
+
+function renderCheckins(){
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">Week by week</div>
+      <div class="big serif">Weekly Check-ins</div>
+      <div class="lede">One square per mentee per Vector week (Tuesday to Monday) — click it to say how that week's check-in went.
+        Only The Path and The Masters get check-in calls, so The Dojo isn't on this board.
+        The board starts clean every campaign; older campaigns stay in the picker.</div>
+    </div>
+  </div>`;
+
+  const gate = teamGateHtml(html);
+  if(gate) return gate;
+
+  const todayMon = thisWeekStart(), nowCamp = thisCampaign();
+  const camps = ciCampaigns();
+  if(!camps.includes(UI.ciCampaign)) UI.ciCampaign = nowCamp;
+  const camp = UI.ciCampaign, isNow = camp === nowCamp;
+  const weeks = campaignWeeks(camp);
+  const q = UI.q.toLowerCase();
+
+  const eligible = ciEligible().sort((a, b) => a.Name.localeCompare(b.Name));
+  const rows = eligible.filter(r => passesFilters(r, UI.ciProgs, UI.ciCoaches));
+  const visible = rows.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+  const groups = groupRows(visible, UI.ciGroup);
+
+  /* tallies over what's on screen. A past week left blank counts against
+     coverage — it's a check-in nobody recorded, which is the thing to notice. */
+  const elapsed = weeks.filter(w => w <= todayMon);
+  let done = 0, missed = 0, open = 0, wkDone = 0, wkOpen = 0;
+  for(const r of visible){
+    for(const w of elapsed){
+      const s = getCheckin(camp, r.RepID, w);
+      if(CI_DONE.has(s)) done++; else if(s === "no") missed++; else if(!s) open++;
+    }
+    if(isNow){ const s = getCheckin(camp, r.RepID, todayMon); if(CI_DONE.has(s)) wkDone++; else if(!s) wkOpen++; }
+  }
+  const needed = done + missed + open;
+  const pct = needed ? Math.round(done / needed * 100) : 0;
+  const nPath = visible.filter(r => programOf(r) === "Path").length, nMasters = visible.length - nPath;
+
+  html += toolbar(`
+    <div class="tb-filters">
+      <select class="btn sm" data-cicamp title="Which campaign's board" style="padding:5px 8px">${camps.map(x => `<option${x === camp ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+      ${fgroup("Program", mseg("ciProgs", [{v:"",l:"All"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}], UI.ciProgs))}
+      ${fgroup("Coach", mseg("ciCoaches", coachFilterOpts(), UI.ciCoaches))}
+      ${fgroup("Group", seg("ciGroup", [{v:"coach",l:"By coach"},{v:"program",l:"By program"},{v:"none",l:"None"}], UI.ciGroup))}
+    </div>
+    <input class="search" id="q" placeholder="Search ${rows.length} mentees…" value="${esc(UI.q)}">
+    <div class="tb-actions">
+      <button class="btn" data-teamact="reload" title="Re-pull the roster from the sheet">Refresh</button>
+      ${exportButtons("ciBoard", "Check-ins " + camp)}
+    </div>`);
+
+  html += `<div id="ciBoard" class="export-frame">`;
+  html += printHead("Weekly Check-ins · " + camp, `${visible.length} mentees · printed ${fmtFull(todayISO())}`);
+  html += `<div class="stats">
+    ${isNow ? statBox("This week", wkDone + "/" + visible.length, "checked in so far · " + weekLabel(camp, todayMon))
+            : statBox("Campaign", camp, weeks.length + " weeks")}
+    ${isNow ? statBox("Still open this week", wkOpen, wkOpen ? "no mark yet" : "everyone's marked", wkOpen > 0)
+            : statBox("Checked in", done, "green, purple or blue")}
+    ${statBox("Missed", missed, missed ? "red squares this campaign" : "none so far", missed > 0)}
+    ${statBox("Coverage", pct + "%", `${done} of ${needed} weeks that needed one`)}
+    ${statBox("On the board", visible.length, `${nPath} Path · ${nMasters} Masters`)}
+  </div>`;
+
+  if(!eligible.length) html += `<div class="empty-note">Nobody on The Path or The Masters is active right now — the board fills in the moment someone is.</div>`;
+  else if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
+  else{
+    html += `<div class="tbl"><table class="grid ciboard"><thead><tr><th>Mentee</th>${weeks.map((w, i) => {
+      const d = parseDate(w), e = new Date(d); e.setDate(e.getDate() + 6);
+      return `<th class="cw${w === todayMon ? " cur" : ""}" title="Week ${i + 1} · ${fmtDay(w)} ${fmtDate(w)} – ${fmtDay(isoOf(e))} ${fmtDate(isoOf(e))}"><span class="wn">Wk ${i + 1}</span><span class="wd">${weekRange(w)}</span></th>`;
+    }).join("")}<th></th></tr></thead><tbody>`;
+    for(const g of groups){
+      if(g.label) html += `<tr class="grp"><td colspan="${weeks.length + 2}">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      for(const r of g.rows){
+        let rd = 0, rn = 0;
+        html += `<tr><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(programOf(r))}</span> ${coachChip(r)}</td>`;
+        for(const w of weeks){
+          const s = getCheckin(camp, r.RepID, w);
+          const cur = w === todayMon, past = w < todayMon;
+          if(w <= todayMon){ if(CI_DONE.has(s)) rd++; if(s !== "off") rn++; }
+          const cls = s ? s : "blank" + (cur ? " cur" : past ? " due" : " fut");
+          const st = CI_STATES[s];
+          html += `<td class="cc${cur ? " cur" : ""}"><button class="ci ${cls}" data-ci="${esc(camp)}|${esc(r.RepID)}|${w}"
+            title="${esc(r.Name)} · ${weekLabel(camp, w)} · ${st ? st.label : "not marked yet"}">${st ? st.glyph : ""}</button></td>`;
+        }
+        html += `<td class="tot" title="checked in / weeks that needed one, so far">${rd}/${rn}</td></tr>`;
+      }
+    }
+    html += `</tbody></table></div>`;
+    html += `<div class="cilegend">${CI_ORDER.map(k => `<span><i class="ci ${k}">${CI_STATES[k].glyph}</i> ${CI_STATES[k].label}</span>`).join("")}<span><i class="ci blank due"></i> not marked yet</span></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+/* ── the pick-a-colour popover. Lives outside #view so a background sync
+   render can't wipe it mid-click. ── */
+function openCiPop(btn){
+  const [camp, rep, week] = btn.dataset.ci.split("|");
+  const row = (TEAM.rows || []).find(r => r.RepID === rep);
+  if(!row) return;
+  CI_OPEN = {camp, rep, week};
+  const cur = getCheckin(camp, rep, week);
+  const pop = $("#ciPop");
+  pop.innerHTML = `<div class="cp-head"><b>${esc(row.Name)}</b>${esc(weekLabel(camp, week))} · ${esc(camp)}</div>` +
+    CI_ORDER.map(k => `<button class="cp-opt${cur === k ? " on" : ""}" data-cistate="${k}"><i class="ci ${k}">${CI_STATES[k].glyph}</i><span>${CI_STATES[k].label}<small>${CI_STATES[k].hint}</small></span></button>`).join("") +
+    `<button class="cp-opt" data-cistate=""><i class="ci blank"></i><span>Clear<small>back to not marked</small></span></button>`;
+  pop.classList.remove("hidden");
+  const r = btn.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  const left = Math.max(8, Math.min(r.left + r.width / 2 - pw / 2, innerWidth - pw - 8));
+  let top = r.bottom + 8;
+  if(top + ph > innerHeight - 8) top = Math.max(8, r.top - ph - 8);
+  pop.style.left = left + "px"; pop.style.top = top + "px";
+}
+function closeCiPop(){ $("#ciPop").classList.add("hidden"); CI_OPEN = null; }
+document.addEventListener("click", e => {
+  const b = e.target.closest("button[data-ci]");
+  if(b){ e.preventDefault(); openCiPop(b); return; }
+  const o = e.target.closest("button[data-cistate]");
+  if(o && CI_OPEN){
+    const {camp, rep, week} = CI_OPEN, st = o.dataset.cistate;
+    const row = (TEAM.rows || []).find(r => r.RepID === rep);
+    setCheckin(camp, rep, week, st);
+    closeCiPop(); render();
+    toast(`${row ? row.Name.split(" ")[0] : rep} · ${weekLabel(camp, week)} · ${st ? CI_STATES[st].label : "cleared"}`);
+    return;
+  }
+  const pop = $("#ciPop");
+  if(!pop.classList.contains("hidden") && !pop.contains(e.target)) closeCiPop();
+});
+document.addEventListener("keydown", e => { if(e.key === "Escape" && CI_OPEN) closeCiPop(); });
+document.addEventListener("change", e => {
+  const s = e.target.closest("select[data-cicamp]");
+  if(s){ UI.ciCampaign = s.value; render(); }
+});
 
 /* mentee-tab actions — document-level, so they survive re-renders */
 document.addEventListener("click", async e => {
@@ -1984,9 +2329,13 @@ const TABS = [
   {id:"perf", label:"Performance", sub:"", section:"perf",
    count:()=>"", render:renderPerf},
 
-  {id:"team", label:"Mentees", sub:"", section:"team", printable:true,
+  {id:"team", label:"Mentees", sub:"Roster", section:"team", printable:true,
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : "",
    render:renderTeam},
+
+  {id:"checkins", label:"Weekly Check-ins", sub:"Weekly Check-ins", section:"team", printable:true,
+   count:()=>{ if(!TEAM.rows) return ""; const c = ciWeekTally(); return c.total ? c.open + " open" : ""; },
+   render:renderCheckins},
 
   {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
    count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : "",
@@ -2023,6 +2372,16 @@ function seg(name, opts, current){
     `<button data-seg="${name}" data-val="${esc(o.v)}" class="${current===o.v?"on":""}">${esc(o.l)}</button>`
   ).join("") + `</div>`;
 }
+/* Same look, but several buttons can be lit at once. UI[name] is an array;
+   the empty-valued option ("All") is lit when nothing is picked and clears
+   the set when clicked. */
+function mseg(name, opts, picked){
+  const on = v => v === "" ? !picked.length : picked.includes(v);
+  return `<div class="seg">` + opts.map(o =>
+    `<button data-mseg="${name}" data-val="${esc(o.v)}" class="${on(o.v)?"on":""}">${esc(o.l)}</button>`
+  ).join("") + `</div>`;
+}
+function fgroup(label, inner){ return `<div class="fgroup"><span class="flab">${esc(label)}</span>${inner}</div>`; }
 /* edit-mode affordances. They only appear while Edit is on (CSS .edit-only). */
 function del(path, label){
   return ` <button class="del edit-only no-export no-print" data-del="${path}" title="Delete${label?" "+esc(label):""}">×</button>`;
@@ -2638,12 +2997,18 @@ async function pull(quiet){
     if(body.rev > REV && body.data){
       /* someone else moved ahead of us */
       if(PENDING || PUSHING){
-        syncStatus(body.by + " also edited — yours will win on save", "warn");
+        syncStatus(body.by + " also edited — " + (OTHER_EDITS ? "yours will win on save" : "merging check-ins"), "warn");
         return;
       }
       DATA = migrate(body.data); DF = null; setRev(body.rev);
+      /* marks a failed push left behind go back on top of the fresh copy;
+         any other stranded edit is lost the way it always was */
+      const replay = !OTHER_EDITS && CI_JOURNAL.length > 0;
+      if(replay) for(const j of CI_JOURNAL) applyCheckin(j.camp, j.rep, j.week, j.state);
+      else { CI_JOURNAL = []; OTHER_EDITS = 0; }
       localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
       render();
+      if(replay) scheduleSync();
       if(!quiet) toast(body.by ? body.by + "'s changes loaded" : "Updated from the shared copy");
     }
     if(!PENDING && !PUSHING) syncStatus("shared · " + (REMOTE.by ? REMOTE.by + " " + ago(REMOTE.updated) : "in sync"));
@@ -2664,6 +3029,7 @@ function scheduleSync(){
 async function push(attempt){
   if(!syncOn() || PUSHING) return;
   PUSHING = true; PENDING = false;
+  const sentMarks = CI_JOURNAL.length, sentOther = OTHER_EDITS;   // what this push carries — edits can land while it's in flight
   try{
     const res = await fetch(SYNC.url, {
       method: "POST",
@@ -2673,12 +3039,24 @@ async function push(attempt){
     const body = await res.json();
     if(body.conflict){
       REMOTE = {rev:body.rev, by:body.by, updated:body.updated};
+      /* Only check-in marks since our last sync? Take their copy, put our
+         marks back on top, and push again — the two boards simply combine. */
+      if(CI_JOURNAL.length && !OTHER_EDITS && body.data){
+        DATA = migrate(body.data); DF = null; setRev(body.rev);
+        for(const j of CI_JOURNAL) applyCheckin(j.camp, j.rep, j.week, j.state);
+        localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+        render();
+        syncStatus("merging with " + (body.by || "the other coach") + "…", "warn");
+        PENDING = true;                              // finally{} schedules the re-push
+        return;
+      }
       showConflict(body);
       syncStatus("conflict with " + body.by, "warn");
       return;
     }
     if(!body.ok) throw new Error(body.error || "refused");
     setRev(body.rev);
+    CI_JOURNAL.splice(0, sentMarks); OTHER_EDITS -= sentOther;   // what went up is now shared; later edits stay pending
     REMOTE = {rev:body.rev, by:whoAmI(), updated:new Date().toISOString()};
     syncStatus("shared · saved just now");
   }catch(e){
@@ -2756,6 +3134,7 @@ function render(){
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
   if(TAB!=="assign"&&ASSIGN.open)closeCell();
+  if(CI_OPEN) closeCiPop();
   $("#view").innerHTML = editBanner() + currentTab().render();
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();
@@ -3007,6 +3386,13 @@ document.addEventListener("click", e => {
     UI[t.dataset.seg] = t.dataset.seg === "year" ? Number(t.dataset.val) : t.dataset.val;
     render(); return;
   }
+  if(t.dataset.mseg){                                  // multi-select: toggle one, "All" (empty) clears
+    const arr = UI[t.dataset.mseg] || (UI[t.dataset.mseg] = []);
+    const v = t.dataset.val;
+    if(!v) arr.length = 0;
+    else{ const i = arr.indexOf(v); if(i < 0) arr.push(v); else arr.splice(i, 1); }
+    render(); return;
+  }
   if(t.dataset.toggle === "open"){ UI.open = !UI.open; render(); return; }
   if(t.dataset.toggle === "edit" || t.id === "editBtn"){ EDITING = !EDITING; render(); return; }
   if(t.dataset.png){ exportPNG(t.dataset.png, t.dataset.label); return; }
@@ -3255,13 +3641,14 @@ $("#scrim").addEventListener("click", async e => {
   }
   if(act === "takeTheirs"){
     DATA = migrate(window._conflict.data); DF = null; setRev(window._conflict.rev);
+    CI_JOURNAL = []; OTHER_EDITS = 0;
     localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
     render(); $("#scrim").classList.remove("on"); toast("Loaded their version"); return;
   }
   if(act === "reset"){
     if(!confirm("Throw away your local edits and go back to the data pulled from the sheet?")) return;
     localStorage.removeItem(STORE_KEY);
-    DATA = clone(SEED); DIRTY = false; DF = null; paintSaveState(); render();
+    DATA = clone(SEED); DIRTY = false; DF = null; CI_JOURNAL = []; OTHER_EDITS = 0; paintSaveState(); render();
     $("#scrim").classList.remove("on"); toast("Back to seed data");
   }
 });

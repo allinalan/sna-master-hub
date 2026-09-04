@@ -425,6 +425,7 @@ button.tierchip:hover{filter:brightness(.85)}
 .slot+.slot{border-top:1px dashed var(--line-soft)}
 .slot .stime{font-family:var(--monof);font-size:10px;color:var(--ink-faint);flex:none;min-width:44px}
 .slot .sday{font-family:var(--monof);font-size:10px;font-weight:600;color:var(--ink-soft);flex:none}
+.slot .sdate{font-family:var(--monof);font-size:10px;font-weight:600;color:var(--ink-soft);flex:none;min-width:54px}
 .slot .stag{font-family:var(--monof);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;flex:none;min-width:60px;color:var(--ink-faint)}
 .slot.second .stag{color:var(--accent-ink)}
 .slot.hot .stag{color:var(--warn);min-width:78px}
@@ -1072,6 +1073,13 @@ const SEED = {
 
 const STORE_KEY = "sna-master-hub-v1";
 
+/* Month, day and weekday names sit up here because `let DATA = load()` on the
+   next screen runs while this script is still being evaluated — migrate() reads
+   old call dates, and a const declared further down wouldn't exist yet. */
+const MONTHS   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS     = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
 /* ── state ────────────────────────────────────────────────────────────── */
 let DATA = load();
 let DIRTY = !!localStorage.getItem(STORE_KEY);
@@ -1120,6 +1128,15 @@ function migrate(d){
     delete r.hotSeat; delete r.hotSeatPresenter; delete r.hotSeatTime;
     r.extra.forEach(x => { if(!Array.isArray(x.notes)) x.notes = []; });
     if(!Array.isArray(r.mainNotes)) r.mainNotes = [];
+    /* per-call nights (2026-09-04): an additional call used to carry a free-text
+       `day` chip ("Thu", "Oct 8") that nothing could sort, count or move. It
+       becomes a real `date` wherever it reads as one; a scribble that doesn't
+       parse stays on `day` so nobody's note vanishes. */
+    r.extra.forEach(x => {
+      if(x.date || !String(x.day || "").trim()) return;
+      const iso = readCallDate(x.day, r.date);
+      if(iso){ x.date = iso; delete x.day; }
+    });
   });
   // meta gains fields over time (callTime, …). It already exists on any saved
   // board, so the loop above skips it — backfill its new keys individually or a
@@ -1218,8 +1235,6 @@ function assignState(rep,a,overrides,subs,today){
 /*ASSIGN_STATE_END*/
 
 const $  = s => document.querySelector(s);
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 function parseDate(iso){ const [y,m,d] = String(iso).split("-").map(Number); return new Date(y, m-1, d); }
 function fmtDate(iso){ const d = parseDate(iso); return MONTHS[d.getMonth()] + " " + d.getDate(); }
@@ -1260,6 +1275,36 @@ function parseLooseDate(text, defaultYear){
   if(mi >= 0 && day !== null) return makeISO(yr || defaultYear, mi + 1, day);
   return null;
 }
+
+/* A bare weekday lands inside the call's own VECTOR week — Tuesday through
+   Monday, the same week the check-in board counts in, not a Mon–Sun one. So on
+   a call sitting on Tue Sep 8, "Thursday" is Sep 10 and "Monday" is Sep 14: the
+   Monday that CLOSES that week, six nights on, not the Sep 7 before it. Typing a
+   real date always wins, and the toast names the full date it landed on. */
+function parseWeekday(text, anchorISO){
+  const t = String(text || "").trim().toLowerCase().replace(/\.$/, "");
+  if(!t || !anchorISO) return null;
+  const i = t.length >= 3 ? WEEKDAYS.findIndex(d => d.toLowerCase().startsWith(t)) : -1;   // mon · tues · thurs · saturday
+  if(i < 0) return null;
+  const a = parseDate(anchorISO);
+  if(isNaN(a)) return null;
+  const d = weekStartOf(a);                  // the one definition of a Vector week — the Tuesday on or before
+  d.setDate(d.getDate() + ((i + 5) % 7));    // ...then out to the night asked for: Tue 0 · Wed 1 … Mon 6
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+/* Every call date typed anywhere on the board comes through here: a weekday
+   name, or any of the loose formats, read against the night the call is on now. */
+function readCallDate(text, anchorISO){
+  return parseWeekday(text, anchorISO)
+      || parseLooseDate(text, Number(String(anchorISO || todayISO()).slice(0, 4)));
+}
+
+/* ── which night a call runs ────────────────────────────────────────────
+   A week row is anchored by r.date — the night its main call runs, and what the
+   board sorts, numbers and groups by. Any additional call may carry its own
+   `date` instead; blank means it rides along on the week's night. ── */
+function callDateOf(r, x){ return (x && String(x.date || "").trim()) || r.date; }
+function isLiveCall(x){ return !!(String(x.topic || "").trim() || String(x.speaker || "").trim()); }
 
 /* Spring = Jan–Apr (I) · Summer = May–Aug (II) · Fall = Sep–Dec (III) —
    the same split the mentee dashboard uses, so campaigns line up across tools. */
@@ -1359,6 +1404,22 @@ function findUses(topic){
   const future = DATA.calendar.filter(r => isPlanned(r) && r.date >= today && related(topic, r.topic))
                               .sort((a, b) => a.date.localeCompare(b.date));
   return {past, future};
+}
+
+/* Every call on a week, flattened, each with the night it actually runs. Once a
+   call can break away from its week, "the next call" can't be read off the week
+   dates any more — a Monday hot seat comes before its own week's Tuesday. */
+function callsOn(r){
+  if(isBlocked(r) || isOff(r)) return [];
+  const out = [{date:r.date, topic:r.topic, presenter:r.presenter, time:r.time, planned:isPlanned(r)}];
+  for(const x of (r.extra || [])) if(isLiveCall(x))
+    out.push({date:callDateOf(r, x), topic:x.topic || x.speaker, presenter:x.presenter, time:x.time, planned:true});
+  return out;
+}
+function upcomingCalls(){
+  const today = todayISO();
+  return DATA.calendar.flatMap(callsOn).filter(c => c.date >= today)
+                      .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /* ── structural edits, all driven by the same dot-paths as the text fields ── */
@@ -2515,8 +2576,7 @@ function renderCalendar(){
   /* every CALL in a live week, so the boxes add up call-by-call, not week-by-week */
   const callsOf = r => (isBlocked(r) || isOff(r)) ? [] :
     (isPlanned(r) ? [{pres:r.presenter, type:r.callType || "group"}] : [])
-      .concat((r.extra || []).filter(x => String(x.topic||"").trim() || String(x.speaker||"").trim())
-                             .map(x => ({pres:x.presenter, type:x.type || "group"})));
+      .concat((r.extra || []).filter(isLiveCall).map(x => ({pres:x.presenter, type:x.type || "group"})));
   const allCalls = scope.flatMap(callsOf);
   const alan    = allCalls.filter(c => ["alan","both"].includes(presenterClass(c.pres))).length;
   const ben     = allCalls.filter(c => ["ben","both"].includes(presenterClass(c.pres))).length;
@@ -2553,14 +2613,16 @@ function renderCalendar(){
       <div class="lede" style="margin-top:6px">Calls run at <b>${ed("meta.callTime", callTime(), "", "set a time")}</b>
         — click it in <b>Edit</b> to change every night at once, or give one week its own
         time with <b>+ time</b>.</div>
+      <div class="lede" style="margin-top:6px">Nothing is stuck on a Tuesday. In <b>Edit</b>, every
+        call on a week starts with its own date — click it and type <b>Monday</b>, <b>Jan 6</b> or
+        <b>1/6</b>. The first call's date moves the whole week; any call under it moves on its own.</div>
     </div>${(() => {
-      const next = DATA.calendar.filter(r => r.date >= todayISO() && !isBlocked(r) && !isOff(r))
-                                .sort((a, b) => a.date.localeCompare(b.date))[0];
+      const next = upcomingCalls()[0];
       if(!next) return "";
       return `<div class="next-call">
         <div class="nc-lab">Next call night</div>
         <div class="nc-date">${fmtDay(next.date)} · ${fmtDate(next.date)}</div>
-        <div class="nc-topic">${isPlanned(next) ? esc(next.topic) : `<span class="nc-open">open — nothing planned yet</span>`}</div>
+        <div class="nc-topic">${next.planned ? esc(next.topic) : `<span class="nc-open">open — nothing planned yet</span>`}</div>
         <div class="nc-meta">${(next.time || callTime()) ? `<span class="nc-time">${esc(next.time || callTime())}</span>` : ""}${
           next.presenter ? `<span class="chip ${presenterClass(next.presenter)}">${esc(next.presenter)}</span>` : ""}</div>
       </div>`;
@@ -2640,12 +2702,21 @@ function weekRow(r, idx, wkNum){
   const p = "calendar." + idx;
   const planned = isPlanned(r), blocked = isBlocked(r), off = isOff(r);
   const state = blocked ? "blocked" : off ? "off" : (planned ? "" : "open");
-  const liveExtras = (r.extra || []).filter(x => String(x.topic||"").trim() || String(x.speaker||"").trim());
+  const liveExtras = (r.extra || []).filter(isLiveCall);
   const nCalls = (planned ? 1 : 0) + liveExtras.length;
 
   const stime = (path, val, fallback) =>
     EDITING ? `<span class="stime">${ed(path, val, "", "time?")}</span>`
             : (String(val || fallback || "").trim() ? `<span class="stime">${esc(val || fallback)}</span>` : "");
+  /* Every call gets its own night. In Edit mode each slot opens with a clickable
+     date — the main call's IS the week's, so retyping it moves the week; an extra
+     call keeps its own. With Edit off the chip only shows on a call that has
+     broken away from the week's night, so the printed board stays clean. */
+  const sdate = (path, iso, anchor) => {
+    const shown = iso ? fmtDay(iso) + " " + fmtDate(iso) : "";
+    if(EDITING) return ed(path, shown, "sdate", "date?");
+    return (shown && iso !== anchor) ? `<span class="sdate">${esc(shown)}</span>` : "";
+  };
   const spick = field =>
     `<button class="slot-pick edit-only no-export no-print" data-pick="${idx}" data-pickfield="${field}" title="Pick from the topic bank">\u25be</button>`;
   const pchip = (path, val) =>
@@ -2666,26 +2737,37 @@ function weekRow(r, idx, wkNum){
       `<div class="snote"><span class="ntag">note</span><span class="ntext">${ed(arrPath + "." + i, n, "", "type the note")}</span>${del(arrPath + "." + i, "note")}</div>`).join("") +
     `<button class="btn sm edit-only no-export no-print snote-add" data-addnote="${arrPath}">+ note</button>`;
 
-  let main = "";
-  const mainType = r.callType || "group";
-  if(planned){
-    main += `<div class="slot main ${mainType} t${mainType === "hotseat" ? 0 : tierOf(r.topic)}">${stime(p+".time", r.time, callTime())}${stag(p+".callType", mainType)}<span class="stopic">${ed(p+".topic", r.topic)}${mainType === "hotseat" ? "" : tierChip(r.topic)}</span>${spk(p+".speaker", mainType, r.speaker)}${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`;
-    main += noteLines(p + ".mainNotes", r.mainNotes);
-  } else if(blocked){
-    main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
-  } else {
-    main += `<div class="slot main">${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open \u2014 click to plan")}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`;
-  }
-  /* an additional call can land on a DIFFERENT DAY inside the same week —
-     an optional day chip ("Thu", "Oct 8") sits ahead of its time */
+  /* An additional call can land on any night, in or out of its own week — it
+     carries its own date, and the week lists in the order it actually runs, so a
+     call moved to the Monday before sits above the Tuesday one it was planned
+     under. `day` is the old free-text chip; a scribble migrate() couldn't read as
+     a date still shows beside the real one. */
   const sday = (path, val) =>
     EDITING ? `<span class="sday">${ed(path, val, "", "day?")}</span>`
             : (String(val||"").trim() ? `<span class="sday">${esc(val)}</span>` : "");
+
+  let main = "";
+  const slots = [];                                // {date, j, html} — j = -1 for the main call, so it leads its own night
+  const mainType = r.callType || "group";
+  if(planned){
+    slots.push({date:r.date, j:-1, html:
+      `<div class="slot main ${mainType} t${mainType === "hotseat" ? 0 : tierOf(r.topic)}">${sdate(p+".date", r.date, r.date)}${stime(p+".time", r.time, callTime())}${stag(p+".callType", mainType)}<span class="stopic">${ed(p+".topic", r.topic)}${mainType === "hotseat" ? "" : tierChip(r.topic)}</span>${spk(p+".speaker", mainType, r.speaker)}${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`
+      + noteLines(p + ".mainNotes", r.mainNotes)});
+  } else if(blocked){
+    main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
+  } else {
+    slots.push({date:r.date, j:-1, html:
+      `<div class="slot main">${sdate(p+".date", r.date, r.date)}${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open \u2014 click to plan")}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`});
+  }
   (r.extra || []).forEach((x, j) => {
     const xp = `${p}.extra.${j}`, xt = x.type || "group";
-    main += `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sday(xp+".day", x.day)}${stime(xp+".time", x.time, "")}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`;
-    main += noteLines(xp + ".notes", x.notes);
+    slots.push({date:callDateOf(r, x), j, html:
+      `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sdate(xp+".date", callDateOf(r, x), r.date)}${x.day ? sday(xp+".day", x.day) : ""}${stime(xp+".time", x.time, "")}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`
+      + noteLines(xp + ".notes", x.notes)});
   });
+  slots.sort((a, b) => a.date.localeCompare(b.date) || a.j - b.j);
+  main += slots.map(sl => sl.html).join("");
+
   if(!blocked)
     main += `<div class="slot ghost edit-only no-export no-print">
       <button class="btn sm" data-addcall="${idx}|group">+ call</button>
@@ -3323,11 +3405,26 @@ document.addEventListener("focusout", e => {
     item.due = iso; save(); render();
     return toast("Due " + fmtFull(iso));
   }
-  if(path.endsWith(".date")){                    // a call moved nights
+  if(/\.extra\.\d+\.date$/.test(path)){        // ONE call moved nights, on its own
+    const call = getPath(path.slice(0, path.lastIndexOf(".")));
+    const week = getPath(path.slice(0, path.indexOf(".extra.")));
+    if(!val){ delete call.date; save(); render(); return toast("Back on the week's night — " + fmtFull(week.date)); }
+    const iso = readCallDate(val, callDateOf(week, call));
+    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Monday", "Jan 6" or "1/6"`); }
+    if(iso === week.date) delete call.date; else call.date = iso;   // back on the week's night = no override to keep
+    save(); render();
+    return toast("Moved to " + fmtFull(iso) + " (" + fmtDay(iso) + ")");
+  }
+  if(path.endsWith(".date")){                    // the week's own night — its calls move with it
     const row = getPath(path.slice(0, path.lastIndexOf(".")));
-    const iso = parseLooseDate(val, Number(String(row.date).slice(0, 4)));
-    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Jan 6" or "1/6"`); }
-    if(iso === row.date){ el.textContent = fmtDate(row.date); return; }   // unchanged — no repaint
+    const iso = readCallDate(val, row.date);
+    if(!iso){ render(); return toast(`Couldn't read "${val}" as a date — try "Monday", "Jan 6" or "1/6"`); }
+    /* unchanged — no repaint. The week header and the call slot show the same
+       date two ways, so put back whichever one was being edited. */
+    if(iso === row.date){
+      el.textContent = el.classList.contains("sdate") ? fmtDay(row.date) + " " + fmtDate(row.date) : fmtDate(row.date);
+      return;
+    }
     const clash = DATA.calendar.some(r => r !== row && r.date === iso);
     row.date = iso;
     DATA.calendar.sort((a, b) => a.date.localeCompare(b.date));

@@ -724,6 +724,64 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
   .wk-sub{gap:8px;padding-left:10px}
   .wk-sub .tag{padding-top:3px}
   .sec-title{margin-top:26px;flex-wrap:wrap}
+
+  /* ── plain tables become stacked cards: the roster, the call archive, the
+     guest bench and the assignment catalog. Each row is a card, each cell a
+     line, and the few cells a header row used to explain get a small label.
+     The check-in and assignment BOARDS stay grids — a grid is the point of
+     them, and they already scroll sideways with a sticky first column. ── */
+  #teamBoard table.grid,.tbl table.grid:not(.ciboard):not(.aboard){min-width:0}
+  .tbl table.grid:not(.ciboard):not(.aboard) thead{display:none}
+  .tbl table.grid:not(.ciboard):not(.aboard) tbody,
+  .tbl table.grid:not(.ciboard):not(.aboard) tr,
+  .tbl table.grid:not(.ciboard):not(.aboard) td{display:block;width:auto;white-space:normal}
+  .tbl table.grid:not(.ciboard):not(.aboard) tr{position:relative;padding:11px 14px 12px;border-bottom:1px solid var(--line-soft)}
+  .tbl table.grid:not(.ciboard):not(.aboard) tr:last-child{border-bottom:none}
+  .tbl table.grid:not(.ciboard):not(.aboard) td{padding:1px 0;border-bottom:none;font-size:13px}
+  .tbl table.grid:not(.ciboard):not(.aboard) td:empty{display:none}
+  .tbl table.grid:not(.ciboard):not(.aboard) tr.grp{padding:0}
+  .tbl table.grid:not(.ciboard):not(.aboard) tr.grp td{padding:12px 14px 6px}
+  /* Edit's delete lives in the card's top-right corner instead of a column of its own */
+  body.editing .tbl table.grid:not(.ciboard):not(.aboard) td.edit-only{display:block!important;position:absolute;top:6px;right:6px;width:auto;padding:0}
+  /* the label a header row used to supply */
+  #teamBoard td:nth-child(3)::before,#teamBoard td:nth-child(5)::before,#teamBoard td:nth-child(6)::before,#teamBoard td:nth-child(7)::before,
+  #archBoard td:nth-child(7)::before,#spkBoard td:nth-child(3)::before,
+  #assignBoard table.acat td:nth-child(3)::before,#assignBoard table.acat td:nth-child(4)::before{
+    font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:8px}
+  /* roster: name · program · then labelled lines · dashboard link last */
+  #teamBoard td:nth-child(1){font-size:14px}
+  #teamBoard td:nth-child(2){margin:4px 0 5px}
+  #teamBoard td:nth-child(3)::before{content:"Career sales"}
+  #teamBoard td:nth-child(4){margin:4px 0}
+  #teamBoard td:nth-child(5)::before{content:"Manager"}
+  #teamBoard td:nth-child(5) div{display:inline;color:var(--ink-faint)}
+  #teamBoard td:nth-child(5) div::before{content:" · "}
+  #teamBoard td:nth-child(6)::before{content:"Joined"}
+  #teamBoard td:nth-child(7)::before{content:"Coach"}
+  #teamBoard td:nth-child(7){margin-top:3px}
+  #teamBoard td:nth-child(8){margin-top:8px;display:flex;align-items:center;gap:12px}
+  #teamBoard td:nth-child(8) div{margin-top:0!important}
+  /* archive: "#3 · Jan 27 '25" on one line, topic under it, chips in a row */
+  #archBoard td.num,#archBoard td.dt{display:inline-block;padding:0;font-size:11px;margin-bottom:3px}
+  #archBoard td.num{margin-right:8px}
+  #archBoard td.num::before{content:"#"}
+  #archBoard td:nth-child(3){font-size:14px;font-weight:500}
+  #archBoard tr.nocall td:nth-child(3){font-weight:400}
+  #archBoard td:nth-child(4),#archBoard td:nth-child(5),#archBoard td:nth-child(6){display:inline-block;margin:6px 6px 0 0;padding:0}
+  #archBoard td:nth-child(7){margin-top:5px}
+  #archBoard td:nth-child(7)::before{content:"Hot seat"}
+  #archBoard td:nth-child(7) div{display:inline}
+  /* guest bench: name, what they'd teach, when we last asked */
+  #spkBoard td:nth-child(1){font-size:14px}
+  #spkBoard td:nth-child(3){margin-top:3px}
+  #spkBoard td:nth-child(3)::before{content:"Last asked"}
+  /* assignment catalog */
+  #assignBoard table.acat td:nth-child(2){margin:5px 0}
+  #assignBoard table.acat td:nth-child(3)::before{content:"Due"}
+  #assignBoard table.acat td:nth-child(4)::before{content:"Materials"}
+  #assignBoard table.acat td:nth-child(5){margin-top:8px}
+  /* the per-board rules above outrank the generic :empty one, so restate it for them */
+  #teamBoard td:empty,#archBoard td:empty,#spkBoard td:empty,#assignBoard table.acat td:empty{display:none}
 }
 </style>
 </head>

@@ -670,6 +670,61 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 .cp-opt small{display:block;font-size:10.5px;color:var(--ink-faint)}
 @media (max-width:760px){.fgroup{flex:none}}
 @media print{.ci{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+/* ═══════════ phones — the campaign calendar as a stack, not a two-column ledger ═══════════
+   On a 390px screen the desktop row (96px date column + time + type + host, then
+   the topic in whatever is left) squeezed the topic into a sliver one letter wide.
+   Under 640px every week becomes a stack: a one-line date header, the topic on
+   its own full-width line, then a small row of time · type · host beneath it. */
+@media (max-width:640px){
+  .wrap,.tabs-inner{padding:0 16px}
+  .page-head{padding-top:26px;gap:16px}
+  .page-head .lede{margin-top:8px;max-width:none}
+  /* the two how-to paragraphs are a manual, not the board — fold them until Edit is on */
+  body:not(.editing) .page-head .lede.how{display:none}
+  .next-call{padding:12px 15px 13px}
+  .toolbar{margin-bottom:22px}
+  .stats{gap:12px 16px;margin-bottom:26px}
+  .stat .val{font-size:24px}
+  .season{margin-bottom:30px}
+  .season-head{gap:10px;padding-bottom:9px}
+  .season-head h3{font-size:19px}
+  .season-head .fill{font-size:10px}
+
+  .week{grid-template-columns:minmax(0,1fr);gap:7px;padding:14px 0}
+  /* the date column turns into one header line: Jan 6 · Tue · WK 01 · [2 calls] */
+  .wk-date{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 9px;padding-top:0;font-size:12px}
+  .wk-date b{display:inline;order:-1;font-size:15.5px}
+  .wk-date .wknum{order:1}
+  .wk-date .count{order:1;margin-top:0}
+  .wk-date .del{order:2;margin-left:auto}
+  .wk-date .dpick{padding:1px 4px;margin-left:-4px}
+
+  /* a call slot wraps: topic first and full width, then its meta row */
+  .slot{flex-wrap:wrap;align-items:center;gap:4px 10px;padding:8px 10px 9px}
+  .slot .stopic{flex:1 1 0;min-width:50%;order:-3;font-size:16px;line-height:1.3}
+  .slot .slot-pick,.slot>.del{order:-2}               /* Edit's bank picker and delete stay beside the topic */
+  /* a zero-height, full-width break after the topic line, so a short topic never
+     gets the time or the host pulled up beside it */
+  .slot:not(.ghost)::before{content:"";flex:0 0 100%;order:-1;height:0}
+  .slot.second .stopic,.slot.hot .stopic{font-size:15px}
+  .slot .stopic.empty{font-size:11.5px}
+  .slot .stime,.slot .sdate,.slot .stag{min-width:0}
+  /* the host hugs the right edge of the meta row — with Edit off. Edit adds a
+     picker and a delete after it, and the row reads better flowing left */
+  body:not(.editing) .slot .chip{margin-left:auto}
+  .slot .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .wk-meta .chip{white-space:normal;line-height:1.4}    /* a long week note wraps instead of widening the page */
+  /* an open week has nothing to type-tag yet — "GROUP" alone on a line is just noise */
+  .slot:has(.stopic.empty) span.stag{display:none}
+  .slot.ghost{flex-wrap:wrap;gap:6px 8px}
+  .snote{padding-left:10px}
+  .snote-add{margin-left:10px}
+  .wk-detail{max-width:none}
+  .wk-sub{gap:8px;padding-left:10px}
+  .wk-sub .tag{padding-top:3px}
+  .sec-title{margin-top:26px;flex-wrap:wrap}
+}
 </style>
 </head>
 <body>
@@ -2697,12 +2752,12 @@ function renderCalendar(){
       <div class="lede">Every call night of the year. This year and next are always here —
         the board rolls itself forward, so Spring is plannable months ahead. Turn on
         <b>Edit</b> to plan straight into the page, then <b>Export PNG</b> for a clean image.</div>
-      <div class="lede" style="margin-top:6px">Calls run at <b>${
+      <div class="lede how" style="margin-top:6px">Calls run at <b>${
         EDITING ? tbtn("meta.callTime", callTime(), {ph:"set a time", title:"The standing time for every call (Central)"})
                 : esc(fmtTime(callTime()) || "no set time")}</b>
         — in <b>Edit</b>, click it to move every call at once, or click any single call's
         time to give that one its own. Every time on this board is Central.</div>
-      <div class="lede" style="margin-top:6px">Nothing is stuck on a Tuesday. In <b>Edit</b>, every call
+      <div class="lede how" style="margin-top:6px">Nothing is stuck on a Tuesday. In <b>Edit</b>, every call
         on a week has its own date — <b>click it and pick the night off the calendar</b>. Each row of that
         calendar is a Vector week, Tue&nbsp;→&nbsp;Mon. The first call's date moves the whole week; any
         call under it moves on its own.</div>

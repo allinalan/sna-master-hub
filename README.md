@@ -18,7 +18,7 @@ Everything else lives as a sub-tab under Campaign Calendar.
 | Tab | What it's for |
 |---|---|
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
-| **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date. Overdue goes red, due-within-a-fortnight goes amber. |
+| **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date, a topic, an urgency and an importance. Overdue goes red, due-within-a-fortnight goes amber. Filter by any of those, or by section, and sort by due date, urgency or importance. |
 | **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab and every rep's private `?rep=` link — so they can never drift out of sync. A bare visit to the old standalone URL redirects here. |
 | **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. |
@@ -69,18 +69,50 @@ leaving a blank chip behind.
 
 ### Orders of Business works without Edit mode
 
-Ticking a box, assigning an owner and setting a due date are the whole point of that
-tab, so they stay clickable with Edit **off**. Edit mode there is only for adding and
-deleting. Click a due date to pick one off the calendar, same as anywhere else in the hub.
+Ticking a box, assigning an owner, setting a due date, and giving an item a topic, an
+urgency and an importance are the whole point of that tab, so they all stay clickable
+with Edit **off**. Edit mode there is only for adding and deleting. Click a due date to
+pick one off the calendar, same as anywhere else in the hub.
+
+### Urgency and importance are 1 to 5, and 1 is the top
+
+Think of both scales as a countdown, not a score: **1 means do it now / it really
+matters, 5 means whenever / barely matters.** The names are just labels for the numbers,
+so sorting always puts the sharpest items first.
+
+| | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| **Urgency** | Now | This week | Soon | Can wait | Whenever |
+| **Importance** | Critical | High | Medium | Low | Minor |
+
+Each item shows three small chips under its title: **topic**, **urgency**, **importance**.
+Click one to set it. Unset chips sit faintly until you hover the row, and they never
+print or export. A topic is a free tag (`Recruiting`, `Curriculum`, whatever you like):
+the picker lists every topic already on the board so the spelling stays consistent, and
+has a box for a new one. Topics aren't sections — a section is where an item lives, a
+topic is what it's about, and an item in any section can carry any topic.
 
 Ticking something off does **not** hide it. It gets crossed out, sinks to the bottom of
 its section, and flashes for a moment so you can see where it went. Click the box again
 to put it back. Once an item is ticked, a `×` appears on its row so you can bin it for
 good without turning on Edit — that one asks for confirmation.
 
-Filters across the top: **Everything** (the default), **Hide done**, **Has a date**,
-**Done only**, plus Alan / Ben / Unassigned. Sections sort open items first, soonest
-date first, undated last, done at the bottom.
+Filters across the top, in two rows:
+
+- **Everything** (the default) · **Hide done** · **Done only**
+- **Who** — Anyone / Alan / Ben / Unassigned
+- **Due** — Any / Overdue / 7 days / 14 days / Dated / Undated. The 7- and 14-day windows
+  include anything overdue: something due last Friday still needs doing this week.
+- **Urgency** and **Importance** — Any / 1 / 2 / 3 / 4 / 5 / Unrated. These are
+  multi-select, like the Mentees filters: light up 1 *and* 2 to see both.
+- **Section** and **Topic** — pick one from the dropdown, or **No topic** for the untagged.
+- **Sort** — Due date (the default), Urgency or Importance.
+
+A **Clear filters** button appears whenever anything is narrowed. Sections sort open
+items first, then by the chosen sort (urgency or importance, with the other as the
+tie-break), then soonest date first, undated last, done at the bottom. Adding an item
+while a filter would hide it clears the filters first, so a new task never lands out of
+sight.
 
 ### Dates and times are picked, never typed
 

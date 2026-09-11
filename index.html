@@ -296,6 +296,35 @@ body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-fa
 .due.soon{color:var(--warn)}
 .due.later{color:var(--ink-soft)}
 .biz .btn.sm{margin:10px 16px}
+.biz-t [data-ph]{color:var(--ink-faint);font-style:italic}
+/* topic · urgency · importance sit under the title as small chips. Unset ones
+   are faint until the row is hovered (or Edit is on) so a long list doesn't
+   read as sixty placeholders; they never print or export. */
+.biz-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.chip.bz{cursor:pointer;line-height:1.35}
+.chip.bz.empty{border-style:dashed;border-color:var(--line-strong);background:transparent;color:var(--ink-faint);opacity:.55}
+.biz-row:hover .chip.bz.empty,body.editing .chip.bz.empty,.chip.bz.empty:focus-visible{opacity:1}
+.chip.topic{background:var(--brass-soft);border-color:transparent;color:var(--brass);font-weight:600}
+.chip .lk{opacity:.72;font-weight:500}
+/* 1 is the top of both scales, so 1 is the hottest colour and 5 the quietest */
+.chip.lv1{background:var(--bad-bg);border-color:transparent;color:var(--bad);font-weight:600}
+.chip.lv2{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink);font-weight:600}
+.chip.lv3{background:var(--warn-bg);border-color:transparent;color:#6E5606;font-weight:600}
+.chip.lv4{background:var(--paper-deep);border-color:transparent;color:var(--ink-soft)}
+.chip.lv5{background:var(--card);color:var(--ink-faint)}
+.chip.lvn{padding:2px 0;width:22px;text-align:center;flex:none}
+.tb-row2{flex-basis:100%}
+select.fsel{font-family:var(--monof);font-size:10.5px;letter-spacing:.03em;padding:6px 9px;border:1px solid var(--line);
+  border-radius:9px;background:var(--paper-deep);color:var(--ink);max-width:220px;cursor:pointer}
+select.fsel:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(174,59,21,.12)}
+/* the topic / urgency / importance picker — same shell as the who picker */
+#bizPop{position:fixed;z-index:320;width:236px;max-width:94vw;background:var(--card,#fff);
+  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
+#bizPop.hidden{display:none}
+#bizPop .pp-list{max-height:46vh}
+#bizPop .pp-item.on{background:var(--paper-deep,#f1ede4)}
+#bizPop .pp-new{grid-template-columns:1fr auto}
+#bizPop .pp-new .search{grid-column:auto;width:auto;min-width:0}
 
 /* ═══════════ modal ═══════════ */
 .scrim{position:fixed;inset:0;background:rgba(18,13,8,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
@@ -822,6 +851,7 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 <div id="datePop" class="hidden"></div>
 <div id="timePop" class="hidden"></div>
 <div id="whoPop" class="hidden"></div>
+<div id="bizPop" class="hidden"></div>
 <div id="ciPop" class="hidden" role="dialog" aria-label="Mark this week's check-in"></div>
 <div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
@@ -1250,6 +1280,7 @@ let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
+             bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"due",   // Orders of Business filters + sort
              tier:"all", assignView:"board", assignProg:"all",   // show ticked-off items too — hiding them reads as deletion
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"" };   // Mentees ▸ Weekly Check-ins
@@ -1312,6 +1343,17 @@ function migrate(d){
   // board saved before a field existed comes back blank instead of defaulted.
   if(d.meta) for(const k of Object.keys(base.meta)) if(!(k in d.meta)) d.meta[k] = base.meta[k];
   if(d.meta){ const t = parseTimeText(d.meta.callTime); if(t) d.meta.callTime = t; }
+  /* orders of business (2026-09-11): "+ item" used to push a bare string into a
+     section, which rendered as a row nobody could type into — so a new task
+     never saved. Any such string becomes a real item, so it can be renamed or
+     binned. Items also gained topic / urg / imp; older rows read as unset. */
+  for(const list of Object.values(d.business || {})){
+    if(!Array.isArray(list)) continue;
+    list.forEach((it, i) => {
+      if(it && typeof it === "object") return;
+      list[i] = Object.assign(newBizItem(), {t: String(it == null ? "" : it).trim() || "New item"});
+    });
+  }
   ensureYears(d);
   return d;
 }
@@ -2733,7 +2775,7 @@ function printHead(title, sub){
 }
 function seg(name, opts, current){
   return `<div class="seg">` + opts.map(o =>
-    `<button data-seg="${name}" data-val="${esc(o.v)}" class="${current===o.v?"on":""}">${esc(o.l)}</button>`
+    `<button data-seg="${name}" data-val="${esc(o.v)}" class="${current===o.v?"on":""}"${o.t ? ` title="${esc(o.t)}"` : ""}>${esc(o.l)}</button>`
   ).join("") + `</div>`;
 }
 /* Same look, but several buttons can be lit at once. UI[name] is an array;
@@ -2742,7 +2784,7 @@ function seg(name, opts, current){
 function mseg(name, opts, picked){
   const on = v => v === "" ? !picked.length : picked.includes(v);
   return `<div class="seg">` + opts.map(o =>
-    `<button data-mseg="${name}" data-val="${esc(o.v)}" class="${on(o.v)?"on":""}">${esc(o.l)}</button>`
+    `<button data-mseg="${name}" data-val="${esc(o.v)}" class="${on(o.v)?"on":""}"${o.t ? ` title="${esc(o.t)}"` : ""}>${esc(o.l)}</button>`
   ).join("") + `</div>`;
 }
 function fgroup(label, inner){ return `<div class="fgroup"><span class="flab">${esc(label)}</span>${inner}</div>`; }
@@ -3235,26 +3277,111 @@ function dueState(item){
   const soon = new Date(); soon.setDate(soon.getDate() + 14);
   return item.due <= soon.toISOString().slice(0,10) ? "soon" : "later";
 }
+/* ── urgency and importance: two 1–5 scales, 1 at the top ─────────────────
+   Think of it as a countdown, not a score: 1 means "do it now / it really
+   matters", 5 means "whenever / barely matters". Storing the number (not the
+   name) means sorting ascending puts the sharpest items first, and the names
+   can be reworded later without touching anyone's data. */
+const BIZ_LEVELS = {
+  urg:{label:"Urgency",    short:"Urg", names:["Now", "This week", "Soon", "Can wait", "Whenever"]},
+  imp:{label:"Importance", short:"Imp", names:["Critical", "High", "Medium", "Low", "Minor"]}
+};
+function lvl(v){ const n = Number(v); return n >= 1 && n <= 5 ? Math.round(n) : 0; }   // 0 = unrated
+/* A blank order of business. "+ item" pushes one of these — an object, never a
+   bare string, or the row has nowhere to keep what you type. */
+function newBizItem(){ return {t:"New item", note:"", who:"", due:"", done:false, topic:"", urg:"", imp:""}; }
+/* every topic anyone has put on an item, so the picker and the filter offer
+   the same list, spelled the way it already is */
+function bizTopics(){
+  const seen = new Set();
+  for(const list of Object.values(DATA.business || {}))
+    for(const it of list){ const t = String((it && it.topic) || "").trim(); if(t) seen.add(t); }
+  return [...seen].sort((a, b) => a.localeCompare(b));
+}
+function bizFiltered(){
+  return UI.bizView !== "all" || UI.presenter !== "all" || !!UI.bizSec || !!UI.bizTopic ||
+         !!UI.bizDue || UI.bizUrg.length > 0 || UI.bizImp.length > 0 || !!UI.q.trim();
+}
+function bizClearFilters(){
+  UI.bizView = "all"; UI.presenter = "all"; UI.bizDue = ""; UI.bizSec = ""; UI.bizTopic = "";
+  UI.bizUrg = []; UI.bizImp = []; UI.q = "";
+}
+/* does this item pass the tab's filters? One function, shared by the render
+   and by "+ item" (which drops the filters if the fresh row would be hidden —
+   a task you can't see is a task that "didn't save"). */
+function bizShows(i, g){
+  if(UI.bizView === "open" && i.done) return false;
+  if(UI.bizView === "done" && !i.done) return false;
+  if(UI.bizSec && g !== UI.bizSec) return false;
+  if(UI.presenter !== "all"){
+    const w = String(i.who || "").toLowerCase();
+    if(UI.presenter === "tbd" ? w.trim() !== "" : !w.includes(UI.presenter)) return false;
+  }
+  if(UI.bizUrg.length && !UI.bizUrg.includes(String(lvl(i.urg)))) return false;
+  if(UI.bizImp.length && !UI.bizImp.includes(String(lvl(i.imp)))) return false;
+  if(UI.bizTopic){
+    const tp = String(i.topic || "").trim();
+    if(UI.bizTopic === "none" ? tp !== "" : tp !== UI.bizTopic) return false;
+  }
+  if(UI.bizDue){
+    const due = String(i.due || "");
+    const plus = n => { const d = new Date(); d.setDate(d.getDate() + n); return isoOfDate(d); };
+    if(UI.bizDue === "dated" && !due) return false;
+    if(UI.bizDue === "none"  && due) return false;
+    /* the windows include overdue: something due last Friday still needs
+       doing this week, and hiding it would bury the most pressing thing */
+    if(UI.bizDue === "over" && !(due && !i.done && due < todayISO())) return false;
+    if(UI.bizDue === "7"    && !(due && !i.done && due <= plus(7))) return false;
+    if(UI.bizDue === "14"   && !(due && !i.done && due <= plus(14))) return false;
+  }
+  const q = UI.q.toLowerCase().trim();
+  if(q && !JSON.stringify(i).toLowerCase().includes(q)) return false;
+  return true;
+}
+/* the three small chips under an item. Each opens the picker (bizPop) — live,
+   no Edit mode needed, same as the owner and the due date beside it. */
+function bizChip(kind, p, i){
+  let cls, text, title, val;
+  if(kind === "topic"){
+    val = String(i.topic || "").trim();
+    cls = val ? "topic" : "empty"; text = esc(val || "+ topic"); title = "Pick a topic";
+  } else {
+    const n = lvl(i[kind]), L = BIZ_LEVELS[kind];
+    val = n ? String(n) : "";
+    cls = n ? "lv" + n : "empty";
+    text = n ? `<span class="lk">${L.short} ${n} ·</span> ${esc(L.names[n - 1])}` : L.label.toLowerCase();
+    title = L.label + " — 1 is the most " + (kind === "urg" ? "urgent" : "important") + ", 5 the least";
+  }
+  const empty = cls === "empty";
+  return `<button type="button" class="chip bz dpick ${cls}${empty ? " no-export no-print" : ""}" data-bizpick="${kind}"
+    data-path="${esc(p + "." + kind)}" data-val="${esc(val)}" title="${esc(title)}">${text}</button>`;
+}
 function renderBusiness(){
   const groups = DATA.business;
   const all = Object.entries(groups).flatMap(([g, list]) => list.map((i, idx) => ({i, g, idx})));
   const open = all.filter(x => !x.i.done);
   const overdue = open.filter(x => dueState(x.i) === "over");
   const soon = open.filter(x => dueState(x.i) === "soon");
+  const urgent = open.filter(x => lvl(x.i.urg) && lvl(x.i.urg) <= 2);
   const mine = who => open.filter(x => String(x.i.who||"").toLowerCase().includes(who)).length;
   const unassigned = open.filter(x => !String(x.i.who||"").trim()).length;
+  const topics = bizTopics();
+  if(UI.bizSec && !(UI.bizSec in groups)) UI.bizSec = "";                 // section renamed or deleted
+  if(UI.bizTopic && UI.bizTopic !== "none" && !topics.includes(UI.bizTopic)) UI.bizTopic = "";
+  const filtered = bizFiltered();
 
-  const q = UI.q.toLowerCase();
-  const show = x => {
-    if(UI.bizView === "open" && x.i.done) return false;
-    if(UI.bizView === "done" && !x.i.done) return false;
-    if(UI.bizView === "dated" && (!x.i.due || x.i.done)) return false;
-    if(UI.presenter !== "all"){
-      const w = String(x.i.who||"").toLowerCase();
-      if(UI.presenter === "tbd" ? w.trim() !== "" : !w.includes(UI.presenter)) return false;
+  /* open first; then the chosen sort (urgency or importance, with the other
+     as tie-break); then by due date, undated last; done sunk to the bottom */
+  const rank = (i, k) => lvl(i[k]) || 9;
+  const cmp = (a, b) => {
+    if(a.i.done !== b.i.done) return a.i.done ? 1 : -1;
+    if(UI.bizSort === "urg" || UI.bizSort === "imp"){
+      const k1 = UI.bizSort, k2 = k1 === "urg" ? "imp" : "urg";
+      if(rank(a.i, k1) !== rank(b.i, k1)) return rank(a.i, k1) - rank(b.i, k1);
+      if(rank(a.i, k2) !== rank(b.i, k2)) return rank(a.i, k2) - rank(b.i, k2);
     }
-    if(q && !JSON.stringify(x.i).toLowerCase().includes(q)) return false;
-    return true;
+    if(!!a.i.due !== !!b.i.due) return a.i.due ? -1 : 1;
+    return (a.i.due || "").localeCompare(b.i.due || "");
   };
 
   let html = `
@@ -3263,20 +3390,38 @@ function renderBusiness(){
       <div class="eyebrow">Between the two of you</div>
       <div class="big serif">Next Orders of Business</div>
       <div class="lede">Everything you two still owe each other. Tick it, put a name on it,
-        give it a date — no need to turn on Edit for any of that. Edit mode is only for
-        adding or deleting.</div>
+        give it a date, a topic, an urgency and an importance — no need to turn on Edit for any
+        of that. Edit mode is only for adding or deleting. On both scales <b>1 is the top</b>
+        and 5 the bottom.</div>
     </div>
   </div>`;
 
+  const levelOpts = kind => [{v:"", l:"Any"},
+    ...[1, 2, 3, 4, 5].map(n => ({v:String(n), l:String(n), t:n + " · " + BIZ_LEVELS[kind].names[n - 1]})),
+    {v:"0", l:"Unrated", t:"No " + BIZ_LEVELS[kind].label.toLowerCase() + " set"}];
+  const opt = (v, l, cur) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(l)}</option>`;
   html += toolbar(`
     <div class="tb-filters">
-      ${seg("bizView", [{v:"all",l:"Everything"},{v:"open",l:"Hide done"},{v:"dated",l:"Has a date"},{v:"done",l:"Done only"}], UI.bizView)}
-      ${seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"Unassigned"}], UI.presenter)}
+      ${seg("bizView", [{v:"all",l:"Everything"},{v:"open",l:"Hide done"},{v:"done",l:"Done only"}], UI.bizView)}
+      ${fgroup("Who", seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"Unassigned"}], UI.presenter))}
+      ${fgroup("Due", seg("bizDue", [{v:"",l:"Any"},{v:"over",l:"Overdue",t:"Past its date and not done"},
+        {v:"7",l:"7 days",t:"Overdue, or due in the next 7 days"},{v:"14",l:"14 days",t:"Overdue, or due in the next 14 days"},
+        {v:"dated",l:"Dated",t:"Has a due date"},{v:"none",l:"Undated",t:"No due date yet"}], UI.bizDue))}
     </div>
     <input class="search" id="q" placeholder="Search ${all.length} items…" value="${esc(UI.q)}">
+    ${fgroup("Sort", seg("bizSort", [{v:"due",l:"Due date"},{v:"urg",l:"Urgency"},{v:"imp",l:"Importance"}], UI.bizSort))}
     <div class="tb-actions">
       <button class="btn edit-only" data-addkey="business">+ section</button>
       ${exportButtons("bizBoard", "Next Orders of Business")}
+    </div>
+    <div class="tb-filters tb-row2">
+      ${fgroup("Urgency", mseg("bizUrg", levelOpts("urg"), UI.bizUrg))}
+      ${fgroup("Importance", mseg("bizImp", levelOpts("imp"), UI.bizImp))}
+      ${fgroup("Section", `<select class="fsel" data-bizsel="bizSec" title="Show one section">${
+        opt("", "All sections", UI.bizSec)}${Object.keys(groups).map(n => opt(n, n, UI.bizSec)).join("")}</select>`)}
+      ${fgroup("Topic", `<select class="fsel" data-bizsel="bizTopic" title="Show one topic">${
+        opt("", "All topics", UI.bizTopic)}${topics.map(t => opt(t, t, UI.bizTopic)).join("")}${opt("none", "No topic", UI.bizTopic)}</select>`)}
+      ${filtered ? `<button class="btn sm" data-bizclear="1" title="Back to everything">Clear filters</button>` : ""}
     </div>`);
 
   html += `<div id="bizBoard" class="export-frame">`;
@@ -3286,6 +3431,7 @@ function renderBusiness(){
     ${statBox("Still open", open.length, "of " + all.length + " total")}
     ${statBox("Overdue", overdue.length, overdue.length ? "past their date" : "nothing late", overdue.length > 0)}
     ${statBox("Due soon", soon.length, "next 14 days")}
+    ${statBox("Urgent", urgent.length, "urgency 1–2, still open", urgent.length > 0)}
     ${statBox("On Alan", mine("alan"), "open items")}
     ${statBox("On Ben", mine("ben"), "open items")}
     ${statBox("Unassigned", unassigned, "nobody owns these", unassigned > 0)}
@@ -3293,13 +3439,9 @@ function renderBusiness(){
 
   let shown = 0;
   for(const [name, list] of Object.entries(groups)){
-    /* open first, then by due date, undated last, done sunk to the bottom */
-    const order = list.map((i, idx) => ({i, idx, g:name})).filter(show).sort((a, b) => {
-      if(a.i.done !== b.i.done) return a.i.done ? 1 : -1;
-      if(!!a.i.due !== !!b.i.due) return a.i.due ? -1 : 1;
-      return (a.i.due || "").localeCompare(b.i.due || "");
-    });
-    if(!order.length && !(EDITING && !q && UI.bizView === "all")) continue;
+    if(UI.bizSec && name !== UI.bizSec) continue;
+    const order = list.map((i, idx) => ({i, idx, g:name})).filter(x => bizShows(x.i, x.g)).sort(cmp);
+    if(!order.length && !(EDITING && !filtered)) continue;
     shown += order.length;
     const openN = list.filter(i => !i.done).length;
     html += `<div class="sec-title serif">${ed("__key.business."+name, name)}
@@ -3312,8 +3454,9 @@ function renderBusiness(){
       html += `<div class="biz-row ${i.done?"is-done":""}${flash}">
         <button class="tick ${i.done?"on":""}" data-check="${p}" title="${i.done?"Mark as still open":"Mark done"}" aria-pressed="${i.done}">${i.done?"✓":""}</button>
         <div class="biz-main">
-          <div class="biz-t">${ed(p+".t", i.t)}</div>
+          <div class="biz-t">${ed(p+".t", i.t, "", "untitled")}</div>
           ${i.note ? `<div class="biz-note">${ed(p+".note", i.note)}</div>` : ""}
+          <div class="biz-meta">${bizChip("topic", p, i)}${bizChip("urg", p, i)}${bizChip("imp", p, i)}</div>
         </div>
         ${whoChip(p+".who", i.who, {kind:"who", live:true, cls:"who", ph:"assign"})}
         <span class="due ${st}">${dbtn("due", p+".due", i.due || "", i.due ? fmtDate(i.due) : "",
@@ -3323,7 +3466,7 @@ function renderBusiness(){
     }
     html += `${addBtn("business."+name, "item")}</div>`;
   }
-  if(!shown) html += `<div class="empty-note">Nothing matches — try the <b>All</b> filter.</div>`;
+  if(!shown) html += `<div class="empty-note">Nothing matches${filtered ? " — clear a filter above, or hit <b>Clear filters</b>" : ""}.</div>`;
   html += `</div>`;
   return html;
 }
@@ -3993,6 +4136,81 @@ document.addEventListener("click", e => {
   if(e.target.closest("[data-whoclose]") || !pop.contains(e.target)) closeWhoPicker();
 });
 
+/* ── topic / urgency / importance picker — the who picker's shell, reused ──
+   Opened from a chip under an item on the Orders tab. Levels list 1–5 with
+   their names; topics list everything already on the board plus a box for a
+   new one. Like every picker, it describes itself in data- attributes so a
+   background sync can't leave it pointing at a stale object. */
+let BP = null;                                     // {kind, path, val}
+function openBizPicker(el){
+  BP = {kind:el.dataset.bizpick, path:el.dataset.path, val:el.dataset.val || ""};
+  let inner;
+  if(BP.kind === "topic"){
+    const used = bizTopics();
+    inner = `<div class="dp-head"><span class="m">Topic</span><button class="dp-nav" data-bpclose="1" title="Close">\u2715</button></div>`;
+    inner += `<div class="pp-list">` + (used.length
+      ? used.map(t => `<button type="button" class="pp-item${t === BP.val ? " on" : ""}" data-bpval="${esc(t)}"><span class="chip topic">${esc(t)}</span></button>`).join("")
+      : `<div class="pp-cat">no topics yet \u2014 type one below</div>`) + `</div>`;
+    inner += `<div class="pp-new"><input id="bpNew" class="search" placeholder="\u2026or a new topic" autocomplete="off">
+      <button type="button" class="btn sm primary" id="bpAdd">Use</button></div>`;
+    if(BP.val) inner += `<div class="dp-foot"><button class="btn sm" data-bpclear="1">No topic</button></div>`;
+  } else {
+    const L = BIZ_LEVELS[BP.kind];
+    inner = `<div class="dp-head"><span class="m">${esc(L.label)}</span><button class="dp-nav" data-bpclose="1" title="Close">\u2715</button></div>
+      <div class="dp-hint">1 is the most ${BP.kind === "urg" ? "urgent" : "important"} \u00b7 5 the least</div><div class="pp-list">`;
+    for(let n = 1; n <= 5; n++)
+      inner += `<button type="button" class="pp-item${String(n) === BP.val ? " on" : ""}" data-bpval="${n}"><span class="chip lv${n} lvn">${n}</span>${esc(L.names[n - 1])}</button>`;
+    inner += `</div>`;
+    if(BP.val) inner += `<div class="dp-foot"><button class="btn sm" data-bpclear="1">Unrated</button></div>`;
+  }
+  const pop = $("#bizPop");
+  pop.innerHTML = inner;
+  pop.classList.remove("hidden");
+  popAt(pop, el);
+  if(BP.kind === "topic") $("#bpNew").focus();
+}
+function closeBizPicker(){ $("#bizPop").classList.add("hidden"); BP = null; }
+function applyBizPick(v){
+  const b = BP;
+  if(!b) return;
+  closeBizPicker();
+  const parts = b.path.split("."), key = parts.pop();
+  const node = getPath(parts.join("."));
+  if(!node || typeof node !== "object") return;         // the item went away under us (a sync, a delete)
+  const val = b.kind === "topic" ? String(v || "").trim() : (lvl(v) || "");
+  node[key] = val;                                      // "" rather than gone — matches who / due
+  save(); render();
+  const L = BIZ_LEVELS[b.kind];
+  toast(b.kind === "topic" ? (val ? "Topic: " + val : "Topic cleared")
+        : (val ? `${L.label} ${val} \u00b7 ${L.names[val - 1]}` : L.label + " cleared"));
+}
+document.addEventListener("click", e => {
+  const open = e.target.closest("[data-bizpick]");
+  if(open){ e.preventDefault(); openBizPicker(open); return; }
+  const pop = $("#bizPop");
+  if(pop.classList.contains("hidden")) return;
+  const hit = e.target.closest("[data-bpval]");
+  if(hit){ applyBizPick(hit.dataset.bpval); return; }
+  if(e.target.closest("#bpAdd")){
+    const v = ($("#bpNew").value || "").trim();
+    if(!v){ toast("Type the topic first"); return; }
+    applyBizPick(v); return;
+  }
+  if(e.target.closest("[data-bpclear]")){ applyBizPick(""); return; }
+  if(e.target.closest("[data-bpclose]") || !pop.contains(e.target)) closeBizPicker();
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Enter" && e.target.id === "bpNew"){
+    e.preventDefault();
+    const v = e.target.value.trim();
+    if(v) applyBizPick(v); else toast("Type the topic first");
+  }
+});
+document.addEventListener("change", e => {            // the Section and Topic dropdowns
+  const sel = e.target.closest("select[data-bizsel]");
+  if(sel){ UI[sel.dataset.bizsel] = sel.value; render(); }
+});
+
 document.addEventListener("click", e => {
   const open = e.target.closest("[data-timepick]");
   if(open){ e.preventDefault(); openTimePicker(open); return; }
@@ -4008,6 +4226,7 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("#datePop").classList.contains("hidden")) closeDatePicker();
   if(e.key === "Escape" && !$("#timePop").classList.contains("hidden")) closeTimePicker();
   if(e.key === "Escape" && !$("#whoPop").classList.contains("hidden")) closeWhoPicker();
+  if(e.key === "Escape" && !$("#bizPop").classList.contains("hidden")) closeBizPicker();
 });
 
 /* ── clicks ───────────────────────────────────────────────────────────── */
@@ -4092,10 +4311,22 @@ document.addEventListener("click", e => {
 
   /* ── structural edits, all path-driven ── */
   if(t.dataset.add){                                   // append to a list
-    addTo(t.dataset.add, "New item");
+    const path = t.dataset.add;
+    /* Topic-bank and backlog entries are bare strings, but an order of business
+       is an object (t / note / who / due / …). Pushing the string "New item"
+       into a section (the bug, fixed 2026-09-11) drew a row with nowhere to
+       keep what you typed, so the task looked like it never saved. */
+    const isBiz = path.startsWith("business.");
+    const item = isBiz ? newBizItem() : "New item";
+    addTo(path, item);
+    if(isBiz && !bizShows(item, path.slice("business.".length))){
+      bizClearFilters();                               // a new item you can't see is a new item that "didn't save"
+      toast("Filters cleared so the new item shows");
+    }
     save(); EDITING = true; render();
-    focusPath(t.dataset.add + "." + (getPath(t.dataset.add).length - 1)); return;
+    focusPath(path + "." + (getPath(path).length - 1) + (isBiz ? ".t" : "")); return;
   }
+  if(t.dataset.bizclear){ bizClearFilters(); render(); return; }
   if(t.dataset.addrow){                                // append a table row
     const blanks = {speakers:{name:"New speaker", topic:"", lastAsked:""},
                     archive:{n:DATA.archive.length+1, date:todayISO(), topic:"New call",

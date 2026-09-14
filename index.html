@@ -1536,12 +1536,34 @@ function parseTimeText(v){
   if(h > 23 || mi > 59) return "";
   return String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0");
 }
-function fmtTime(v){
-  const s = String(v == null ? "" : v).trim();
-  const m = /^(\d{2}):(\d{2})$/.exec(s);
-  if(!m) return s;                                  // free text — show it as whoever wrote it meant it
+/* Central is CST for part of the year and CDT for the rest, so the label is
+   worked out from the call's own night rather than hard-coded — a 3:30 call in
+   July is CDT, the same call in January is CST. US rule since 2007: daylight
+   time runs from the second Sunday in March to the first Sunday in November.
+   (Both switches happen at 2 AM; calls don't, so the day itself is enough.) */
+function firstSundayOf(y, month){ return 1 + ((7 - new Date(y, month, 1).getDay()) % 7); }
+function centralZone(iso){
+  const d = iso ? parseDate(iso) : new Date();
+  const y = d.getFullYear();
+  const starts = new Date(y, 2, firstSundayOf(y, 2) + 7);          // 2nd Sunday, March
+  const ends   = new Date(y, 10, firstSundayOf(y, 10));            // 1st Sunday, November
+  d.setHours(0, 0, 0, 0);
+  return d >= starts && d < ends ? "CDT" : "CST";
+}
+/* Always 12-hour with AM/PM — never the browser's clock preference, which was
+   rendering "15:30" on phones set to a 24-hour clock. Nobody says that out loud.
+   fmtClock is the bare face ("3:30PM") for lists that label the zone once at the
+   top; fmtTime adds the zone, and `iso` is the night it falls on. */
+function fmtClock(v){
+  const m = /^(\d{2}):(\d{2})$/.exec(String(v == null ? "" : v).trim());
+  if(!m) return "";                                 // not a canonical time
   const h = Number(m[1]);
-  return (h % 12 || 12) + ":" + m[2] + " " + (h < 12 ? "AM" : "PM") + " CT";
+  return (h % 12 || 12) + ":" + m[2] + (h < 12 ? "AM" : "PM");
+}
+function fmtTime(v, iso){
+  const raw = String(v == null ? "" : v).trim();
+  const face = fmtClock(raw);
+  return face ? face + " " + centralZone(iso) : raw;   // free text stays as whoever wrote it meant it
 }
 function fmtMaybeDate(v){ const i = dateISO(v); return i ? fmtFull(i) : String(v == null ? "" : v); }
 function isLiveCall(x){ return !!(String(x.topic || "").trim() || String(x.speaker || "").trim()); }
@@ -2541,7 +2563,7 @@ async function assignSaveForm(){
   await assignWrite({action:"saveAssignment",a},ASSIGN.editing.id?"Saved":"Added");
 }
 function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a)};}
-function fmtStamp(iso){const d=new Date(iso);return isNaN(d)?esc(String(iso||"")):MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});}
+function fmtStamp(iso){const d=new Date(iso);return isNaN(d)?esc(String(iso||"")):MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit",hour12:true});}
 function openCell(repId,aId){
   const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===aId);
   if(!rep||!a)return;
@@ -2868,7 +2890,7 @@ function renderCalendar(){
         <div class="nc-lab">Next call night</div>
         <div class="nc-date">${fmtDay(next.date)} · ${fmtDate(next.date)}</div>
         <div class="nc-topic">${next.planned ? esc(next.topic) : `<span class="nc-open">open — nothing planned yet</span>`}</div>
-        <div class="nc-meta">${(next.time || callTime()) ? `<span class="nc-time">${esc(fmtTime(next.time || callTime()))}</span>` : ""}${
+        <div class="nc-meta">${(next.time || callTime()) ? `<span class="nc-time">${esc(fmtTime(next.time || callTime(), next.date))}</span>` : ""}${
           next.presenter ? `<span class="chip ${presenterClass(next.presenter)}">${esc(next.presenter)}</span>` : ""}</div>
       </div>`;
     })()}
@@ -2950,11 +2972,11 @@ function weekRow(r, idx, wkNum){
   const liveExtras = (r.extra || []).filter(isLiveCall);
   const nCalls = (planned ? 1 : 0) + liveExtras.length;
 
-  const stime = (path, val, fallback) => {
-    if(EDITING) return tbtn(path, val, {cls:"stime", fallback,
-      title: fallback ? "Pick this call's time — blank means the standing " + fmtTime(fallback)
+  const stime = (path, val, fallback, night) => {
+    if(EDITING) return tbtn(path, val, {cls:"stime", fallback, night,
+      title: fallback ? "Pick this call's time — blank means the standing " + fmtTime(fallback, night)
                       : "Pick this call's time (Central)"});
-    const shown = fmtTime(val || fallback);
+    const shown = fmtTime(val || fallback, night);
     return shown ? `<span class="stime">${esc(shown)}</span>` : "";
   };
   /* Every call gets its own night. In Edit mode each slot opens with a clickable
@@ -3001,18 +3023,18 @@ function weekRow(r, idx, wkNum){
   const mainType = r.callType || "group";
   if(planned){
     slots.push({date:r.date, j:-1, html:
-      `<div class="slot main ${mainType} t${mainType === "hotseat" ? 0 : tierOf(r.topic)}">${sdate(p+".date", r.date, r.date)}${stime(p+".time", r.time, callTime())}${stag(p+".callType", mainType)}<span class="stopic">${ed(p+".topic", r.topic)}${mainType === "hotseat" ? "" : tierChip(r.topic)}</span>${spk(p+".speaker", mainType, r.speaker)}${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`
+      `<div class="slot main ${mainType} t${mainType === "hotseat" ? 0 : tierOf(r.topic)}">${sdate(p+".date", r.date, r.date)}${stime(p+".time", r.time, callTime(), r.date)}${stag(p+".callType", mainType)}<span class="stopic">${ed(p+".topic", r.topic)}${mainType === "hotseat" ? "" : tierChip(r.topic)}</span>${spk(p+".speaker", mainType, r.speaker)}${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`
       + noteLines(p + ".mainNotes", r.mainNotes)});
   } else if(blocked){
     main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
   } else {
     slots.push({date:r.date, j:-1, html:
-      `<div class="slot main">${sdate(p+".date", r.date, r.date)}${EDITING ? stime(p+".time", r.time, "") : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open \u2014 click to plan")}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`});
+      `<div class="slot main">${sdate(p+".date", r.date, r.date)}${EDITING ? stime(p+".time", r.time, "", r.date) : ""}<span class="stag">Group</span><span class="stopic empty">${ed(p+".topic", "", "", "+ open \u2014 click to plan")}</span>${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`});
   }
   (r.extra || []).forEach((x, j) => {
     const xp = `${p}.extra.${j}`, xt = x.type || "group";
     slots.push({date:callDateOf(r, x), j, html:
-      `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sdate(xp+".date", callDateOf(r, x), r.date)}${x.day ? sday(xp+".day", x.day) : ""}${stime(xp+".time", x.time, "")}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`
+      `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sdate(xp+".date", callDateOf(r, x), r.date)}${x.day ? sday(xp+".day", x.day) : ""}${stime(xp+".time", x.time, "", callDateOf(r, x))}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`
       + noteLines(xp + ".notes", x.notes)});
   });
   slots.sort((a, b) => a.date.localeCompare(b.date) || a.j - b.j);
@@ -4002,34 +4024,36 @@ document.addEventListener("click", e => {
    list, nobody types anything. Quarter-hour steps around the clock, opened
    scrolled to the time it's on now.
    ═══════════════════════════════════════════════════════════════════════════ */
-let TP = null;                                     // {path, val, fallback}
+let TP = null;                                     // {path, val, fallback, night}
 
 function tbtn(path, val, opts){
   const o = opts || {};
-  const shown = val ? fmtTime(val) : "";
-  const ghost = !shown && o.fallback ? fmtTime(o.fallback) : "";     // what it inherits, shown faintly
+  const shown = val ? fmtTime(val, o.night) : "";
+  const ghost = !shown && o.fallback ? fmtTime(o.fallback, o.night) : "";     // what it inherits, shown faintly
   return `<button type="button" class="dpick ${o.cls || ""}${shown ? "" : " empty"}" data-timepick="1"
     data-path="${esc(path)}" data-val="${esc(val || "")}"${o.fallback ? ` data-fallback="${esc(o.fallback)}"` : ""
+    }${o.night ? ` data-night="${esc(o.night)}"` : ""
     } title="${esc(o.title || "Pick a time — all call times are Central")}">${esc(shown || ghost || o.ph || "time?")}</button>`;
 }
 function openTimePicker(el){
-  TP = {path:el.dataset.path, val:el.dataset.val || "", fallback:el.dataset.fallback || ""};
+  TP = {path:el.dataset.path, val:el.dataset.val || "", fallback:el.dataset.fallback || "",
+        night:el.dataset.night || ""};
   const cur = TP.val || TP.fallback || "09:00";
   let items = "";
   for(let m = 0; m < 24 * 60; m += 15){
     const v = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
-    items += `<button type="button" class="tp-item${m % 60 === 0 ? " hour" : ""}${v === TP.val ? " on" : ""}" data-tpval="${v}">${esc(fmtTime(v))}</button>`;
+    items += `<button type="button" class="tp-item${m % 60 === 0 ? " hour" : ""}${v === TP.val ? " on" : ""}" data-tpval="${v}">${esc(fmtClock(v))}</button>`;
   }
   /* what clearing MEANS depends on what the field falls back to: the main call
      inherits the standing time, an added call simply shows no time at all. */
   const foot = [];
   if(TP.val) foot.push(`<button class="btn sm" data-tpclear="1">${
     TP.path === "meta.callTime" ? "Clear"
-      : TP.fallback ? "Standing time \u00b7 " + esc(fmtTime(TP.fallback))
+      : TP.fallback ? "Standing time \u00b7 " + esc(fmtTime(TP.fallback, TP.night))
       : "No set time"}</button>`);
 
   const pop = $("#timePop");
-  pop.innerHTML = `<div class="dp-head"><span class="m">Central time</span>
+  pop.innerHTML = `<div class="dp-head"><span class="m">Central time \u00b7 ${centralZone(TP.night)}</span>
       <button class="dp-nav" data-tpclose="1" title="Close">\u2715</button></div>
     <div class="tp-list">${items}</div>
     ${foot.length ? `<div class="dp-foot">${foot.join("")}</div>` : ""}`;
@@ -4053,9 +4077,9 @@ function applyTimePick(v){
   else if(!v) delete node[key];
   else node[key] = v;
   save(); render();
-  toast(v ? "Calls at " + fmtTime(v)
+  toast(v ? "Calls at " + fmtTime(v, t.night)
           : t.path === "meta.callTime" ? "Standing time cleared"
-          : t.fallback ? "Back on the standing time \u2014 " + fmtTime(t.fallback)
+          : t.fallback ? "Back on the standing time \u2014 " + fmtTime(t.fallback, t.night)
           : "No time on this call now");
 }
 

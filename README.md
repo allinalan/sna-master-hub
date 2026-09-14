@@ -123,8 +123,12 @@ Assignments.
 
 **Times work the same way, and they are all Central.** Click any call's time and pick one
 off the list — quarter-hour steps around the clock, opened scrolled to whatever it's on
-now, every entry labelled `CT`. Times are stored as plain 24-hour values behind the
-scenes, so Alan's board and Ben's can never disagree about what "7PM" meant.
+now, the picker's header naming the zone once. Times are stored as plain 24-hour values
+behind the scenes, so Alan's board and Ben's can never disagree about what "7PM" meant,
+but **the board never shows you 24-hour time** — it reads `3:30PM CDT`, always with AM/PM,
+even on a phone whose clock is set to 24 hours. The `CST` / `CDT` half of that label is
+worked out from the call's own night, so a summer call says `CDT` and a January one says
+`CST` without anyone maintaining it.
 
 There are two levels:
 

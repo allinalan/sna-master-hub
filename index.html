@@ -3556,6 +3556,7 @@ const syncOn = () => !!SYNC.url;
 let REV = Number(localStorage.getItem(STORE_KEY + ":rev") || 0);
 let REMOTE = {rev:0, by:"", updated:""};
 let PUSH_TIMER = null, PUSHING = false, PENDING = false;
+let LAST_SENT = "";   // the JSON the last push carried — how a rejected retry, or a poll, recognises our own save
 
 /* Who's editing — only ever used to label a change. This must never block or
    throw: it sits in the save path, and a browser that suppresses dialogs (or a
@@ -3600,19 +3601,26 @@ async function pull(quiet){
     if(body.rev > REV && body.data){
       /* someone else moved ahead of us */
       if(PENDING || PUSHING){
-        syncStatus(body.by + " also edited — " + (OTHER_EDITS ? "yours will win on save" : "merging check-ins"), "warn");
+        /* Our own name on it is most likely this tab's in-flight save, and
+           its reply settles that either way. Someone else's: warn — the save
+           will ask before overwriting them. */
+        if(body.by !== whoAmI())
+          syncStatus(body.by + " also saved — " + (OTHER_EDITS ? "you'll be asked" : "merging check-ins"), "warn");
         return;
       }
-      DATA = migrate(body.data); DF = null; setRev(body.rev);
+      const own = !!LAST_SENT && JSON.stringify(body.data) === LAST_SENT;   // our save, whose reply we never got
+      DATA = migrate(body.data); DF = null;
       /* marks a failed push left behind go back on top of the fresh copy;
          any other stranded edit is lost the way it always was */
       const replay = !OTHER_EDITS && CI_JOURNAL.length > 0;
       if(replay) for(const j of CI_JOURNAL) applyCheckin(j.camp, j.rep, j.week, j.state);
       else { CI_JOURNAL = []; OTHER_EDITS = 0; }
       localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+      setRev(body.rev);                            // after the copy — sibling tabs read the copy when this changes
       render();
       if(replay) scheduleSync();
-      if(!quiet) toast(body.by ? body.by + "'s changes loaded" : "Updated from the shared copy");
+      if(!quiet && !own) toast(body.by === whoAmI() ? "Your changes from another tab or device loaded"
+                             : body.by ? body.by + "'s changes loaded" : "Updated from the shared copy");
     }
     if(!PENDING && !PUSHING) syncStatus("shared · " + (REMOTE.by ? REMOTE.by + " " + ago(REMOTE.updated) : "in sync"));
   }catch(e){
@@ -3634,20 +3642,34 @@ async function push(attempt){
   PUSHING = true; PENDING = false;
   const sentMarks = CI_JOURNAL.length, sentOther = OTHER_EDITS;   // what this push carries — edits can land while it's in flight
   try{
+    const sent = LAST_SENT = JSON.stringify(DATA);                 // and exactly what went up — DATA can change while it's in flight
     const res = await fetch(SYNC.url, {
       method: "POST",
       headers: {"Content-Type": "text/plain;charset=utf-8"},   // keeps it a simple request — no preflight
-      body: JSON.stringify({token: SYNC.token, baseRev: REV, by: whoAmI(), data: DATA})
+      body: `{"token":${JSON.stringify(SYNC.token)},"baseRev":${Number(REV) || 0},"by":${JSON.stringify(whoAmI())},"data":${sent}}`
     });
     const body = await res.json();
     if(body.conflict){
       REMOTE = {rev:body.rev, by:body.by, updated:body.updated};
+      /* The Sheet already holds exactly what this push sent? Then it's our
+         own save: it landed, but the reply was lost on the way back (a lid
+         closed on "saving…", a WiFi blip, Google's redirect hop dying) and
+         this is the retry. Nothing to resolve — take the new page number.
+         Before this check, that retry read "Ben saved changes while you were
+         editing" on Ben's own screen. */
+      if(body.data && JSON.stringify(body.data) === sent){
+        setRev(body.rev);
+        CI_JOURNAL.splice(0, sentMarks); OTHER_EDITS = Math.max(0, OTHER_EDITS - sentOther);
+        syncStatus("shared · saved just now");
+        return;
+      }
       /* Only check-in marks since our last sync? Take their copy, put our
          marks back on top, and push again — the two boards simply combine. */
       if(CI_JOURNAL.length && !OTHER_EDITS && body.data){
-        DATA = migrate(body.data); DF = null; setRev(body.rev);
+        DATA = migrate(body.data); DF = null;
         for(const j of CI_JOURNAL) applyCheckin(j.camp, j.rep, j.week, j.state);
         localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+        setRev(body.rev);                          // after the copy — sibling tabs read the copy when this changes
         render();
         syncStatus("merging with " + (body.by || "the other coach") + "…", "warn");
         PENDING = true;                              // finally{} schedules the re-push
@@ -3659,7 +3681,7 @@ async function push(attempt){
     }
     if(!body.ok) throw new Error(body.error || "refused");
     setRev(body.rev);
-    CI_JOURNAL.splice(0, sentMarks); OTHER_EDITS -= sentOther;   // what went up is now shared; later edits stay pending
+    CI_JOURNAL.splice(0, sentMarks); OTHER_EDITS = Math.max(0, OTHER_EDITS - sentOther);   // what went up is now shared; later edits stay pending
     REMOTE = {rev:body.rev, by:whoAmI(), updated:new Date().toISOString()};
     syncStatus("shared · saved just now");
   }catch(e){
@@ -3669,7 +3691,8 @@ async function push(attempt){
     if(!attempt){
       PUSHING = false;
       syncStatus("saving…", "warn");
-      return setTimeout(() => push(1), 2500);
+      if(!PENDING) setTimeout(() => push(1), 2500);   // more edits waiting? finally{} re-sends those anyway — one push at a time
+      return;
     }
     syncStatus("offline — saved on this computer only", "warn");
   }finally{
@@ -3680,12 +3703,27 @@ async function push(attempt){
 
 /* both sides edited the same version — let the human pick */
 function showConflict(body){
-  $("#mTitle").textContent = "Both of you edited this";
-  $("#mBody").innerHTML = `<b>${esc(body.by || "The other person")}</b> saved changes ${esc(ago(body.updated))} while you were editing. ` +
-    `Keeping yours overwrites theirs; taking theirs discards what you just changed. ` +
-    `Either way the Google Sheet keeps a version history, so nothing is truly lost.`;
+  const mine = !!body.by && body.by === whoAmI();
+  if(mine){
+    /* Same name on both sides: another tab or device of yours saved, and this
+       copy hadn't caught up before you edited it. The safe move is to take
+       that copy and redo the one thing you just did here — keeping this one
+       would silently overwrite everything the other copy saved since. */
+    $("#mTitle").textContent = "You saved this from another tab or device";
+    $("#mBody").innerHTML = `Another copy of the hub, signed <b>${esc(body.by)}</b>, saved changes ${esc(ago(body.updated))}, ` +
+      `and this copy hadn't caught up before you edited it. Take that version and redo what you just changed here — ` +
+      `keeping this one overwrites everything the other copy saved. The Google Sheet keeps a version history either way.`;
+  } else {
+    $("#mTitle").textContent = "Both of you edited this";
+    $("#mBody").innerHTML = `<b>${esc(body.by || "The other person")}</b> saved changes ${esc(ago(body.updated))} while you were editing. ` +
+      `Keeping yours overwrites theirs; taking theirs discards what you just changed. ` +
+      `Either way the Google Sheet keeps a version history, so nothing is truly lost.`;
+  }
   $("#mText").value = JSON.stringify(body.data, null, 2);
-  $("#mActions").innerHTML = `
+  $("#mActions").innerHTML = mine ? `
+    <button class="btn" data-act="keepMine">Keep this copy</button>
+    <span style="flex:1"></span>
+    <button class="btn primary" data-act="takeTheirs">Take the other copy</button>` : `
     <button class="btn" data-act="takeTheirs">Take ${esc(body.by || "theirs")}</button>
     <span style="flex:1"></span>
     <button class="btn primary" data-act="keepMine">Keep mine</button>`;
@@ -4652,10 +4690,12 @@ $("#scrim").addEventListener("click", async e => {
     $("#scrim").classList.remove("on"); toast("Your version is now the shared one"); return;
   }
   if(act === "takeTheirs"){
-    DATA = migrate(window._conflict.data); DF = null; setRev(window._conflict.rev);
+    DATA = migrate(window._conflict.data); DF = null;
     CI_JOURNAL = []; OTHER_EDITS = 0;
     localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
-    render(); $("#scrim").classList.remove("on"); toast("Loaded their version"); return;
+    setRev(window._conflict.rev);                  // after the copy — sibling tabs read the copy when this changes
+    render(); $("#scrim").classList.remove("on");
+    toast(window._conflict.by === whoAmI() ? "Loaded the other copy — redo your last change here" : "Loaded their version"); return;
   }
   if(act === "reset"){
     if(!confirm("Throw away your local edits and go back to the data pulled from the sheet?")) return;
@@ -4687,6 +4727,25 @@ if(syncOn()){
   pull(true);
   setInterval(() => { if(document.visibilityState === "visible") pull(); }, SYNC.pollMs);
   document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") pull(); });
+  /* Other tabs of this same browser. localStorage is shared between them, so
+     the moment one tab's save lands (it writes :rev) its siblings adopt the
+     copy it saved, instead of waiting for a poll they never run while hidden.
+     A tab left open on another board can no longer fall behind and then
+     collide with the tab you're actually working in. A tab holding unsynced
+     edits of its own is left alone — its next save sorts that out. */
+  window.addEventListener("storage", e => {
+    if(e.key !== STORE_KEY + ":rev" || !e.newValue) return;
+    const n = Number(e.newValue);
+    if(!(n > REV) || PENDING || PUSHING || OTHER_EDITS || CI_JOURNAL.length) return;
+    let d = null;
+    try{ d = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); if(d) d = migrate(d); }
+    catch(err){ console.warn("sibling tab's copy unreadable", err); return; }
+    if(!d || !Array.isArray(d.calendar)) return;
+    DATA = d; DF = null; REV = n;
+    REMOTE = {rev:n, by:"", updated:""};        // the next poll fills in who; "in sync" is never wrong
+    render();
+    syncStatus("shared · in sync");
+  });
   window.addEventListener("beforeunload", e => {
     if(PENDING || PUSHING){ e.preventDefault(); e.returnValue = ""; }   // don't lose an in-flight save
   });

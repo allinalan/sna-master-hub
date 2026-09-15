@@ -18,7 +18,7 @@ Everything else lives as a sub-tab under Campaign Calendar.
 | Tab | What it's for |
 |---|---|
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
-| **Orders of Business** | Everything you two still owe each other, in sections. Tick it off, put a name on it, give it a due date, a topic, an urgency and an importance. Overdue goes red, due-within-a-fortnight goes amber. Filter by any of those, or by section, and sort by due date, urgency or importance. |
+| **Orders of Business** | Everything you two still owe each other, one flat list. Tick it off, put a name on it (Alan, Ben, or both), give it a note, a due date, a section, a topic, an urgency and an importance. Overdue goes red, due-within-a-fortnight goes amber. Filter by any of those, and sort by **Priority** (urgency and importance added together, so 1+1 is first), urgency, importance, due date or section. Sections aren't headers any more — each row wears its section as a chip; click it to move the item, or type a new section name right there. |
 | **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab and every rep's private `?rep=` link — so they can never drift out of sync. A bare visit to the old standalone URL redirects here. |
 | **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
@@ -62,17 +62,18 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | Add, rename, or delete a category | `+ category` in the toolbar; click a category's name to rename; `×` in its header |
 | Add or delete a backlog list | `+ list` next to Backlog |
 | Add or delete an archived call / guest speaker | `+ call` / `+ speaker` in the toolbar, `×` at the end of the row |
-| Add or delete an order of business / section | `+ item` at the foot of a section, `+ section` in the toolbar, `×` on the row |
+| Add or delete an order of business | `+ item` at the foot of the list (it lands in the section you're filtered to, else the first), `×` on the row. A new section is typed into the section chip's picker; a section empties itself out of existence when its last item leaves |
 
 Emptying an optional field (track, note, 2nd call, detail) removes it rather than
 leaving a blank chip behind.
 
 ### Orders of Business works without Edit mode
 
-Ticking a box, assigning an owner, setting a due date, and giving an item a topic, an
-urgency and an importance are the whole point of that tab, so they all stay clickable
-with Edit **off**. Edit mode there is only for adding and deleting. Click a due date to
-pick one off the calendar, same as anywhere else in the hub.
+Ticking a box, assigning an owner, setting a due date, writing a note, and giving an item
+a section, a topic, an urgency and an importance are the whole point of that tab, so they
+all stay clickable with Edit **off**. Edit mode there is only for adding and deleting.
+Click a due date to pick one off the calendar, same as anywhere else in the hub. Every
+row has a note line — it reads as a faint `+ note` until you click into it.
 
 ### Urgency and importance are 1 to 5, and 1 is the top
 
@@ -156,8 +157,9 @@ rather than flattening every call to one of three names. Clearing puts a call ba
 **TBD**, and the Host TBD count at the top of the board follows.
 
 The same chip does the job on the **Call Archive**, and on **Orders of Business** — where
-it says who owns an item, offers just Alan and Ben, and works without turning Edit on,
-same as the due date beside it.
+it says who owns an item, offers Alan, Ben, or **Alan & Ben** for something you're both on,
+and works without turning Edit on, same as the due date beside it. The **Who** filter's
+Alan and Ben buttons include shared items; **Both** shows only the shared ones.
 
 ### Moving a call
 

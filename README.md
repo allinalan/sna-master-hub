@@ -187,6 +187,8 @@ is a real thing — but it says so.
 
 Alan and Ben edit the same copy. Your changes push about a second after you stop
 typing; theirs arrive within 25 seconds, or instantly when you switch back to the tab.
+Other tabs of your own browser follow each other the instant one of them saves, so a
+tab left open on another board never falls behind the one you're typing in.
 The header shows `shared · Ben 3m ago` instead of `seed data`.
 
 The shared copy lives in the Google Sheet **SNA Master Hub Data**, written by the
@@ -200,6 +202,19 @@ instead, the /exec URL changes and `SYNC.url` in `index.html` has to be updated 
 **If you both edit at once**, whoever saves second gets a "Both of you edited this"
 prompt with *Keep mine* / *Take theirs*. Nothing is ever really lost — the Google Sheet
 keeps its own version history (File ▸ Version history).
+
+**The prompt names you?** Then another copy of the hub signed with your name saved —
+your phone, another browser, or a tab that was already behind — and this copy hadn't
+caught up before you edited it. It says so ("You saved this from another tab or device"),
+and *Take the other copy* is the default: keeping this copy would silently overwrite
+everything the other one saved, whereas taking it costs you just the one thing you last
+changed here. Redo that and carry on.
+
+**A save whose reply never came back** (lid closed on "saving…", a WiFi blip) does not
+raise the prompt. The Sheet had already taken it, so the retry recognises its own copy
+and just moves on. Until this was added, that retry read "Ben saved changes while you
+were editing" on Ben's own screen — the hub only knows names, not tabs, so it couldn't
+tell Ben from Ben.
 
 **A note on the write endpoint.** Because this page is public and static, the /exec URL
 and its token sit in the page source. That's enough to keep out drive-by traffic, but

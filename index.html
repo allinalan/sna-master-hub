@@ -305,6 +305,13 @@ body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-fa
 .chip.bz.empty{border-style:dashed;border-color:var(--line-strong);background:transparent;color:var(--ink-faint);opacity:.55}
 .biz-row:hover .chip.bz.empty,body.editing .chip.bz.empty,.chip.bz.empty:focus-visible{opacity:1}
 .chip.topic{background:var(--brass-soft);border-color:transparent;color:var(--brass);font-weight:600}
+/* the section an item belongs to — the list is flat, so this is the only place it shows */
+.chip.sec{background:var(--paper-deep);border-color:transparent;color:var(--ink-soft);font-weight:600}
+/* every row carries a note line. Empty ones read as a faint "+ note" that only
+   comes forward on hover or in Edit, and never prints or exports. */
+.biz-note [data-ph]{color:var(--ink-faint);font-style:italic;opacity:.55}
+.biz-row:hover .biz-note [data-ph],body.editing .biz-note [data-ph],.biz-note [data-ph]:focus{opacity:1}
+.biz-row.is-done .biz-note.empty{display:none}
 .chip .lk{opacity:.72;font-weight:500}
 /* 1 is the top of both scales, so 1 is the hottest colour and 5 the quietest */
 .chip.lv1{background:var(--bad-bg);border-color:transparent;color:var(--bad);font-weight:600}
@@ -1280,7 +1287,7 @@ let EDITING = false;
 let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
-             bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"due",   // Orders of Business filters + sort
+             bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"pri",   // Orders of Business filters + sort
              tier:"all", assignView:"board", assignProg:"all",   // show ticked-off items too — hiding them reads as deletion
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"" };   // Mentees ▸ Weekly Check-ins
@@ -3337,7 +3344,9 @@ function bizShows(i, g){
   if(UI.bizSec && g !== UI.bizSec) return false;
   if(UI.presenter !== "all"){
     const w = String(i.who || "").toLowerCase();
-    if(UI.presenter === "tbd" ? w.trim() !== "" : !w.includes(UI.presenter)) return false;
+    if(UI.presenter === "tbd"){ if(w.trim() !== "") return false; }
+    else if(UI.presenter === "both"){ if(presenterClass(w) !== "both") return false; }
+    else if(!w.includes(UI.presenter)) return false;      // "Alan" also matches "Alan & Ben"
   }
   if(UI.bizUrg.length && !UI.bizUrg.includes(String(lvl(i.urg)))) return false;
   if(UI.bizImp.length && !UI.bizImp.includes(String(lvl(i.imp)))) return false;
@@ -3362,9 +3371,12 @@ function bizShows(i, g){
 }
 /* the three small chips under an item. Each opens the picker (bizPop) — live,
    no Edit mode needed, same as the owner and the due date beside it. */
-function bizChip(kind, p, i){
+function bizChip(kind, p, i, sec){
   let cls, text, title, val;
-  if(kind === "topic"){
+  if(kind === "sec"){
+    val = String(sec || "").trim();
+    cls = val ? "sec" : "empty"; text = esc(val || "+ section"); title = "Move to another section";
+  } else if(kind === "topic"){
     val = String(i.topic || "").trim();
     cls = val ? "topic" : "empty"; text = esc(val || "+ topic"); title = "Pick a topic";
   } else {
@@ -3392,18 +3404,29 @@ function renderBusiness(){
   if(UI.bizTopic && UI.bizTopic !== "none" && !topics.includes(UI.bizTopic)) UI.bizTopic = "";
   const filtered = bizFiltered();
 
-  /* open first; then the chosen sort (urgency or importance, with the other
-     as tie-break); then by due date, undated last; done sunk to the bottom */
-  const rank = (i, k) => lvl(i[k]) || 9;
+  /* One flat list. Open items first, done sunk to the bottom; then the chosen
+     sort. "Priority" adds urgency and importance together (1+1 = 2 is the
+     sharpest; an unrated scale counts as 6, so a half-rated item sits below a
+     fully rated one but above the wholly unrated). Every sort falls through
+     to the next tie-break, so two equal items never shuffle between renders:
+       priority  → urgency → importance → due date
+       urgency   → importance → due · importance → urgency → due
+       due date  → priority …  · section → (sheet order) → priority … */
+  const rank = (i, k) => lvl(i[k]) || 6;
+  const pri = i => rank(i, "urg") + rank(i, "imp");
+  const secIdx = Object.fromEntries(Object.keys(groups).map((n, k) => [n, k]));
+  const byDue = (a, b) => (!!a.due !== !!b.due) ? (a.due ? -1 : 1) : (a.due || "").localeCompare(b.due || "");
+  const byLevels = keys => (a, b) => { for(const k of keys) if(rank(a, k) !== rank(b, k)) return rank(a, k) - rank(b, k); return 0; };
+  const byPri = (a, b) => (pri(a) - pri(b)) || byLevels(["urg", "imp"])(a, b) || byDue(a, b);
   const cmp = (a, b) => {
     if(a.i.done !== b.i.done) return a.i.done ? 1 : -1;
-    if(UI.bizSort === "urg" || UI.bizSort === "imp"){
-      const k1 = UI.bizSort, k2 = k1 === "urg" ? "imp" : "urg";
-      if(rank(a.i, k1) !== rank(b.i, k1)) return rank(a.i, k1) - rank(b.i, k1);
-      if(rank(a.i, k2) !== rank(b.i, k2)) return rank(a.i, k2) - rank(b.i, k2);
+    switch(UI.bizSort){
+      case "sec": return (secIdx[a.g] - secIdx[b.g]) || byPri(a.i, b.i);
+      case "due": return byDue(a.i, b.i) || byPri(a.i, b.i);
+      case "urg": return byLevels(["urg", "imp"])(a.i, b.i) || byDue(a.i, b.i);
+      case "imp": return byLevels(["imp", "urg"])(a.i, b.i) || byDue(a.i, b.i);
+      default:    return byPri(a.i, b.i);
     }
-    if(!!a.i.due !== !!b.i.due) return a.i.due ? -1 : 1;
-    return (a.i.due || "").localeCompare(b.i.due || "");
   };
 
   let html = `
@@ -3411,10 +3434,11 @@ function renderBusiness(){
     <div>
       <div class="eyebrow">Between the two of you</div>
       <div class="big serif">Next Orders of Business</div>
-      <div class="lede">Everything you two still owe each other. Tick it, put a name on it,
-        give it a date, a topic, an urgency and an importance — no need to turn on Edit for any
-        of that. Edit mode is only for adding or deleting. On both scales <b>1 is the top</b>
-        and 5 the bottom.</div>
+      <div class="lede">Everything you two still owe each other, one list, sharpest first.
+        Tick it, put a name on it (Alan, Ben, or both), give it a date, a note, a section, a
+        topic, an urgency and an importance — no need to turn on Edit for any of that. Edit
+        mode is only for adding or deleting. On both scales <b>1 is the top</b> and 5 the
+        bottom.</div>
     </div>
   </div>`;
 
@@ -3425,15 +3449,17 @@ function renderBusiness(){
   html += toolbar(`
     <div class="tb-filters">
       ${seg("bizView", [{v:"all",l:"Everything"},{v:"open",l:"Hide done"},{v:"done",l:"Done only"}], UI.bizView)}
-      ${fgroup("Who", seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan"},{v:"ben",l:"Ben"},{v:"tbd",l:"Unassigned"}], UI.presenter))}
+      ${fgroup("Who", seg("presenter", [{v:"all",l:"Anyone"},{v:"alan",l:"Alan",t:"On Alan, alone or shared"},
+        {v:"ben",l:"Ben",t:"On Ben, alone or shared"},{v:"both",l:"Both",t:"Shared between the two of you"},{v:"tbd",l:"Unassigned"}], UI.presenter))}
       ${fgroup("Due", seg("bizDue", [{v:"",l:"Any"},{v:"over",l:"Overdue",t:"Past its date and not done"},
         {v:"7",l:"7 days",t:"Overdue, or due in the next 7 days"},{v:"14",l:"14 days",t:"Overdue, or due in the next 14 days"},
         {v:"dated",l:"Dated",t:"Has a due date"},{v:"none",l:"Undated",t:"No due date yet"}], UI.bizDue))}
     </div>
     <input class="search" id="q" placeholder="Search ${all.length} items…" value="${esc(UI.q)}">
-    ${fgroup("Sort", seg("bizSort", [{v:"due",l:"Due date"},{v:"urg",l:"Urgency"},{v:"imp",l:"Importance"}], UI.bizSort))}
+    ${fgroup("Sort", seg("bizSort", [{v:"pri",l:"Priority",t:"Urgency and importance together — 1+1 first"},
+      {v:"urg",l:"Urgency",t:"Urgency, then importance"},{v:"imp",l:"Importance",t:"Importance, then urgency"},
+      {v:"due",l:"Due date",t:"Soonest first, undated last"},{v:"sec",l:"Section",t:"Grouped by section, sharpest first within each"}], UI.bizSort))}
     <div class="tb-actions">
-      <button class="btn edit-only" data-addkey="business">+ section</button>
       ${exportButtons("bizBoard", "Next Orders of Business")}
     </div>
     <div class="tb-filters tb-row2">
@@ -3459,37 +3485,36 @@ function renderBusiness(){
     ${statBox("Unassigned", unassigned, "nobody owns these", unassigned > 0)}
   </div>`;
 
-  let shown = 0;
-  for(const [name, list] of Object.entries(groups)){
-    if(UI.bizSec && name !== UI.bizSec) continue;
-    const order = list.map((i, idx) => ({i, idx, g:name})).filter(x => bizShows(x.i, x.g)).sort(cmp);
-    if(!order.length && !(EDITING && !filtered)) continue;
-    shown += order.length;
-    const openN = list.filter(i => !i.done).length;
-    html += `<div class="sec-title serif">${ed("__key.business."+name, name)}
-      <span class="n">${openN} open / ${list.length}</span>${del("business."+name, "section")}</div>
-      <div class="biz">`;
-    for(const {i, idx} of order){
-      const p = "business." + name + "." + idx;
-      const st = dueState(i);
-      const flash = (p === JUST_TOGGLED) ? " flash" : "";
-      html += `<div class="biz-row ${i.done?"is-done":""}${flash}">
-        <button class="tick ${i.done?"on":""}" data-check="${p}" title="${i.done?"Mark as still open":"Mark done"}" aria-pressed="${i.done}">${i.done?"✓":""}</button>
-        <div class="biz-main">
-          <div class="biz-t">${ed(p+".t", i.t, "", "untitled")}</div>
-          ${i.note ? `<div class="biz-note">${ed(p+".note", i.note)}</div>` : ""}
-          <div class="biz-meta">${bizChip("topic", p, i)}${bizChip("urg", p, i)}${bizChip("imp", p, i)}</div>
-        </div>
-        ${whoChip(p+".who", i.who, {kind:"who", live:true, cls:"who", ph:"assign"})}
-        <span class="due ${st}">${dbtn("due", p+".due", i.due || "", i.due ? fmtDate(i.due) : "",
-            {cls:"always", ph:"add date", title:"Set a due date"})}</span>
-        ${i.done ? `<button class="del always" data-del="${p}" title="Delete this item">×</button>` : del(p, "this item")}
-      </div>`;
-    }
-    html += `${addBtn("business."+name, "item")}</div>`;
+  /* The sections are still there underneath (the sheet is keyed by them), but
+     the board is one flat list: each row wears its section as a chip, the
+     Section dropdown narrows to one, and the Section sort groups them. */
+  const order = all.filter(x => bizShows(x.i, x.g)).sort(cmp);
+  html += `<div class="biz">`;
+  for(const {i, idx, g} of order){
+    const p = "business." + g + "." + idx;
+    const st = dueState(i);
+    const flash = (p === JUST_TOGGLED) ? " flash" : "";
+    const note = String(i.note || "").trim();
+    html += `<div class="biz-row ${i.done?"is-done":""}${flash}">
+      <button class="tick ${i.done?"on":""}" data-check="${p}" title="${i.done?"Mark as still open":"Mark done"}" aria-pressed="${i.done}">${i.done?"✓":""}</button>
+      <div class="biz-main">
+        <div class="biz-t">${ed(p+".t", i.t, "", "untitled")}</div>
+        <div class="biz-note${note ? "" : " empty no-export no-print"}">${edLive(p+".note", note, "", "+ note")}</div>
+        <div class="biz-meta">${bizChip("sec", p, i, g)}${bizChip("topic", p, i)}${bizChip("urg", p, i)}${bizChip("imp", p, i)}</div>
+      </div>
+      ${whoChip(p+".who", i.who, {kind:"who", live:true, cls:"who", ph:"assign"})}
+      <span class="due ${st}">${dbtn("due", p+".due", i.due || "", i.due ? fmtDate(i.due) : "",
+          {cls:"always", ph:"add date", title:"Set a due date"})}</span>
+      ${i.done ? `<button class="del always" data-del="${p}" title="Delete this item">×</button>` : del(p, "this item")}
+    </div>`;
   }
-  if(!shown) html += `<div class="empty-note">Nothing matches${filtered ? " — clear a filter above, or hit <b>Clear filters</b>" : ""}.</div>`;
-  html += `</div>`;
+  if(!order.length) html += `<div class="empty-note">Nothing matches${filtered ? " — clear a filter above, or hit <b>Clear filters</b>" : ""}.</div>`;
+  /* "+ item" lands in the section you're looking at, else the first one; the
+     chip on the new row moves it anywhere else, and a new section is typed
+     right there in the picker. */
+  const addSec = UI.bizSec || Object.keys(groups)[0] || "Action Items";
+  html += addBtn("business." + addSec, "item").replace("<button ", `<button title="Adds to ${esc(addSec)} — change it on the row" `);
+  html += `</div></div>`;
   return html;
 }
 
@@ -4092,7 +4117,7 @@ function applyTimePick(v){
    board is listed underneath, one click away and spelled the way it already is.
    ═══════════════════════════════════════════════════════════════════════════ */
 let WP = null;                                     // {path, kind, val}
-const WHO_CORE = {presenter:["Alan", "Ben", "Alan & Ben"], who:["Alan", "Ben"]};
+const WHO_CORE = {presenter:["Alan", "Ben", "Alan & Ben"], who:["Alan", "Ben", "Alan & Ben"]};
 
 function whoInUse(kind){
   const seen = new Set();
@@ -4169,7 +4194,14 @@ let BP = null;                                     // {kind, path, val}
 function openBizPicker(el){
   BP = {kind:el.dataset.bizpick, path:el.dataset.path, val:el.dataset.val || ""};
   let inner;
-  if(BP.kind === "topic"){
+  if(BP.kind === "sec"){
+    const used = Object.keys(DATA.business || {});
+    inner = `<div class="dp-head"><span class="m">Section</span><button class="dp-nav" data-bpclose="1" title="Close">\u2715</button></div>`;
+    inner += `<div class="pp-list">` + used.map(t =>
+      `<button type="button" class="pp-item${t === BP.val ? " on" : ""}" data-bpval="${esc(t)}"><span class="chip sec">${esc(t)}</span></button>`).join("") + `</div>`;
+    inner += `<div class="pp-new"><input id="bpNew" class="search" placeholder="\u2026or a new section" autocomplete="off">
+      <button type="button" class="btn sm primary" id="bpAdd">Move</button></div>`;
+  } else if(BP.kind === "topic"){
     const used = bizTopics();
     inner = `<div class="dp-head"><span class="m">Topic</span><button class="dp-nav" data-bpclose="1" title="Close">\u2715</button></div>`;
     inner += `<div class="pp-list">` + (used.length
@@ -4191,13 +4223,28 @@ function openBizPicker(el){
   pop.innerHTML = inner;
   pop.classList.remove("hidden");
   popAt(pop, el);
-  if(BP.kind === "topic") $("#bpNew").focus();
+  if(BP.kind === "topic" || BP.kind === "sec") $("#bpNew").focus();
 }
 function closeBizPicker(){ $("#bizPop").classList.add("hidden"); BP = null; }
 function applyBizPick(v){
   const b = BP;
   if(!b) return;
   closeBizPicker();
+  if(b.kind === "sec"){                                 // moving between sections = between arrays
+    const to = String(v || "").trim();
+    if(!to){ toast("Type the section first"); return; }
+    const parts = b.path.split(".");                    // "business.<section>.<idx>.sec"
+    parts.pop();
+    const idx = Number(parts.pop()), from = parts.slice(1).join(".");
+    const list = DATA.business[from];
+    if(!list || !list[idx]) return;                     // the item went away under us (a sync, a delete)
+    if(to === from) return;
+    const [item] = list.splice(idx, 1);
+    if(!list.length) delete DATA.business[from];        // an emptied section is gone — type it again to bring it back
+    (DATA.business[to] = DATA.business[to] || []).push(item);
+    save(); render(); toast("Moved to " + to);
+    return;
+  }
   const parts = b.path.split("."), key = parts.pop();
   const node = getPath(parts.join("."));
   if(!node || typeof node !== "object") return;         // the item went away under us (a sync, a delete)
@@ -4217,7 +4264,7 @@ document.addEventListener("click", e => {
   if(hit){ applyBizPick(hit.dataset.bpval); return; }
   if(e.target.closest("#bpAdd")){
     const v = ($("#bpNew").value || "").trim();
-    if(!v){ toast("Type the topic first"); return; }
+    if(!v){ toast(BP && BP.kind === "sec" ? "Type the section first" : "Type the topic first"); return; }
     applyBizPick(v); return;
   }
   if(e.target.closest("[data-bpclear]")){ applyBizPick(""); return; }
@@ -4227,7 +4274,7 @@ document.addEventListener("keydown", e => {
   if(e.key === "Enter" && e.target.id === "bpNew"){
     e.preventDefault();
     const v = e.target.value.trim();
-    if(v) applyBizPick(v); else toast("Type the topic first");
+    if(v) applyBizPick(v); else toast(BP && BP.kind === "sec" ? "Type the section first" : "Type the topic first");
   }
 });
 document.addEventListener("change", e => {            // the Section and Topic dropdowns
@@ -4328,7 +4375,7 @@ document.addEventListener("click", e => {
     save(); render();
     clearTimeout(FLASH_TIMER);
     FLASH_TIMER = setTimeout(() => { JUST_TOGGLED = null; render(); }, 2600);
-    toast(item.done ? "Ticked off — it's at the bottom of the section. Click the box again to undo."
+    toast(item.done ? "Ticked off — it's at the bottom of the list. Click the box again to undo."
                     : "Back on the list");
     return;
   }
@@ -4342,6 +4389,7 @@ document.addEventListener("click", e => {
        keep what you typed, so the task looked like it never saved. */
     const isBiz = path.startsWith("business.");
     const item = isBiz ? newBizItem() : "New item";
+    if(isBiz && !getPath(path)) DATA.business[path.slice("business.".length)] = [];   // a board with no sections yet
     addTo(path, item);
     if(isBiz && !bizShows(item, path.slice("business.".length))){
       bizClearFilters();                               // a new item you can't see is a new item that "didn't save"

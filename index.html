@@ -1361,6 +1361,21 @@ function migrate(d){
       list[i] = Object.assign(newBizItem(), {t: String(it == null ? "" : it).trim() || "New item"});
     });
   }
+  /* orders of business (2026-09-15): Ben wrote his notes on these five items
+     into the topic chip (there was no note line to click on yet). Move each
+     one into the note, once — if the note already has text, or the topic has
+     since been cleared by hand, leave the item alone. */
+  const TOPIC_WAS_NOTE = new Set(["One system for check-in call and 1-on-1 notes", "Onboarding — assignments",
+                                  "Fix Calendly", "Contract for reps", "Revamp scripts — Tier 2"]);
+  for(const list of Object.values(d.business || {})){
+    if(!Array.isArray(list)) continue;
+    for(const it of list){
+      if(!it || !TOPIC_WAS_NOTE.has(String(it.t || "").trim())) continue;
+      const topic = String(it.topic || "").trim();
+      if(!topic || String(it.note || "").trim()) continue;
+      it.note = topic; it.topic = "";
+    }
+  }
   ensureYears(d);
   return d;
 }

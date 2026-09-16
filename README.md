@@ -9,11 +9,9 @@ Built to be printed: plan the calls, then export a clean image.
 
 ## What's in it
 
-Two things matter most, so they're the bold tabs across the top:
-
-**Campaign Calendar** · **Orders of Business**
-
-Everything else lives as a sub-tab under Campaign Calendar.
+The bold tabs across the top: **Campaign Calendar** · **Performance** · **Mentees** ·
+**Assignments** · **Orders of Business** · **Money**. A tab with more than one page grows a row
+of sub-tabs under it.
 
 | Tab | What it's for |
 |---|---|
@@ -24,6 +22,7 @@ Everything else lives as a sub-tab under Campaign Calendar.
 | **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). Each row links out to that mentee's **dashboard** and straight to their **skillset**. **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not due, red overdue, black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved). Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Mentees submit from their dashboard; they get an email when you reply. |
+| **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry splits **Ben 60 · Alan 40** unless you change it on that entry. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. Details in [Money](#money). |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
 | ↳ Guest Speakers | The bench, what they'd teach, when we last asked. |
@@ -226,6 +225,104 @@ every save is versioned, and the sheet's history can roll anything back — but 
 trade for a free, no-login, works-anywhere setup. If you'd rather not take it, leave
 `SYNC.url` empty and use the Data ▸ Copy / Load hand-off instead.
 
+## Money
+
+What came in, what went out, and who owes whom — between Alan and Ben, settled once a
+campaign. It sits behind the coach key like Mentees and Assignments, and it does **not** use
+the shared hub copy: that copy is readable by anyone who reads this page's source, so the
+books live in their own private Google Sheet.
+
+### Logging
+
+- **+ Income** — who paid (a mentee off the roster, someone who paid before, or anyone) and
+  how: **% of commission sales** (type their commission sales and the rate; the amount shows
+  as you type, and the sheet works it out again itself) or **Flat**. A mentee's next entry
+  starts from the plan and rate they were on last time. **Received by** starts on **Ben**,
+  because that's where the money lands; pick **Alan** for the odd Venmo.
+- **+ Expense** — what it was for, a category (pick one or type a new one), the amount,
+  **Paid by**, and a receipt photo or PDF if you have one. Big phone photos are shrunk before
+  they're sent.
+- **Settle up** — who paid whom, and how much.
+
+Every income and expense entry carries its own split: **Ben 60 · Alan 40** unless you pick
+50 · 50, all Ben, all Alan or a custom share on that entry. The split is stored on the entry,
+so if the deal ever changes, old campaigns keep the math they were settled on.
+
+Each entry also carries its **campaign** (Spring Jan–Apr · Summer May–Aug · Fall Sep–Dec). A
+new entry goes into the campaign you're looking at, so a back-end charge for Fall that lands in
+January still counts toward Fall — look at Fall, then add it. Under **All campaigns** the
+campaign follows the date until you pick one.
+
+Nothing autosaves. **Save** sends the entry, and the drawer only closes once the sheet has
+said yes. If it didn't go through, the drawer stays open and says why in red.
+
+### Settling a campaign
+
+Pick the campaign. The stats show its income, expenses, profit and each of your shares, and
+the card says who owes whom:
+
+- each person's **share** = their % of the income − their % of the expenses
+- what each person **holds** = income they received − expenses they paid ± settle-ups
+- the difference is what one of you owes the other.
+
+Say $10,000 came in to Ben, Alan paid $500 of expenses and Ben paid $300: profit is $9,200, so
+Ben's share is $5,520 and Alan's $3,680. Ben holds $9,700 and Alan is $500 out of pocket, so
+**Ben owes Alan $4,180.00**.
+
+While a campaign runs the card reads **So far:** and offers **Settle up now**. Once it has
+ended it reads **Ben owes Alan $4,180.00 for Fall 2026** with **Record settle-up**, which opens
+a settle-up already filled in (change the amount for a part payment). After that the card
+reads **Settled ✓**. Adding or changing an entry after the settle-up reopens it with whatever is
+left. A campaign that ended and never settled shows as a red line at the top of every other
+campaign until it is.
+
+### Nothing disappears
+
+- **Void** takes an entry out of every total but keeps it — crossed out, behind **Show
+  voided** — and **Restore** brings it back.
+- If the other person changed an entry while you had it open, saving asks whose version wins.
+- Every change is also written to the sheet's **History** tab (who, when, what the entry
+  became), on top of Google's own version history.
+- A row edited by hand in the sheet so that it no longer reads (a word in the Amount column,
+  say) is listed in red with its row number, and its campaign won't show a settlement until
+  the row is fixed. The first 23 columns of the Ledger tab have to keep their headers, in
+  order; add your own columns after them.
+
+### Where it lives
+
+| What | Where |
+|---|---|
+| The web app | Apps Script project **SNA Money**, code in [`SNA-Money.gs`](SNA-Money.gs); its `/exec` URL is `MONEY_API` in `index.html` |
+| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **History** and **Test** (a copy of this page served from your own machine only ever writes **Test**) |
+| Receipts | Drive folder **SNA Money Receipts** (test receipts in its **Test** folder) |
+| The key | Script property `MONEY_KEY` in the SNA Money project — the same value as the coach key. The script records the sheet and folder IDs as script properties itself (`MONEY_SHEET_ID`, `MONEY_FOLDER_ID`, `MONEY_TEST_FOLDER_ID`). |
+
+Changing the coach key? Change `MONEY_KEY` to match, or the Money tab will say the sheet
+doesn't accept the key.
+
+After editing `SNA-Money.gs`, paste it into the project and **Deploy ▸ Manage deployments ▸
+edit ▸ New version**. A new deployment would change the `/exec` URL.
+
+### Trying it out and testing it
+
+```bash
+node tests/money-backend.test.js
+```
+
+```bash
+node tests/money-math.test.js
+```
+
+```bash
+node tools/dev-server.js
+```
+
+The backend test runs `SNA-Money.gs` on fake Apps Script services; the math test runs the
+settlement arithmetic out of `index.html`. The dev server serves this page at
+`http://localhost:8830/#money` (coach key `dev`) with hub sync switched off and both backends
+replaced by in-memory fakes — invented mentees and the real `SNA-Money.gs` — so nothing it does
+reaches Google. It refuses to start if it can't switch all three off.
+
 ## Weekly check-ins
 
 Weeks are Vector weeks, **Tuesday to Monday**, headed with their dates ("Wk 1 · 9/1–9/7").
@@ -262,7 +359,7 @@ top, and saves again. Any other kind of edit still asks, as before.
 3. Add one line to the `TABS` array, naming the section it belongs under:
 
 ```js
-{id:"money", label:"Money", sub:"Money", section:"business", count:()=>DATA.money.length, render:renderMoney}
+{id:"notes", label:"Notes", sub:"Notes", section:"business", count:()=>DATA.notes.length, render:renderNotes}
 ```
 
 Use `section:"calendar"` or `section:"business"` to nest it as a sub-tab, or add an

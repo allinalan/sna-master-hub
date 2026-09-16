@@ -58,8 +58,9 @@ index.html (public GitHub Pages)
 
 ## Data model
 
-One row per entry. Header row, frozen. Column order is the contract; the script looks
-columns up by header name so a hand-inserted column can't shift values.
+One row per entry. Header row, frozen. Column order is the contract: the first 23 columns must
+carry these headers in this order, and every call fails naming the first wrong column if they
+don't. Columns after them are left alone.
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -107,6 +108,7 @@ body JSON. Reply is JSON `{ok: true, …}` or `{ok: false, error: "…"}`.
 |---|---|
 | `MONEY_KEY` not set | `{ok:false, error:"key not set"}` |
 | wrong key | `{ok:false, error:"bad key"}` |
+| `book` not `live`/`test` | `{ok:false, error:"book must be live or test"}` |
 | unknown action | `{ok:false, error:"unknown action"}` |
 
 `GET /exec` → `{ok:true, service:"SNA Money", version:N}` with no data: a liveness check that
@@ -188,7 +190,7 @@ $4,180 makes it square: holds become Ben 5,520 · Alan 3,680.
 |---|---|---|
 | blocked | a problem row carries this campaign | "Can't work out Fall 2026: N rows in the sheet need a look." (no amount shown) |
 | empty | no live entries | "Nothing logged for Fall 2026 yet." |
-| reopened | owed ≠ 0 and a live settle-up exists | "Settled Jan 3, but entries since leave Ben owing Alan $X" · **Record settle-up** |
+| reopened | owed ≠ 0 and a live settle-up exists | "Ben owes Alan $X" — "Fall 2026 was settled Jan 3, but its entries have changed since" · **Record settle-up** |
 | running | owed ≠ 0, today ≤ end | "So far: Ben owes Alan $X" · settles after Dec 31 · **Settle up now** (secondary) |
 | due | owed ≠ 0, today > end | "Ben owes Alan $X for Fall 2026" · **Record settle-up** (primary) |
 | settled | owed = 0 and a live settle-up exists | "Settled ✓ Ben paid Alan $X on Jan 3" (the latest settle-up) |
@@ -262,13 +264,15 @@ A problem row with no readable campaign blocks every campaign (it could belong t
 
 - **Nothing shows as saved until the sheet said ok.** While a save is in flight the button
   reads "Saving…" and the form is locked. On failure the drawer stays open with the reason in
-  red: "Didn't save — the sheet said: …", or "Couldn't reach the sheet. Nothing was saved —
-  try again."
+  red: "The sheet said no: … Nothing was saved.", or, when the reply never came back, "Couldn't
+  reach the sheet, so this may not have gone through. Press Save again — it can't go in twice."
+  (A lost reply doesn't prove the sheet didn't take it.)
 - **Transport retries:** reads retry 3× with backoff (Apps Script `/exec` intermittently serves
   an HTML error page, seen ~1 in 5 on 2026-08-24). A write retries once, automatically, and
   only because creates are idempotent by ID and updates recognise their own content.
-- **Conflict** (the other person changed the entry first): a dialog shows theirs next to
-  yours — **Keep mine** re-sends on top of their rev; **Take theirs** closes the form.
+- **Conflict** (the other person changed the entry first): a confirm dialog shows theirs and
+  yours as one line each — **OK** saves yours on top of their rev; **Cancel** keeps theirs and
+  closes the drawer.
 - **Load failure:** the tab shows the error and a Try again button instead of an empty ledger.
   An empty ledger is only ever shown after a successful `list`.
 - **Blocked campaigns** (problem rows) never show an amount owed.
@@ -287,11 +291,13 @@ A problem row with no readable campaign blocks every campaign (it could belong t
   key gates, validation, create / idempotent retry / update / conflict / same-content
   recognition, void/restore, history rows, test vs live books, receipt round trip and the
   receipt-by-entry rule, formula and date guards, problem rows, lazy sheet creation.
-- `tools/dev-server.js` (node, no deps): serves `index.html` on localhost with
-  `window.SNA_DEV = {moneyApi, teamApi}` injected, backs `/__money` with the real
-  `SNA-Money.gs` in the fakes and `/__team` with a fake roster (invented names). `index.html`
-  reads `SNA_DEV` only when present, so production is untouched. Used to drive the whole tab in
-  a browser: add/edit/void each kind, receipts, conflicts, settle-up flow, phone width, export.
+- `tools/dev-server.js` (node, no deps): serves `index.html` with `SYNC.url`, `TEAM_API` and
+  `MONEY_API` rewritten in the served copy — hub sync off, `/__team` a fake roster (invented
+  names), `/__money` the real `SNA-Money.gs` on the fakes — and refuses to start if any rewrite
+  misses; `index.html` has no dev hooks. `SLOW`, `MONEY_KEY`, `NO_KEY` and `POST /__fail` stage
+  slow replies, a mismatched key, no key, and Apps Script's HTML error page. Used to drive the
+  whole tab in a browser: add/edit/void each kind, receipts, conflicts, settle-up, failures,
+  phone width, export.
 - **Live verification after deploy** (Alan's Chrome, on the live hub page so the stored coach
   key is used without anyone reading it out): liveness GET; `bad key` with a wrong key; with
   the real key, on the **test book** only: list → create income (%) → list shows it with the

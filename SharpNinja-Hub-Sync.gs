@@ -118,11 +118,19 @@ function doPost(e) {
   }
 }
 
-/* ── the blob is split across cells so it can grow past one cell's limit ── */
+/* ── the blob is split across cells so it can grow past one cell's limit ──
+   Two guards keep Sheets from interpreting a chunk: the cells are formatted as
+   plain text, and every chunk is stored with a leading "~" so it can never
+   begin with "=" (a formula), a digit (a number or date) or TRUE/FALSE — the
+   JSON carries all of those inside strings, and a chunk boundary can land
+   just before any of them. readChunks_() strips the "~", and still reads
+   chunks written before it existed. ── */
+var CHUNK_MARK = '~';
+
 function writeChunks_(sh, text) {
   var parts = [];
-  for (var i = 0; i < text.length; i += CHUNK) parts.push([text.substr(i, CHUNK)]);
-  if (!parts.length) parts = [['']];
+  for (var i = 0; i < text.length; i += CHUNK) parts.push([CHUNK_MARK + text.substr(i, CHUNK)]);
+  if (!parts.length) parts = [[CHUNK_MARK]];
   var last = Math.max(sh.getLastRow(), 4);
   if (last >= 4) sh.getRange(4, 2, last - 3, 1).clearContent();
   // Plain-text format, or a chunk that happens to start with "=" (or look like
@@ -135,7 +143,10 @@ function readChunks_(sh) {
   var last = sh.getLastRow();
   if (last < 4) return '';
   var vals = sh.getRange(4, 2, last - 3, 1).getValues();
-  return vals.map(function (r) { return String(r[0] || ''); }).join('');
+  return vals.map(function (r) {
+    var s = String(r[0] || '');
+    return s.charAt(0) === CHUNK_MARK ? s.slice(1) : s;
+  }).join('');
 }
 
 function json_(o) {

@@ -164,6 +164,7 @@ const cases = [
                        "2026-09-16 · Jordan, Ben received · $987.65 · 60/40");
     assert.strictEqual(M.mEntryLine(exp({amount:15.99, date:"2026-09-17", status:"void"})), "2026-09-17 · Zoom, Alan paid · $15.99 · 60/40 · void");
     assert.strictEqual(M.mEntryLine(stl({amount:4180, date:"2027-01-03"})), "2027-01-03 · Ben → Alan · $4,180.00");
+    assert.strictEqual(M.mEntryLine(exp({amount:600, date:"2026-09-10", note:"annual   plan"})), "2026-09-10 · Zoom, Alan paid · $600.00 · 60/40 · “annual plan”");
   }],
   ["new IDs are the shape the script accepts, and never repeat", () => {
     const ids = new Set(Array.from({length:500}, () => M.mNewId()));

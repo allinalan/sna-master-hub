@@ -870,6 +870,30 @@ table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
   #moneyBoard table.mcamps td:nth-child(5)::before{content:"Ben"}
   #moneyBoard table.mcamps td:nth-child(6)::before{content:"Alan"}
 }
+/* ── money: the drawer ── */
+.mform{gap:14px;grid-auto-rows:max-content}   /* rows keep their height and the drawer scrolls — a .seg (overflow:hidden) would otherwise shrink to a sliver on a phone */
+.mform .mlab{display:grid;gap:6px;min-width:0;justify-items:start}
+.mform .mlab>input,.mform .mlab>select,.mform .mlab>.mmoney{justify-self:stretch}
+.mform .mlt{font-family:var(--monof);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.mform input.search,.mform select{width:100%;min-width:0;font-family:var(--sans);font-size:14px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
+.mform .seg{flex-wrap:wrap}
+.mform .mrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mmoney{display:flex;align-items:center;gap:6px}
+.mmoney i{font-style:normal;color:var(--ink-faint);font-family:var(--monof);font-size:13px}
+.mcalc{font-family:var(--monof);font-size:15px;color:var(--good);margin-top:-6px}
+.mcalc:empty{display:none}
+.merr{color:var(--bad);font-size:13px;line-height:1.45;font-weight:600}
+.merr:empty{display:none}
+.mvoid{background:var(--line-soft);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--ink-soft)}
+.mreceipt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.mfile{position:relative;overflow:hidden;cursor:pointer}
+.mfile input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+#mfViewer{justify-self:stretch}
+#mfViewer img{display:block;max-width:100%;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+#mfViewer iframe{display:block;width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+.maudit{font-size:11.5px;color:var(--ink-faint)}
+@media (max-width:640px){.mform .mrow2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -2950,8 +2974,9 @@ function mCheck(e){
 function mEntryLine(e){
   const cents = e.kind === "income" && e.plan === "pct" ? mPctCents(mCents(mNum(e.base)) / 100, mNum(e.rate)) : mCents(mNum(e.amount));
   const what = e.kind === "settle" ? `${e.who} → ${e.to}` : `${e.party}, ${e.who} ${e.kind === "income" ? "received" : "paid"}`;
+  const note = mText(e.note, 60);
   return `${e.date} · ${what} · ${mFmt(cents)}` + (e.kind === "settle" ? "" : ` · ${mSplitLabel(e.benPct)}`) +
-         (e.status === "void" ? " · void" : "");
+         (note ? ` · “${note}”` : "") + (e.status === "void" ? " · void" : "");
 }
 /* minted before the first send, so a retried create finds its own row */
 function mNewId(){ return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8).padEnd(6, "0"); }
@@ -3114,7 +3139,7 @@ function moneyCardHtml(s){
   switch(s.state){
     case "blocked":  return card("bad", `Can't work out ${c} yet`, `${n} row${n === 1 ? "" : "s"} in the sheet can't be read — see the red box above. Nothing shows as owed until ${n === 1 ? "it's" : "they're"} fixed.`);
     case "empty":    return card("", `Nothing logged for ${c} yet`, "Add income or an expense above.");
-    case "reopened": return card("warn", owes, `${c} was settled ${esc(fmtFull(s.last.date))}, but entries since then left this.`, button("Record settle-up", true));
+    case "reopened": return card("warn", owes, `${c} was settled ${esc(fmtFull(s.last.date))}, but its entries have changed since — this is what's left.`, button("Record settle-up", true));
     case "running":  return card("", `So far: ${owes}`, `${c} settles after it ends on ${esc(fmtFull(s.end))}.`, button("Settle up now", false));
     case "due":      return card("warn", `${owes} for ${c}`, `The campaign ended ${esc(fmtFull(s.end))}.`, button("Record settle-up", true));
     case "settled":  return card("good", "Settled ✓", `${esc(s.last.who)} paid ${esc(s.last.to)} ${esc(mFmt(mCents(s.last.amount)))} on ${esc(fmtFull(s.last.date))}.`);
@@ -3194,6 +3219,450 @@ document.addEventListener("click", e => {
   MONEY.err = "";
   if(!MONEY.entries) render();
   moneyLoad(true);
+});
+
+/* ── the drawer: add or change one entry ──
+   Money never autosaves. Save sends the entry and the drawer closes only once
+   the sheet said ok; until then everything typed stays put, with the reason in
+   red if it didn't go. It reuses the Assignments drawer (#adrawer). */
+function moneySeg(key, opts, cur){
+  return `<div class="seg">` + opts.map(o => `<button type="button" data-mset="${key}:${esc(o.v)}" class="${
+    String(cur) === String(o.v) ? "on" : ""}">${esc(o.l)}</button>`).join("") + `</div>`;
+}
+function moneyInput(id, label, val, affix, ph){
+  return `<label class="mlab"><span class="mlt">${esc(label)}</span><span class="mmoney">${affix === "$" ? "<i>$</i>" : ""}` +
+    `<input class="search" id="${id}" inputmode="decimal" autocomplete="off" value="${esc(val)}" placeholder="${esc(ph || "0.00")}">` +
+    `${affix === "%" ? "<i>%</i>" : ""}</span></label>`;
+}
+function moneyRoster(){
+  return (TEAM.rows || []).filter(r => r.Active && String(r.Name || "").trim())
+    .map(r => ({name:String(r.Name).trim(), repId:String(r.RepID)})).sort((a, b) => a.name.localeCompare(b.name));
+}
+/* who signs a change: the hub's who-am-I, asked for if it isn't Alan or Ben */
+function moneySigner(){
+  let by = mPerson(whoAmI());
+  if(!by){ askWho(true); by = mPerson(whoAmI()); }
+  return by;
+}
+
+function moneyNewForm(kind, over){
+  const today = todayISO(), view = moneyViewCampaign() === "all" ? "" : moneyViewCampaign();
+  return Object.assign({mode:"new", id:mNewId(), rev:0, kind, date:today,
+    campaign:view || mCampaignOf(today), campAuto:!view,           // under All campaigns, the campaign follows the date until picked
+    party:"", repId:"", partyOther:false, plan:"pct", base:"", rate:"", amount:"", autoRate:false, autoAmount:false,
+    who:kind === "income" ? "Ben" : kind === "expense" ? mPerson(whoAmI()) : "",
+    benPct:M_DEFAULT_BEN, splitCustom:false, category:"", catNew:false, note:"",
+    receipt:null, removeReceipt:false, entry:null}, over || {});
+}
+function moneyEditForm(e){
+  return {mode:"edit", id:e.id, rev:e.rev, kind:e.kind, date:e.date, campaign:e.campaign, campAuto:false,
+    party:e.party || "", repId:e.repId || "", partyOther:false, plan:e.plan || "pct",
+    base:e.base == null ? "" : String(e.base), rate:e.rate == null ? "" : String(e.rate),
+    amount:e.amount == null ? "" : String(e.amount), autoRate:false, autoAmount:false, who:e.who,
+    benPct:e.benPct == null ? M_DEFAULT_BEN : e.benPct,
+    splitCustom:e.benPct != null && ![60, 50, 100, 0].includes(Number(e.benPct)),
+    category:e.category || "", catNew:false, note:e.note || "", receipt:null, removeReceipt:false, entry:e};
+}
+/* opened from the card: the debtor, the creditor, the exact amount — editable for a part payment */
+function moneySettleForm(camp){
+  const s = mStatus(MONEY.entries || [], MONEY.problems, camp, todayISO());
+  const f = moneyNewForm("settle", {campaign:camp, campAuto:false});
+  if(s.owed > 0){ f.who = s.debtor; f.amount = (s.owed / 100).toFixed(2); }
+  return f;
+}
+
+function moneyPartyField(f){
+  const roster = moneyRoster(), onRoster = new Set(roster.map(r => r.name.toLowerCase()));
+  const names = [...new Set((MONEY.entries || []).filter(x => x.kind === "income").map(x => x.party))]
+    .filter(n => n && !onRoster.has(n.toLowerCase())).sort((a, b) => a.localeCompare(b));
+  const cur = f.partyOther ? "other:" : f.repId && roster.some(r => r.repId === f.repId) ? "rep:" + f.repId : f.party ? "name:" + f.party : "";
+  if(cur.startsWith("name:") && !names.includes(f.party)) names.push(f.party);        // a payer on neither list still shows
+  const opt = (v, l) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(l)}</option>`;
+  let opts = opt("", "— who paid? —");
+  if(roster.length) opts += `<optgroup label="Mentees">${roster.map(r => opt("rep:" + r.repId, r.name)).join("")}</optgroup>`;
+  if(names.length) opts += `<optgroup label="Paid before">${names.map(n => opt("name:" + n, n)).join("")}</optgroup>`;
+  opts += opt("other:", "Someone else…");
+  return `<label class="mlab"><span class="mlt">From</span><select id="mfParty">${opts}</select></label>` +
+    (f.partyOther ? `<input class="search" id="mfPartyOther" placeholder="Their name" value="${esc(f.party)}" autocomplete="off">` : "") +
+    (TEAM.rows ? "" : `<div class="sw-hint">${TEAM.loading ? "Loading the roster…" : "The roster isn't loaded — pick someone who paid before, or Someone else."}</div>`);
+}
+function moneyCategoryField(f){
+  const used = [...new Set((MONEY.entries || []).filter(x => x.kind === "expense" && x.category).map(x => x.category))];
+  const list = MONEY_CATEGORIES.concat(used.filter(c => !MONEY_CATEGORIES.includes(c)).sort((a, b) => a.localeCompare(b)));
+  if(f.category && !f.catNew && !list.includes(f.category)) list.push(f.category);
+  const opt = (v, l, on) => `<option value="${esc(v)}"${on ? " selected" : ""}>${esc(l)}</option>`;
+  return `<label class="mlab"><span class="mlt">Category</span><select id="mfCat">${opt("", "— none —", !f.category && !f.catNew)}${
+      list.map(c => opt(c, c, !f.catNew && c === f.category)).join("")}${opt("__new", "New category…", f.catNew)}</select></label>` +
+    (f.catNew ? `<input class="search" id="mfCatNew" placeholder="Category name" value="${esc(f.category)}" autocomplete="off">` : "");
+}
+function moneySize(n){ return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+function moneyReceiptField(f){
+  const e = f.entry, has = !!(e && e.receiptId) && !f.removeReceipt;
+  let h = `<div class="mlab"><span class="mlt">Receipt</span><div class="mreceipt">`;
+  if(has) h += `<span>📎 ${esc(e.receiptName || "receipt")}</span><button type="button" class="btn sm" data-moneyact="viewreceipt">View</button>` +
+               `<button type="button" class="btn sm" data-moneyact="dropreceipt">Remove</button>`;
+  if(e && e.receiptId && f.removeReceipt) h += `<span class="sw-hint">Comes off this entry when you save — the file stays in Drive.</span>` +
+               `<button type="button" class="btn sm" data-moneyact="keepreceipt">Keep it</button>`;
+  if(f.receipt) h += `<span>New: ${esc(f.receipt.name)} · ${esc(moneySize(f.receipt.size))}</span>` +
+               `<button type="button" class="btn sm" data-moneyact="clearpick">Don't attach</button>`;
+  h += `<label class="btn sm mfile">${has || f.receipt ? "Replace…" : "Attach a photo or PDF"}<input type="file" id="mfFile" accept="image/*,application/pdf"></label>`;
+  return h + `</div><div id="mfViewer"></div></div>`;
+}
+
+function paintMoneyForm(){
+  const f = MONEY.form, d = $("#adrawer");
+  if(!f || !d) return;
+  const e = f.entry, dis = MONEY.busy ? " disabled" : "";
+  const camps = new Set(moneyCampaigns()), now = mCampaignKey(mCampaignOf(todayISO()));
+  for(let k = now - 3; k <= now + 1; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
+  camps.add(f.campaign);
+  const campOpts = [...camps].filter(c => M_CAMPAIGN_RE.test(c)).sort((a, b) => mCampaignKey(b) - mCampaignKey(a))
+    .map(c => `<option value="${esc(c)}"${c === f.campaign ? " selected" : ""}>${esc(c)}</option>`).join("");
+
+  let body = "";
+  if(f.mode === "new") body += moneySeg("kind", [{v:"income", l:"Income"}, {v:"expense", l:"Expense"}, {v:"settle", l:"Settle-up"}], f.kind);
+  if(e && e.status === "void") body += `<div class="mvoid">This entry is <b>void</b> — it counts for nothing. Restore it to count it again.</div>`;
+  body += `<div class="mrow2">
+      <div class="mlab"><span class="mlt">Date</span>${dbtn("field", "", f.date, f.date ? fmtFull(f.date) : "", {id:"mfDate", cls:"always", ph:"pick a date"})}</div>
+      <label class="mlab"><span class="mlt">Campaign</span><select id="mfCamp">${campOpts}</select></label>
+    </div>`;
+  if(f.kind === "income"){
+    body += moneyPartyField(f);
+    body += `<div class="mlab"><span class="mlt">Plan</span>${moneySeg("plan", [{v:"pct", l:"% of commission sales"}, {v:"flat", l:"Flat"}], f.plan)}</div>`;
+    if(f.plan === "pct"){
+      const base = mNum(f.base), rate = mNum(String(f.rate).replace(/%/g, ""));
+      body += `<div class="mrow2">${moneyInput("mfBase", "Commission sales", f.base, "$")}${moneyInput("mfRate", "Rate", f.rate, "%", "e.g. 10")}</div>
+        <div class="mcalc" id="mfCalc">${base > 0 && rate > 0 ? "= " + esc(mFmt(mPctCents(mCents(base) / 100, rate))) : ""}</div>`;
+    } else {
+      body += moneyInput("mfAmount", "Amount", f.amount, "$");
+    }
+    body += `<div class="mlab"><span class="mlt">Received by</span>${moneySeg("who", [{v:"Ben", l:"Ben"}, {v:"Alan", l:"Alan"}], f.who)}</div>`;
+  } else if(f.kind === "expense"){
+    body += `<label class="mlab"><span class="mlt">What for</span><input class="search" id="mfWhat" value="${esc(f.party)}" placeholder="e.g. Zoom subscription" autocomplete="off"></label>`;
+    body += moneyCategoryField(f);
+    body += moneyInput("mfAmount", "Amount", f.amount, "$");
+    body += `<div class="mlab"><span class="mlt">Paid by</span>${moneySeg("who", [{v:"Alan", l:"Alan"}, {v:"Ben", l:"Ben"}], f.who)}</div>`;
+  } else {
+    body += `<div class="mlab"><span class="mlt">Who paid whom</span>${moneySeg("who", [{v:"Ben", l:"Ben → Alan"}, {v:"Alan", l:"Alan → Ben"}], f.who)}</div>`;
+    body += moneyInput("mfAmount", "Amount", f.amount, "$");
+  }
+  if(f.kind !== "settle"){
+    body += `<div class="mlab"><span class="mlt">Split</span>${moneySeg("split", [{v:"60", l:"Ben 60 · Alan 40"}, {v:"50", l:"50 · 50"},
+      {v:"100", l:"All Ben"}, {v:"0", l:"All Alan"}, {v:"custom", l:"Custom"}], f.splitCustom ? "custom" : String(Number(f.benPct)))}</div>`;
+    if(f.splitCustom) body += moneyInput("mfBenPct", "Ben's share", f.benPct, "%", "e.g. 55");
+    body += moneyReceiptField(f);
+  }
+  body += `<label class="mlab"><span class="mlt">Note</span><input class="search" id="mfNote" value="${esc(f.note)}" placeholder="optional" autocomplete="off"></label>`;
+  body += `<div class="merr" id="mfErr" role="alert">${esc(MONEY.formErr)}</div>`;
+  body += `<div class="ad-row">
+      <button class="btn primary" data-moneyact="save"${dis}>${MONEY.busy ? "Saving…" : f.mode === "new" ? "Save" : "Save changes"}</button>
+      <button class="btn" data-moneyact="close"${dis}>Cancel</button>${e ? `
+      <span style="flex:1"></span><button class="btn" data-moneyact="${e.status === "void" ? "restore" : "void"}"${dis}>${e.status === "void" ? "Restore" : "Void"}</button>` : ""}
+    </div>`;
+  if(e) body += `<div class="maudit">Added by ${esc(e.createdBy || "?")} · ${fmtStamp(e.createdAt)}${
+    e.rev > 1 ? ` · last changed by ${esc(e.updatedBy || "?")} · ${fmtStamp(e.updatedAt)}` : ""}</div>`;
+
+  const noun = MONEY_NOUN[f.kind];
+  const sub = f.mode === "new"
+    ? (MONEY_BOOK === "test" ? "Test tab — a local copy never writes the real ledger" : "Nothing is saved until you press Save")
+    : esc(mFmt(mCents(e.amount)) + " · " + fmtFull(e.date) + " · " + e.campaign);
+  d.innerHTML = `<div class="ad-head"><div><div class="t">${f.mode === "new" ? "New " + noun : noun.charAt(0).toUpperCase() + noun.slice(1)}</div>
+      <div class="s">${sub}</div></div><button class="btn sm" data-moneyact="close" title="Close"${dis}>✕</button></div>
+    <div class="ad-body mform" id="mform">${body}</div>`;
+  d.classList.add("on"); d.setAttribute("aria-hidden", "false");
+}
+function moneyCloseForm(){
+  MONEY.form = null; MONEY.formErr = "";
+  if(MONEY.receiptUrl){ URL.revokeObjectURL(MONEY.receiptUrl); MONEY.receiptUrl = ""; }
+  const d = $("#adrawer");
+  if(d){ d.classList.remove("on"); d.setAttribute("aria-hidden", "true"); }
+}
+
+/* Copy what's typed in the drawer back into MONEY.form before anything redraws it. */
+function moneyHarvest(){
+  const f = MONEY.form;
+  if(!f) return;
+  const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  const date = $("#mfDate"); if(date) f.date = date.dataset.iso || "";
+  const camp = val("mfCamp"); if(camp !== null) f.campaign = camp;
+  const party = val("mfParty");
+  if(party !== null){
+    if(party.startsWith("rep:")){
+      const r = moneyRoster().find(x => x.repId === party.slice(4));
+      Object.assign(f, {partyOther:false, repId:r ? r.repId : "", party:r ? r.name : ""});
+    } else if(party.startsWith("name:")){
+      Object.assign(f, {partyOther:false, repId:"", party:party.slice(5)});
+    } else if(party === "other:"){
+      if(!f.partyOther) f.party = "";
+      Object.assign(f, {partyOther:true, repId:""});
+      const other = val("mfPartyOther"); if(other !== null) f.party = other;
+    } else Object.assign(f, {partyOther:false, repId:"", party:""});
+  }
+  const what = val("mfWhat"); if(what !== null) f.party = what;
+  const cat = val("mfCat");
+  if(cat !== null){
+    if(cat === "__new"){ if(!f.catNew) f.category = ""; f.catNew = true; const typed = val("mfCatNew"); if(typed !== null) f.category = typed; }
+    else Object.assign(f, {catNew:false, category:cat});
+  }
+  for(const [id, key] of [["mfBase", "base"], ["mfRate", "rate"], ["mfAmount", "amount"], ["mfNote", "note"]]){
+    const v = val(id); if(v !== null) f[key] = v;
+  }
+  const share = val("mfBenPct"); if(share !== null && f.splitCustom) f.benPct = share;
+}
+function moneyEntryOf(f){
+  const e = {id:f.id, kind:f.kind, date:f.date, campaign:f.campaign, who:f.who, note:String(f.note).trim()};
+  if(f.kind === "settle"){ e.to = f.who === "Alan" ? "Ben" : f.who === "Ben" ? "Alan" : ""; e.amount = f.amount; return e; }
+  e.party = String(f.party).trim(); e.benPct = f.benPct;
+  if(f.kind === "expense"){ e.category = String(f.category).trim(); e.amount = f.amount; return e; }
+  e.repId = f.repId; e.plan = f.plan;
+  if(f.plan === "pct"){
+    e.base = f.base; e.rate = String(f.rate).replace(/%/g, "").trim();
+    const c = mPctCents(mCents(mNum(e.base)) / 100, mNum(e.rate));
+    e.amount = isFinite(c) ? (c / 100).toFixed(2) : "";           // shown in the conflict dialog; the script works it out itself
+  } else e.amount = f.amount;
+  return e;
+}
+function moneyApplyLastPlan(){
+  const f = MONEY.form, last = mLastPlan(MONEY.entries || [], f.party, f.repId);
+  if(!last) return;
+  f.plan = last.plan;
+  if(last.rate != null && (!f.rate || f.autoRate)) Object.assign(f, {rate:String(last.rate), autoRate:true});
+  if(last.amount != null && (!f.amount || f.autoAmount)) Object.assign(f, {amount:String(last.amount), autoAmount:true});
+}
+
+/* ── writes ── */
+/* A write is retried once when its reply goes missing: a create carries its own
+   ID and the script recognises content it already holds, so a retry can't
+   double an entry. Nothing here shows anything as saved; the caller does, and
+   only on ok. */
+async function moneyWrite(body){
+  for(let attempt = 1; attempt <= 2; attempt++){
+    try{ return await moneyCall(body); }
+    catch(e){ if(attempt === 2) return {ok:false, error:"network"}; await new Promise(r => setTimeout(r, 2500)); }
+  }
+}
+function moneyMerge(e){
+  if(!MONEY.entries || !e) return;
+  const i = MONEY.entries.findIndex(x => x.id === e.id);
+  if(i < 0) MONEY.entries.push(e); else MONEY.entries[i] = e;
+}
+/* A filter or another campaign hiding what you just saved would read as it not having saved. */
+function moneyReveal(e){
+  const view = moneyViewCampaign();
+  if(view !== "all" && view !== e.campaign) MONEY.campaign = e.campaign;
+  if(UI.moneyKind !== "all" && UI.moneyKind !== e.kind) UI.moneyKind = "all";
+  if(UI.moneyWho !== "all" && e.who !== UI.moneyWho && e.to !== UI.moneyWho) UI.moneyWho = "all";
+  if(UI.moneyCat && e.category !== UI.moneyCat) UI.moneyCat = "";
+  UI.q = "";
+}
+/* A lost reply doesn't mean the sheet didn't take it — it may have, so don't
+   claim "nothing was saved". Sending again is safe: it can't go in twice. */
+function moneyWhy(out, nothing, again){
+  if(out.error === "network") return `Couldn't reach the sheet, so this may not have gone through. ${again} — it can't go in twice.`;
+  if(out.error === "bad key" || out.error === "key not set") return `The sheet refused the key. ${nothing}. Close this and press Refresh to see why.`;
+  return `The sheet said no: ${out.error || "no reason given"}. ${nothing}.`;
+}
+
+async function moneySave(){
+  const f = MONEY.form;
+  if(!f || MONEY.busy) return;
+  moneyHarvest();
+  const by = moneySigner();
+  if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks, so the entry is signed."; paintMoneyForm(); return; }
+  const entry = moneyEntryOf(f), problem = mCheck(entry);
+  if(problem){ MONEY.formErr = problem; paintMoneyForm(); return; }
+  const body = {action:"save", by, entry, rev:f.rev || 0};
+  if(f.receipt) body.receipt = {name:f.receipt.name, mime:f.receipt.mime, b64:f.receipt.b64};
+  else if(f.removeReceipt) body.removeReceipt = true;
+  MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
+  const out = await moneyWrite(body);
+  MONEY.busy = false;
+  if(out.ok){
+    moneyMerge(out.entry); moneyReveal(out.entry); moneyCloseForm(); render();
+    toast(f.mode === "new" ? `Saved to the sheet ✓ ${MONEY_NOUN[out.entry.kind]} ${mFmt(mCents(out.entry.amount))}` : "Changes saved to the sheet ✓");
+    return;
+  }
+  if(out.conflict && out.entry) return moneyConflict(f, out.entry, entry);
+  MONEY.formErr = moneyWhy(out, "Nothing was saved", "Press Save again");
+  paintMoneyForm();
+}
+function moneyConflict(f, theirs, mine){
+  moneyMerge(theirs); render();
+  const who = theirs.updatedBy || "The other person";
+  const keep = confirm(`${who} changed this entry ${ago(theirs.updatedAt)}, after you opened it.\n\n` +
+    `Theirs:  ${mEntryLine(theirs)}\nYours:   ${mEntryLine(Object.assign({}, theirs, mine))}\n\n` +
+    `OK saves yours over theirs. Cancel keeps theirs and closes this.`);
+  if(keep){ f.rev = theirs.rev; f.entry = theirs; paintMoneyForm(); return moneySave(); }
+  moneyCloseForm(); toast(`Kept ${who}'s version`);
+}
+async function moneySetStatus(action){
+  const f = MONEY.form;
+  if(!f || !f.entry || MONEY.busy) return;
+  const e = f.entry;
+  if(action === "void" && !confirm(`Void this ${mFmt(mCents(e.amount))} ${MONEY_NOUN[e.kind]}? It stays in the list, crossed out, and stops counting. You can restore it.`)) return;
+  const by = moneySigner();
+  if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks."; paintMoneyForm(); return; }
+  MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
+  const out = await moneyWrite({action, by, id:e.id, rev:e.rev});
+  MONEY.busy = false;
+  if(out.ok){
+    moneyMerge(out.entry); moneyCloseForm(); render();
+    toast(action === "void" ? "Voided — it no longer counts" + (UI.moneyVoid ? "" : " (Show voided to see it)") : "Restored — it counts again");
+    return;
+  }
+  if(out.conflict && out.entry){
+    moneyMerge(out.entry); render();
+    MONEY.form = moneyEditForm(out.entry);
+    MONEY.formErr = `${out.entry.updatedBy || "Someone"} changed this entry first — this is their version now. ${action === "void" ? "Void" : "Restore"} it again if you still mean to.`;
+    paintMoneyForm();
+    return;
+  }
+  MONEY.formErr = moneyWhy(out, "Nothing changed", `Press ${action === "void" ? "Void" : "Restore"} again`);
+  paintMoneyForm();
+}
+
+/* ── receipts ── */
+const MONEY_MAX_RECEIPT = 5 * 1024 * 1024;
+async function moneyReadReceipt(file){
+  let mime = file.type || (/\.pdf$/i.test(file.name) ? "application/pdf" : /\.(heic|heif)$/i.test(file.name) ? "image/heic" : "");
+  if(!/^(image\/(jpeg|png|gif|webp|heic|heif)|application\/pdf)$/.test(mime)) throw new Error("A receipt has to be a photo or a PDF.");
+  let blob = file, name = file.name || "receipt";
+  if(/^image\/(jpeg|png|webp|gif)$/.test(mime)){
+    const small = await moneyShrink(file).catch(() => null);
+    if(small){ blob = small; mime = "image/jpeg"; name = name.replace(/\.[a-z0-9]+$/i, "") + ".jpg"; }
+  }
+  if(blob.size > MONEY_MAX_RECEIPT) throw new Error("That file is too big — 5 MB max.");
+  const b64 = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(new Error("Couldn't read that file — try attaching it again."));
+    r.readAsDataURL(blob);
+  });
+  return {name, mime, b64, size:blob.size};
+}
+/* Phone photos arrive at 3–6 MB. Anything over 1.5 MB or 2000 px on its long
+   edge is redrawn as a 2000 px JPEG; null means the original is fine as it is. */
+async function moneyShrink(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = url; });
+    const long = Math.max(img.naturalWidth, img.naturalHeight);
+    if(file.size <= 1.5 * 1024 * 1024 && long <= 2000) return null;
+    const k = Math.min(1, 2000 / long), c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);         // a transparent PNG would turn black as a JPEG
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(resolve => c.toBlob(b => resolve(b), "image/jpeg", 0.85));
+  } finally { URL.revokeObjectURL(url); }
+}
+async function moneyViewReceipt(){
+  const f = MONEY.form;
+  if(!f || !f.entry || !f.entry.receiptId) return;
+  const box = () => (MONEY.form === f ? $("#mfViewer") : null);
+  if(box()) box().innerHTML = `<div class="sw-hint">Fetching the receipt…</div>`;
+  let out = null;
+  for(let attempt = 1; attempt <= 2 && !out; attempt++){
+    try{ out = await moneyCall({action:"receipt", id:f.entry.id}); }
+    catch(e){ if(attempt === 2) out = {ok:false, error:"network"}; }
+  }
+  const el = box();
+  if(!el) return;
+  if(!out.ok){ el.innerHTML = `<div class="merr">${esc(out.error === "network" ? "Couldn't reach the sheet — try again." : "Couldn't fetch it: " + out.error)}</div>`; return; }
+  const bin = atob(out.b64), bytes = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  if(MONEY.receiptUrl) URL.revokeObjectURL(MONEY.receiptUrl);
+  const url = MONEY.receiptUrl = URL.createObjectURL(new Blob([bytes], {type:out.mime}));
+  const shown = /^image\/(jpeg|png|gif|webp)$/.test(out.mime) ? `<img src="${url}" alt="Receipt">`
+    : out.mime === "application/pdf" ? `<iframe src="${url}" title="Receipt"></iframe>`
+    : `<div class="sw-hint">This browser can't show ${esc(out.mime)} files — download it instead.</div>`;
+  el.innerHTML = `${shown}<div class="ad-row" style="margin-top:8px"><a class="btn sm" href="${url}" target="_blank" rel="noopener">Open in a new tab</a>` +
+    `<a class="btn sm" href="${url}" download="${esc(out.name)}">Download</a></div>`;
+}
+
+/* ── the drawer's controls ── */
+document.addEventListener("click", async e => {
+  const row = e.target.closest("tr[data-moneyopen]");
+  if(row){
+    const entry = (MONEY.entries || []).find(x => x.id === row.dataset.moneyopen);
+    if(entry && !MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneyEditForm(entry); paintMoneyForm(); }
+    return;
+  }
+  const set = e.target.closest("[data-mset]");
+  if(set && MONEY.form){
+    e.preventDefault();
+    if(MONEY.busy) return;
+    moneyHarvest();
+    const f = MONEY.form, raw = set.dataset.mset, i = raw.indexOf(":"), key = raw.slice(0, i), v = raw.slice(i + 1);
+    if(key === "kind"){ if(v !== f.kind) MONEY.form = moneyNewForm(v, {id:f.id, date:f.date, campaign:f.campaign, campAuto:f.campAuto, note:f.note, amount:f.amount}); }
+    else if(key === "split"){ f.splitCustom = v === "custom"; if(v !== "custom") f.benPct = Number(v); }
+    else if(key === "plan" || key === "who") f[key] = v;
+    MONEY.formErr = ""; paintMoneyForm();
+    return;
+  }
+  const act = e.target.closest("[data-moneyact]");
+  if(!act) return;
+  const k = act.dataset.moneyact;
+  if(k === "reload" || k === "voided") return;                    // the board's own controls, handled above
+  e.preventDefault();
+  if(k === "new"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneyNewForm(act.dataset.kind); paintMoneyForm(); } return; }
+  if(k === "settle"){
+    if(MONEY.busy) return;
+    if(mStatus(MONEY.entries || [], MONEY.problems, act.dataset.camp, todayISO()).state === "blocked"){
+      toast("Fix the rows the sheet can't read first — they're listed in red"); return;
+    }
+    MONEY.formErr = ""; MONEY.form = moneySettleForm(act.dataset.camp); paintMoneyForm();
+    return;
+  }
+  if(!MONEY.form) return;
+  if(k === "close"){ if(!MONEY.busy) moneyCloseForm(); return; }
+  if(k === "save") return moneySave();
+  if(k === "void" || k === "restore") return moneySetStatus(k);
+  if(k === "viewreceipt") return moneyViewReceipt();
+  moneyHarvest();
+  if(k === "dropreceipt") Object.assign(MONEY.form, {removeReceipt:true, receipt:null});
+  if(k === "keepreceipt") MONEY.form.removeReceipt = false;
+  if(k === "clearpick") MONEY.form.receipt = null;
+  paintMoneyForm();
+});
+document.addEventListener("change", async e => {
+  const f = MONEY.form, t = e.target;
+  if(!f || !/^mf/.test(t.id || "")) return;
+  if(t.id === "mfDate"){ moneyHarvest(); if(f.campAuto && f.date) f.campaign = mCampaignOf(f.date); paintMoneyForm(); return; }
+  if(t.id === "mfCamp"){ f.campaign = t.value; f.campAuto = false; return; }
+  if(t.id === "mfParty"){
+    moneyHarvest();
+    if(f.mode === "new") moneyApplyLastPlan();
+    paintMoneyForm();
+    if(f.partyOther && $("#mfPartyOther")) $("#mfPartyOther").focus();
+    return;
+  }
+  if(t.id === "mfCat"){ moneyHarvest(); paintMoneyForm(); if($("#mfCatNew")) $("#mfCatNew").focus(); return; }
+  if(t.id === "mfFile"){
+    const file = t.files && t.files[0];
+    if(!file) return;
+    moneyHarvest();
+    try{ f.receipt = await moneyReadReceipt(file); f.removeReceipt = false; MONEY.formErr = ""; }
+    catch(err){ MONEY.formErr = err.message; }
+    if(MONEY.form === f) paintMoneyForm();
+  }
+});
+document.addEventListener("input", e => {
+  const f = MONEY.form, id = e.target.id || "";
+  if(!f || !/^mf/.test(id)) return;
+  if(id === "mfRate") f.autoRate = false;
+  if(id === "mfAmount") f.autoAmount = false;
+  if(id === "mfBase" || id === "mfRate"){
+    const base = mNum($("#mfBase").value), rate = mNum(String($("#mfRate").value).replace(/%/g, ""));
+    const out = $("#mfCalc");
+    if(out) out.textContent = base > 0 && rate > 0 ? "= " + mFmt(mPctCents(mCents(base) / 100, rate)) : "";
+  }
+});
+document.addEventListener("keydown", e => {
+  /* registered before the date picker's own Escape, so an open calendar closes first and the drawer stays */
+  if(e.key === "Escape" && MONEY.form && !MONEY.busy && $("#datePop").classList.contains("hidden")) moneyCloseForm();
+  if(e.key === "Enter" && e.target.matches && e.target.matches("tr[data-moneyopen]")){ e.preventDefault(); e.target.click(); }
+  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct)$/.test(e.target.id || "")){ e.preventDefault(); moneySave(); }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -4251,6 +4720,7 @@ function render(){
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
   if(TAB!=="assign"&&ASSIGN.open)closeCell();
+  if(TAB !== "money" && MONEY.form && !MONEY.busy) moneyCloseForm();
   if(CI_OPEN) closeCiPop();
   $("#view").innerHTML = editBanner() + currentTab().render();
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
@@ -4517,6 +4987,7 @@ function applyDatePick(iso){
     d.el.textContent = iso ? fmtFull(iso) : (d.el.dataset.ph || "pick a date");
     d.el.classList.toggle("empty", !iso);
     closeDatePicker();
+    d.el.dispatchEvent(new Event("change", {bubbles:true}));   // the Money drawer moves the campaign with the date
     return;
   }
   const node = getPath(d.path.slice(0, d.path.lastIndexOf(".")));

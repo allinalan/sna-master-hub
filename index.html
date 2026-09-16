@@ -819,6 +819,57 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
   /* the per-board rules above outrank the generic :empty one, so restate it for them */
   #teamBoard td:empty,#archBoard td:empty,#spkBoard td:empty,#assignBoard table.acat td:empty{display:none}
 }
+/* ═══════════ money ═══════════ */
+.mtest{display:inline-block;margin-top:12px;font-family:var(--monof);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--warn-bg);color:var(--warn);border-radius:999px;padding:4px 11px}
+.mcard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:12px;
+  padding:16px 20px;margin:0 0 26px;display:flex;align-items:center;gap:12px 22px;flex-wrap:wrap}
+.mcard .mc-main{flex:1 1 300px;min-width:0}
+.mcard .mc-head{font-family:var(--serif);font-size:21px;line-height:1.3}
+.mcard .mc-sub{font-size:12.5px;color:var(--ink-soft);margin-top:5px}
+.mcard .mc-amt{font-family:var(--monof);font-weight:600;white-space:nowrap}
+.mcard.warn{border-left-color:var(--accent)}
+.mcard.bad{border-left-color:var(--bad);background:var(--bad-bg)}
+.mcard.good{border-left-color:var(--good)}
+.mlate{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;background:var(--bad-bg);color:var(--bad);border-radius:10px;
+  padding:9px 14px;margin:0 0 10px;font-size:13px}
+.mlate b{color:var(--ink)}
+.mproblems{border:1px solid var(--bad);background:var(--bad-bg);border-radius:10px;padding:12px 16px;margin:0 0 18px;font-size:13px;line-height:1.5}
+.mproblems ul{margin:6px 0 8px 18px;padding:0}
+table.mledger tr.mrow{cursor:pointer}
+table.mledger tr.mrow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+table.mledger tr.mrow.void td{color:var(--ink-faint)}
+table.mledger tr.mrow.void td b,table.mledger tr.mrow.void td.mamt{text-decoration:line-through}
+table.mledger .num,table.mcamps .num{text-align:right;white-space:nowrap}
+table.mledger td.num,table.mcamps td.num{font-family:var(--monof);font-size:12.5px}
+table.mledger td.mamt{font-size:13.5px}
+table.mledger tr.income td.mamt{color:var(--good)}
+table.mledger .msub{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
+table.mledger .mclip{display:block;font-size:11px;color:var(--ink-faint);margin-top:2px}
+table.mledger td.mwho,table.mledger td.msplit{font-size:12.5px;white-space:nowrap}
+table.mcamps td.mstate{font-size:12.5px}
+table.mcamps td.mstate.due,table.mcamps td.mstate.reopened,table.mcamps td.mstate.blocked{color:var(--bad);font-weight:600}
+table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
+.linkish{background:none;border:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.chip.mk{font-family:var(--monof);font-size:9px;letter-spacing:.1em;text-transform:uppercase;border-color:transparent}
+.chip.mk.income{background:var(--good-bg);color:var(--good)}
+.chip.mk.expense{background:var(--accent-soft);color:var(--accent-ink)}
+.chip.mk.settle{background:var(--line-soft);color:var(--ink-soft)}
+@media print{.mcard,.chip.mk{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media (max-width:640px){
+  #moneyBoard table.mledger td.mamt{position:absolute;top:11px;right:14px;padding:0}
+  #moneyBoard table.mledger td:nth-child(2){padding-right:104px}
+  #moneyBoard table.mledger td.mwho,#moneyBoard table.mledger td.msplit{display:inline-block;margin:5px 14px 0 0}
+  #moneyBoard table.mledger td.msplit:empty{display:none}
+  #moneyBoard table.mledger td.msplit::before{content:"Split";font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:6px}
+  #moneyBoard table.mcamps td.num{text-align:left}
+  #moneyBoard table.mcamps td.num::before{font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:8px}
+  #moneyBoard table.mcamps td:nth-child(2)::before{content:"Income"}
+  #moneyBoard table.mcamps td:nth-child(3)::before{content:"Expenses"}
+  #moneyBoard table.mcamps td:nth-child(4)::before{content:"Profit"}
+  #moneyBoard table.mcamps td:nth-child(5)::before{content:"Ben"}
+  #moneyBoard table.mcamps td:nth-child(6)::before{content:"Alan"}
+}
 </style>
 </head>
 <body>
@@ -1264,7 +1315,7 @@ const SEED = {
      1. Add your data under a new key in SEED (top of this script).
      2. Write a render function that returns an HTML string.
      3. Add ONE line to the TABS array below:
-          {id:"money", label:"Money", count:()=>DATA.money.length, render:renderMoney}
+          {id:"notes", label:"Notes", count:()=>DATA.notes.length, render:renderNotes}
         Optional: printable:true   →  gives that tab Export PNG + Print buttons.
 
    Nothing else needs to change — the tab bar, routing, edit mode, localStorage,
@@ -1290,7 +1341,8 @@ const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:
              bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"pri",   // Orders of Business filters + sort
              tier:"all", assignView:"board", assignProg:"all",   // show ticked-off items too — hiding them reads as deletion
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
-             ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"" };   // Mentees ▸ Weekly Check-ins
+             ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"",     // Mentees ▸ Weekly Check-ins
+             moneyKind:"all", moneyWho:"all", moneyCat:"", moneyVoid:false };  // Money filters
 /* Check-in marks made since the last successful sync, and how many other
    kinds of edit happened alongside them. Two coaches marking the same board
    on the same call is the normal case, so a colliding save replays these on
@@ -1876,10 +1928,10 @@ function coachNames(){
   return names.length ? names : ["Alan", "Ben"];
 }
 
-function keyGateHtml(){
+function keyGateHtml(why){
   return `<div class="empty-note" style="max-width:460px;margin:40px auto;text-align:center">
     <div class="serif" style="font-size:20px;margin-bottom:8px">Coach access</div>
-    <div style="margin-bottom:14px">This board shows phone numbers and emails, so it stays locked.
+    <div style="margin-bottom:14px">${why || "This board shows phone numbers and emails, so it stays locked."}
       Enter the coach key once — this browser will remember it.${TEAM.err ? `<div style="color:var(--red,#b3261e);margin-top:8px">${esc(TEAM.err)}</div>` : ""}</div>
     <input class="search" id="teamKey" type="password" placeholder="coach key" style="width:240px">
     <button class="btn primary" data-teamact="unlock">Unlock</button>
@@ -2343,13 +2395,13 @@ document.addEventListener("click", async e => {
     const v = ($("#teamKey") || {}).value || "";
     if(!v.trim()) return;
     TEAM.key = v.trim(); localStorage.setItem("sna_coach_key", TEAM.key);
-    TEAM.rows = null; ASSIGN.rows = null; teamLoad();
+    TEAM.rows = null; ASSIGN.rows = null; MONEY.entries = null; MONEY.err = ""; teamLoad();
   }
   if(kind === "reload"){ TEAM.rows = null; teamLoad(); }
   if(kind === "swretry"){ TEAM.sw = null; TEAM.swErr = ""; swLoad(); }
   if(kind === "former"){ UI.teamFormer = !UI.teamFormer; render(); }
   if(kind === "lock"){
-    TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; localStorage.removeItem("sna_coach_key");
+    TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; MONEY.entries = null; MONEY.err = ""; localStorage.removeItem("sna_coach_key");
     render(); toast("Key forgotten on this device");
   }
 });
@@ -2905,6 +2957,245 @@ function mEntryLine(e){
 function mNewId(){ return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8).padEnd(6, "0"); }
 /*MONEY_MATH_END*/
 
+const MONEY_API  = "";   // the SNA Money web app's /exec URL (SNA-Money.gs) — empty until it's deployed
+/* A copy of this page served from this machine only ever reads and writes the
+   sheet's Test tab, so trying the tab out can never touch the real ledger. */
+const MONEY_BOOK = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "test" : "live";
+const MONEY = {entries:null, problems:[], sheetUrl:"", loading:false, err:"", loadedAt:0,
+               campaign:"", form:null, busy:false, formErr:"", receiptUrl:""};
+const MONEY_CATEGORIES = ["Software", "Prizes & gifts", "Meals", "Events & venues", "Travel", "Marketing", "Fees", "Other"];
+const MONEY_NOUN = {income:"income", expense:"expense", settle:"settle-up"};
+
+/* ── talking to the sheet ── */
+async function moneyCall(body){
+  const res = await fetch(MONEY_API, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, cache:"no-store",
+    body:JSON.stringify(Object.assign({key:TEAM.key, book:MONEY_BOOK}, body))});
+  return JSON.parse(await res.text());     // Apps Script's occasional HTML error page throws here, same as a dropped connection
+}
+async function moneyLoad(force){
+  if(MONEY.loading || !TEAM.key || !MONEY_API) return;
+  if(!force && MONEY.entries && Date.now() - MONEY.loadedAt < 60000) return;
+  MONEY.loading = true; render();
+  /* /exec intermittently serves an error page instead of JSON (~1 in 5 on
+     2026-08-24) — ride it out before bothering anyone with an error */
+  for(let attempt = 1; attempt <= 3; attempt++){
+    try{
+      const out = await moneyCall({action:"list"});
+      if(out.ok) Object.assign(MONEY, {entries:out.entries || [], problems:out.problems || [], sheetUrl:out.sheetUrl || "",
+                                       loadedAt:Date.now(), err:""});
+      else await moneyRefused(out);
+      break;
+    }catch(e){
+      MONEY.err = "Couldn't reach the Money sheet — it's usually temporary.";
+      if(attempt < 3) await new Promise(r => setTimeout(r, attempt * 3000));
+    }
+  }
+  MONEY.loading = false; render();
+  if(MONEY.entries && TEAM.key && !TEAM.rows && !TEAM.loading) teamLoad();     // the payer picker lists the roster
+}
+/* The sheet said no. "bad key" is ambiguous — a mistyped key, or MONEY_KEY in
+   the SNA Money script not matching the coach key — so ask the SharpNinja
+   script, which checks the same key, before saying which it is. */
+async function moneyRefused(out){
+  if(out.error === "bad key"){
+    const team = await teamCall({action:"getSettings"}).catch(() => null);
+    if(team && team.error === "bad key"){
+      TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; MONEY.entries = null; MONEY.err = "";
+      localStorage.removeItem("sna_coach_key");
+      TEAM.err = "That key wasn't right — ask Alan for the current one.";
+      return;
+    }
+    MONEY.err = team && team.ok
+      ? "The Money sheet doesn't accept the coach key. Alan: in the SNA Money Apps Script, Project Settings ▸ Script properties, MONEY_KEY has to match the coach key exactly."
+      : "The Money sheet didn't accept this key, and the roster feed couldn't be reached to check it. Try again in a minute.";
+    return;
+  }
+  if(out.error === "key not set"){
+    MONEY.err = "The Money sheet is set up but has no key yet. Alan: in the SNA Money Apps Script, Project Settings ▸ Script properties ▸ add MONEY_KEY with the coach key.";
+    return;
+  }
+  MONEY.err = "The Money sheet said: " + (out.error || "no reason given");
+}
+
+/* ── the board ── */
+function moneyCampaigns(){
+  const set = new Set([mCampaignOf(todayISO())]);
+  for(const e of MONEY.entries || []) set.add(e.campaign);
+  for(const p of MONEY.problems || []) if(M_CAMPAIGN_RE.test(p.campaign || "")) set.add(p.campaign);
+  return [...set].sort((a, b) => mCampaignKey(b) - mCampaignKey(a));
+}
+function moneyViewCampaign(){ return MONEY.campaign || mCampaignOf(todayISO()); }       // one campaign, or "all"
+function moneyNavCount(){
+  if(!MONEY.entries) return "";
+  const camp = mCampaignOf(todayISO());          // never dollars up here: the hub gets screen-shared
+  return MONEY.entries.filter(e => e.status !== "void" && e.campaign === camp).length + " in " + camp.split(" ")[0];
+}
+
+function renderMoney(){
+  let html = `<div class="page-head no-export no-print"><div>
+    <div class="eyebrow">Between the two of you</div><div class="big serif">Money</div>
+    <div class="lede">What came in, what went out, and who owes whom — settled once a campaign. Income lands with
+      Ben unless you say otherwise, and every entry splits <b>Ben ${M_DEFAULT_BEN} · Alan ${100 - M_DEFAULT_BEN}</b>
+      unless it says otherwise. It all lives in a private sheet behind the coach key.</div>
+    ${MONEY_BOOK === "test" ? `<div class="mtest">Local copy · reads and writes the sheet's Test tab, never the real ledger</div>` : ""}
+  </div></div>`;
+  if(!MONEY_API) return html + `<div class="empty-note">The Money sheet isn't connected yet — <code>MONEY_API</code> in index.html is empty until SNA-Money.gs is deployed.</div>`;
+  if(!TEAM.key) return html + keyGateHtml("The books stay locked.");
+  if(!MONEY.entries){
+    if(!MONEY.loading && !MONEY.err) setTimeout(() => moneyLoad(true), 0);
+    return html + (MONEY.err && !MONEY.loading
+      ? `<div class="empty-note">${esc(MONEY.err)}<div style="margin-top:10px"><button class="btn" data-moneyact="reload">Try again</button></div></div>`
+      : `<div class="empty-note">Fetching the ledger…</div>`);
+  }
+  if(!MONEY.loading && Date.now() - MONEY.loadedAt > 60000) setTimeout(() => moneyLoad(false), 0);   // over a minute old: refresh quietly
+
+  const today = todayISO(), all = MONEY.entries, camp = moneyViewCampaign(), isAll = camp === "all";
+  const scope = isAll ? all : all.filter(e => e.campaign === camp);
+  const t = mTally(scope);
+  const cats = [...new Set(all.filter(e => e.kind === "expense" && e.category).map(e => e.category))].sort((a, b) => a.localeCompare(b));
+  if(UI.moneyCat && !cats.includes(UI.moneyCat)) UI.moneyCat = "";
+  const opt = (v, l, on) => `<option value="${esc(v)}"${on ? " selected" : ""}>${esc(l)}</option>`;
+
+  html += toolbar(`<div class="tb-filters">
+      <select class="fsel" data-moneycampsel title="Which campaign">${moneyCampaigns().map(c => opt(c, c, c === camp)).join("")}${opt("all", "All campaigns", isAll)}</select>
+      ${seg("moneyKind", [{v:"all",l:"All"},{v:"income",l:"Income"},{v:"expense",l:"Expenses"},{v:"settle",l:"Settle-ups"}], UI.moneyKind)}
+      ${fgroup("Who", seg("moneyWho", [{v:"all",l:"Anyone"},{v:"Alan",l:"Alan",t:"Alan received, paid, or settled"},{v:"Ben",l:"Ben",t:"Ben received, paid, or settled"}], UI.moneyWho))}
+      ${cats.length ? fgroup("Category", `<select class="fsel" data-moneycat title="Show one category">${opt("", "All", !UI.moneyCat)}${cats.map(c => opt(c, c, c === UI.moneyCat)).join("")}</select>`) : ""}
+      <button class="btn sm ${UI.moneyVoid ? "on" : ""}" data-moneyact="voided" title="Voided entries stay in the sheet but count for nothing">Show voided</button>
+    </div>
+    <input class="search" id="q" placeholder="Search ${scope.length} entr${scope.length === 1 ? "y" : "ies"}…" value="${esc(UI.q)}">
+    <div class="tb-actions">
+      <button class="btn" data-moneyact="new" data-kind="income">+ Income</button>
+      <button class="btn" data-moneyact="new" data-kind="expense">+ Expense</button>
+      <button class="btn" data-moneyact="settle" data-camp="${esc(isAll ? mCampaignOf(today) : camp)}">Settle up</button>
+      <button class="btn" data-moneyact="reload" title="Pull the latest from the sheet"${MONEY.loading ? " disabled" : ""}>${MONEY.loading ? "Refreshing…" : "Refresh"}</button>
+      ${exportButtons("moneyBoard", "Money · " + (isAll ? "All campaigns" : camp))}
+    </div>`);
+
+  if(MONEY.err) html += `<div class="mlate no-export no-print"><span>${esc(MONEY.err)} Showing what was loaded ${esc(ago(new Date(MONEY.loadedAt).toISOString()))}.</span>
+    <button class="btn sm" data-moneyact="reload">Try again</button></div>`;
+  for(const s of mUnsettled(all, MONEY.problems, today)){
+    if(s.campaign === camp) continue;
+    html += `<div class="mlate no-export no-print"><span>${s.state === "blocked"
+      ? `${esc(s.campaign)} can't be worked out — rows in the sheet need a look.`
+      : `${esc(s.campaign)} isn't settled — <b>${esc(s.debtor)}</b> owes <b>${esc(s.creditor)}</b> ${esc(mFmt(s.owed))}.`}</span>
+      <button class="btn sm" data-moneycamp="${esc(s.campaign)}">Open ${esc(s.campaign)}</button></div>`;
+  }
+  const np = MONEY.problems.length;
+  if(np) html += `<div class="mproblems no-export no-print"><b>${np} row${np === 1 ? "" : "s"} in the sheet can't be read.</b>
+      ${np === 1 ? "It counts" : "They count"} for nothing, and ${np === 1 ? "its campaign" : "their campaigns"} won't settle until fixed.
+      <ul>${MONEY.problems.map(p => `<li>Row ${esc(p.row)}${p.campaign ? " · " + esc(p.campaign) : ""} — ${esc(p.error)}</li>`).join("")}</ul>
+      ${MONEY.sheetUrl ? `<a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a> — fix the row there, then Refresh.` : ""}</div>`;
+
+  html += `<div id="moneyBoard" class="export-frame">`;
+  html += printHead("Money · " + (isAll ? "All campaigns" : camp), `printed ${fmtFull(today)}`);
+  const payments = scope.filter(e => e.kind === "income" && e.status !== "void").length;
+  html += `<div class="stats">
+    ${statBox("Income", mFmt(t.income), payments + " payment" + (payments === 1 ? "" : "s"))}
+    ${statBox("Expenses", mFmt(t.expense), "")}
+    ${statBox("Profit", mFmt(t.profit), "income − expenses", t.profit < 0)}
+    ${statBox("Ben's share", mFmt(t.share.Ben), t.uniform ? M_DEFAULT_BEN + "%" : "mixed splits")}
+    ${statBox("Alan's share", mFmt(t.share.Alan), t.uniform ? (100 - M_DEFAULT_BEN) + "%" : "mixed splits")}
+  </div>`;
+  html += isAll ? moneyAllHtml(today) : moneyCardHtml(mStatus(all, MONEY.problems, camp, today));
+  html += moneyListHtml(scope, isAll);
+  html += `</div>`;
+  if(MONEY.sheetUrl) html += `<div class="sw-hint no-export no-print" style="margin-top:14px"><a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a>
+    — every change is also on its History tab.</div>`;
+  return html;
+}
+
+function moneyCardHtml(s){
+  const card = (tone, head, sub, action) => `<div class="mcard ${tone}"><div class="mc-main"><div class="mc-head">${head}</div>${
+    sub ? `<div class="mc-sub">${sub}</div>` : ""}</div>${action || ""}</div>`;
+  const owes = `<b>${esc(s.debtor)}</b> owes <b>${esc(s.creditor)}</b> <span class="mc-amt">${esc(mFmt(s.owed))}</span>`;
+  const button = (label, primary) => `<button class="btn${primary ? " primary" : ""} no-export no-print" data-moneyact="settle" data-camp="${esc(s.campaign)}">${label}</button>`;
+  const c = esc(s.campaign), n = s.blockers.length;
+  switch(s.state){
+    case "blocked":  return card("bad", `Can't work out ${c} yet`, `${n} row${n === 1 ? "" : "s"} in the sheet can't be read — see the red box above. Nothing shows as owed until ${n === 1 ? "it's" : "they're"} fixed.`);
+    case "empty":    return card("", `Nothing logged for ${c} yet`, "Add income or an expense above.");
+    case "reopened": return card("warn", owes, `${c} was settled ${esc(fmtFull(s.last.date))}, but entries since then left this.`, button("Record settle-up", true));
+    case "running":  return card("", `So far: ${owes}`, `${c} settles after it ends on ${esc(fmtFull(s.end))}.`, button("Settle up now", false));
+    case "due":      return card("warn", `${owes} for ${c}`, `The campaign ended ${esc(fmtFull(s.end))}.`, button("Record settle-up", true));
+    case "settled":  return card("good", "Settled ✓", `${esc(s.last.who)} paid ${esc(s.last.to)} ${esc(mFmt(mCents(s.last.amount)))} on ${esc(fmtFull(s.last.date))}.`);
+    default:         return card("good", "Square", `Nobody owes anything for ${c}.`);
+  }
+}
+
+function moneyAllHtml(today){
+  const camps = moneyCampaigns().filter(c => MONEY.entries.some(e => e.campaign === c) || MONEY.problems.some(p => p.campaign === c));
+  if(!camps.length) return "";
+  const says = s => ({blocked:"can't be worked out", empty:"nothing live", square:"square", settled:"settled ✓",
+    running:`so far ${s.debtor} owes ${s.creditor} ${mFmt(s.owed)}`, due:`${s.debtor} owes ${s.creditor} ${mFmt(s.owed)}`,
+    reopened:`reopened — ${s.debtor} owes ${s.creditor} ${mFmt(s.owed)}`}[s.state]);
+  let h = `<div class="tbl" style="margin-bottom:26px"><table class="grid mcamps"><thead><tr><th>Campaign</th><th class="num">Income</th>
+    <th class="num">Expenses</th><th class="num">Profit</th><th class="num">Ben</th><th class="num">Alan</th><th>Settlement</th></tr></thead><tbody>`;
+  for(const c of camps){
+    const s = mStatus(MONEY.entries, MONEY.problems, c, today), t = s.tally;
+    h += `<tr><td><button class="linkish" data-moneycamp="${esc(c)}">${esc(c)}</button></td>
+      <td class="num">${esc(mFmt(t.income))}</td><td class="num">${esc(mFmt(t.expense))}</td><td class="num">${esc(mFmt(t.profit))}</td>
+      <td class="num">${esc(mFmt(t.share.Ben))}</td><td class="num">${esc(mFmt(t.share.Alan))}</td>
+      <td class="mstate ${s.state}">${esc(says(s))}</td></tr>`;
+  }
+  return h + `</tbody></table></div>`;
+}
+
+function moneyRate(r){ return String(Math.round(Number(r) * 10000) / 10000); }
+function moneyListHtml(scope, isAll){
+  const q = UI.q.trim().toLowerCase();
+  const rows = scope.filter(e => (UI.moneyVoid || e.status !== "void")
+      && (UI.moneyKind === "all" || e.kind === UI.moneyKind)
+      && (UI.moneyWho === "all" || e.who === UI.moneyWho || e.to === UI.moneyWho)
+      && (!UI.moneyCat || e.category === UI.moneyCat)
+      && (!q || [e.party, e.note, e.category, e.who, e.to, e.date, fmtFull(e.date), mFmt(mCents(e.amount)), MONEY_NOUN[e.kind]]
+                  .join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => b.date.localeCompare(a.date) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  const hidden = UI.moneyVoid ? 0 : scope.filter(e => e.status === "void").length;
+  const more = hidden ? `<div class="sw-hint no-export no-print" style="margin-top:8px">${hidden} voided entr${hidden === 1 ? "y" : "ies"} hidden — <a href="#" data-moneyact="voided">show</a></div>` : "";
+  if(!rows.length) return `<div class="empty-note">${scope.length ? "Nothing matches — clear a filter or the search above." : "Nothing logged here yet — use + Income or + Expense above."}</div>` + more;
+  let h = `<div class="tbl"><table class="grid mledger"><thead><tr><th>Date</th><th>Entry</th><th>Who</th><th>Split</th>
+    <th class="num">Amount</th>${isAll ? "<th>Campaign</th>" : ""}</tr></thead><tbody>`;
+  for(const e of rows){
+    const c = mCents(e.amount);
+    const what = e.kind === "income"
+        ? `<span class="chip mk income">income</span> <b>${esc(e.party)}</b><div class="msub">${e.plan === "pct"
+            ? `${esc(moneyRate(e.rate))}% of ${esc(mFmt(mCents(e.base)))} commission sales` : "flat"}</div>`
+      : e.kind === "expense"
+        ? `<span class="chip mk expense">expense</span> <b>${esc(e.party)}</b>${e.category ? ` <span class="chip">${esc(e.category)}</span>` : ""}`
+        : `<span class="chip mk settle">settle-up</span>`;
+    const who = e.kind === "income" ? `${esc(e.who)} received` : e.kind === "expense" ? `${esc(e.who)} paid` : `${esc(e.who)} → ${esc(e.to)}`;
+    const amount = (e.kind === "income" ? "+" : e.kind === "expense" ? "−" : "") + mFmt(c);
+    h += `<tr class="mrow ${e.kind}${e.status === "void" ? " void" : ""}" data-moneyopen="${esc(e.id)}" tabindex="0" title="Open this entry">
+      <td class="dt">${esc(fmtDate(e.date))}</td>
+      <td>${what}${e.note ? `<div class="msub">${esc(e.note)}</div>` : ""}${e.receiptId ? `<span class="mclip">📎 receipt</span>` : ""}${e.status === "void" ? ` <span class="chip">void</span>` : ""}</td>
+      <td class="mwho">${who}</td>
+      <td class="msplit">${e.kind === "settle" ? "" : esc(mSplitLabel(e.benPct))}</td>
+      <td class="num mamt">${esc(amount)}</td>${isAll ? `
+      <td class="dt">${esc(e.campaign)}</td>` : ""}
+    </tr>`;
+  }
+  return h + `</tbody></table></div>` + more;
+}
+
+/* the tab's own controls — the drawer's are further down */
+document.addEventListener("change", e => {
+  const t = e.target;
+  if(!t.matches) return;
+  if(t.matches("select[data-moneycampsel]")){ MONEY.campaign = t.value; UI.q = ""; render(); return; }
+  if(t.matches("select[data-moneycat]")){ UI.moneyCat = t.value; render(); }
+});
+document.addEventListener("click", e => {
+  const camp = e.target.closest("[data-moneycamp]");
+  if(camp){ e.preventDefault(); MONEY.campaign = camp.dataset.moneycamp; UI.q = ""; render(); window.scrollTo(0, 0); return; }
+  const act = e.target.closest('[data-moneyact="reload"],[data-moneyact="voided"]');
+  if(!act) return;
+  e.preventDefault();
+  if(act.dataset.moneyact === "voided"){ UI.moneyVoid = !UI.moneyVoid; render(); return; }
+  MONEY.err = "";
+  if(!MONEY.entries) render();
+  moneyLoad(true);
+});
+
 /* ═══════════════════════════════════════════════════════════════════════════
    NAV REGISTRY — two levels.
 
@@ -2916,7 +3207,7 @@ function mNewId(){ return "m" + Date.now().toString(36) + Math.random().toString
      1. Add your data under a new key in SEED (top of this script).
      2. Write a render function that returns an HTML string.
      3. Add ONE line to TABS:
-          {id:"money", label:"Money", section:"business", count:()=>…, render:renderMoney}
+          {id:"notes", label:"Notes", section:"business", count:()=>…, render:renderNotes}
         Give it `section:"calendar"` or `section:"business"` to nest it, or add a
         new entry to SECTIONS to give it a bold tab of its own.
 
@@ -2932,7 +3223,8 @@ const SECTIONS = [
   {id:"assign", label:"Assignments",
    count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : ""},
   {id:"business", label:"Orders of Business",
-   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"}
+   count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"},
+  {id:"money", label:"Money", count:moneyNavCount}
 ];
 
 const TABS = [
@@ -2970,7 +3262,10 @@ const TABS = [
 
   {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
    count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : "",
-   render:renderAssign}
+   render:renderAssign},
+
+  {id:"money", label:"Money", sub:"", section:"money", printable:true,
+   count:moneyNavCount, render:renderMoney}
 ];
 
 const tabsIn     = sec => TABS.filter(t => t.section === sec);

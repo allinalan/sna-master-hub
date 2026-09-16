@@ -2983,7 +2983,8 @@ function mEntryLine(e){
 function mNewId(){ return "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8).padEnd(6, "0"); }
 /*MONEY_MATH_END*/
 
-const MONEY_API  = "";   // the SNA Money web app's /exec URL (SNA-Money.gs) — empty until it's deployed
+const MONEY_API  = "https://script.google.com/macros/s/AKfycbxnSsFut-0qq6oqWkJO1h9vIrypzHIcMiXh565a1GjG2DaOWkSjle591cON0to0FTk/exec";
+                         // ↑ the SNA Money web app (SNA-Money.gs). After editing the .gs, Deploy ▸ Manage deployments ▸ edit ▸ New version — a new deployment changes this URL.
 /* Only the published hub reads and writes the real ledger. Any other copy of
    this page — this machine, a LAN address, a file opened from disk — uses the
    sheet's Test tab, so trying it out can never touch the books. */

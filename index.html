@@ -1961,7 +1961,10 @@ function teamRowHtml(r){
     <td class="dt" style="font-size:12px">${fmtJoined(r.Joined)}</td>
     <td>${coachCellHtml(r)}</td>
     <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
-        href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>${
+        href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>
+      <div style="margin-top:6px"><a class="btn sm" target="_blank" rel="noopener"
+        href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}&amp;tab=skills"
+        title="their 1–10 self ratings across the 137 skills">skillset ↗</a></div>${
       r.OnRoster ? `<div style="margin-top:6px"><a href="#" data-repactive="${esc(r.RepID)}" data-to="${r.Active ? 0 : 1}"
         style="font-size:10.5px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
   </tr>`;

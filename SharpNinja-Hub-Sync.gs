@@ -49,6 +49,9 @@ function setup() {
     sh.getRange('A1:A4').setFontWeight('bold');
     sh.setColumnWidth(1, 90);
   }
+  // The JSON chunks live in B4 and below. Plain-text format so Sheets never
+  // treats a chunk as a formula, number, date or boolean. Safe to re-run.
+  sh.getRange(4, 2, sh.getMaxRows() - 3, 1).setNumberFormat('@');
   Logger.log('Tab "' + TAB + '" ready.');
   Logger.log('NEXT: Deploy > New deployment > Web app > Execute as Me, Access Anyone.');
   return ss.getUrl();
@@ -122,7 +125,11 @@ function writeChunks_(sh, text) {
   if (!parts.length) parts = [['']];
   var last = Math.max(sh.getLastRow(), 4);
   if (last >= 4) sh.getRange(4, 2, last - 3, 1).clearContent();
-  sh.getRange(4, 2, parts.length, 1).setValues(parts);
+  // Plain-text format, or a chunk that happens to start with "=" (or look like
+  // a number/date/TRUE) gets interpreted by Sheets and the blob stops parsing.
+  var target = sh.getRange(4, 2, parts.length, 1);
+  target.setNumberFormat('@');
+  target.setValues(parts);
 }
 function readChunks_(sh) {
   var last = sh.getLastRow();

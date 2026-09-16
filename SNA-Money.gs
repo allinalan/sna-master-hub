@@ -22,14 +22,14 @@
 
 var VERSION = 1;
 
-/* The first 23 columns of the Ledger and Test tabs, in this order. */
+/* The first 24 columns of the Ledger and Test tabs, in this order. */
 var HEAD = ['ID', 'Kind', 'Date', 'Campaign', 'Amount', 'Who', 'To', 'BenPct', 'Party', 'RepID', 'Plan', 'Rate',
-            'Base', 'Category', 'Note', 'ReceiptID', 'ReceiptName', 'Status', 'CreatedBy', 'CreatedAt',
-            'UpdatedBy', 'UpdatedAt', 'Rev'];
+            'Base', 'Category', 'Note', 'ReceiptID', 'ReceiptName', 'ReceiptSHA', 'Status', 'CreatedBy',
+            'CreatedAt', 'UpdatedBy', 'UpdatedAt', 'Rev'];
 var FIELD = {ID: 'id', Kind: 'kind', Date: 'date', Campaign: 'campaign', Amount: 'amount', Who: 'who', To: 'to',
              BenPct: 'benPct', Party: 'party', RepID: 'repId', Plan: 'plan', Rate: 'rate', Base: 'base',
              Category: 'category', Note: 'note', ReceiptID: 'receiptId', ReceiptName: 'receiptName',
-             Status: 'status', CreatedBy: 'createdBy', CreatedAt: 'createdAt', UpdatedBy: 'updatedBy',
+             ReceiptSHA: 'receiptSha', Status: 'status', CreatedBy: 'createdBy', CreatedAt: 'createdAt', UpdatedBy: 'updatedBy',
              UpdatedAt: 'updatedAt', Rev: 'rev'};
 var NUMBER_FORMAT = {Amount: '0.00', BenPct: '0.00', Rate: '0.00', Base: '0.00', Rev: '0'};   // every other column is plain text
 /* What a person changes on an entry; the rest is bookkeeping. */
@@ -55,7 +55,8 @@ function doPost(e) {
   try {
     out = route_(JSON.parse((e && e.postData && e.postData.contents) || '{}'));
   } catch (err) {
-    out = {ok: false, error: String((err && err.message) || err)};
+    console.error('SNA Money: ' + errText_(err));                 // Executions log — the reply alone isn't a record
+    out = {ok: false, error: errText_(err)};
   }
   return json_(out);
 }
@@ -106,32 +107,33 @@ function save_(book, b) {
   }
   var drop = !upload && b.removeReceipt === true;
 
-  var ss = sheet_(true), sh = tab_(ss, TABS[book], HEAD), t = load_(ss, book);
+  var ss = sheet_(true);
+  writable_(ss);
+  var sh = tab_(ss, TABS[book], HEAD), t = load_(ss, book);
   var item = t.byId[e.id], now = new Date().toISOString();
+  var expects = (b.entry && b.entry.status) === 'void' ? 'void' : 'live';     // the status the sender was looking at
 
   if (!item) {
     if (Number(b.rev || 0) !== 0) return {ok: false, error: 'that entry isn\'t in the sheet any more — reload the tab'};
-    e.status = 'live'; e.receiptId = ''; e.receiptName = '';
+    e.status = 'live'; e.receiptId = ''; e.receiptName = ''; e.receiptSha = '';
     e.createdBy = by; e.createdAt = now; e.updatedBy = by; e.updatedAt = now; e.rev = 1;
     if (upload) storeReceipt_(book, e, upload);
     writeRow_(sh, sh.getLastRow() + 1, e);
-    history_(ss, by, book, 'create', e);
-    return {ok: true, entry: e};
+    return logged_(ss, by, book, 'create', e);
   }
   if (item.problem) return {ok: false, error: needsLook_(book, item)};
   var cur = item.entry;
   if (cur.kind !== e.kind) return {ok: false, error: 'an entry can\'t change kind — void it and add a new one'};
-  if (sameContent_(cur, e) && receiptSame_(cur, upload, drop)) return {ok: true, entry: cur};
+  if (sameContent_(cur, e) && cur.status === expects && receiptSame_(cur, upload, drop)) return {ok: true, entry: cur};
   if (Number(b.rev) !== cur.rev) return {ok: false, conflict: true, entry: cur};
 
   var next = copy_(cur);
   CONTENT.forEach(function (f) { next[f] = e[f]; });
   if (upload) storeReceipt_(book, next, upload);
-  else if (drop) { next.receiptId = ''; next.receiptName = ''; }
+  else if (drop) { next.receiptId = ''; next.receiptName = ''; next.receiptSha = ''; }
   next.updatedBy = by; next.updatedAt = now; next.rev = cur.rev + 1;
   writeRow_(sh, item.row, next);
-  history_(ss, by, book, 'update', next);
-  return {ok: true, entry: next};
+  return logged_(ss, by, book, 'update', next);
 }
 
 function setStatus_(book, b, status) {
@@ -143,11 +145,26 @@ function setStatus_(book, b, status) {
   var cur = item.entry;
   if (cur.status === status) return {ok: true, entry: cur};
   if (Number(b.rev) !== cur.rev) return {ok: false, conflict: true, entry: cur};
+  writable_(ss);
   var next = copy_(cur);
   next.status = status; next.updatedBy = by; next.updatedAt = new Date().toISOString(); next.rev = cur.rev + 1;
   writeRow_(ss.getSheetByName(TABS[book]), item.row, next);
-  history_(ss, by, book, status === 'void' ? 'void' : 'restore', next);
-  return {ok: true, entry: next};
+  return logged_(ss, by, book, status === 'void' ? 'void' : 'restore', next);
+}
+
+/* The row is already written when this runs: commit it, then add the History
+   line. A History failure must not read as "nothing was saved" — the entry
+   went in; only its History line didn't, and the reply says exactly that. */
+function logged_(ss, by, book, action, e) {
+  SpreadsheetApp.flush();
+  try {
+    history_(ss, by, book, action, e);
+    SpreadsheetApp.flush();
+  } catch (err) {
+    console.error('SNA Money: ' + action + ' ' + e.id + ' is saved, but History failed: ' + errText_(err));
+    return {ok: true, entry: e, warning: 'Saved, but the sheet\'s History tab couldn\'t record it (' + errText_(err) + ').'};
+  }
+  return {ok: true, entry: e};
 }
 
 /* Hands back one entry's receipt. It looks the file up through the entry and
@@ -159,9 +176,10 @@ function receipt_(book, b) {
   if (item.problem) return {ok: false, error: needsLook_(book, item)};
   var e = item.entry;
   if (!e.receiptId) return {ok: false, error: 'this entry has no receipt'};
-  var file = null;
-  try { file = DriveApp.getFileById(e.receiptId); } catch (err) { file = null; }
-  if (!file || file.isTrashed()) return {ok: false, error: 'the receipt file is gone from Drive'};
+  var file;
+  try { file = DriveApp.getFileById(e.receiptId); }
+  catch (err) { return {ok: false, error: 'couldn\'t open the receipt file: ' + errText_(err)}; }
+  if (file.isTrashed()) return {ok: false, error: 'the receipt file is in Drive\'s trash — restore it to see it here'};
   var folderId = PropertiesService.getScriptProperties().getProperty(FOLDER_PROP[book]);
   var home = false, parents = file.getParents();
   while (folderId && parents.hasNext()) if (parents.next().getId() === folderId) { home = true; break; }
@@ -177,14 +195,16 @@ function needsLook_(book, item) {
 
 /* ── the sheet ──────────────────────────────────────────────────────── */
 /* The spreadsheet, created on the first write; reads before then get null.
-   A recorded sheet that can't be opened is an error, never a fresh start. */
+   A recorded sheet that won't open is an error with Google's reason — often a
+   passing outage — and never a fresh start, which would split the ledger. */
 function sheet_(create) {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty('MONEY_SHEET_ID');
   if (id) {
     try { return SpreadsheetApp.openById(id); }
     catch (err) {
-      throw new Error('the SNA Money sheet can\'t be opened (Script Property MONEY_SHEET_ID). Restore it in Drive, or clear the property to start a new sheet.');
+      throw new Error('couldn\'t open the SNA Money sheet: ' + errText_(err) +
+                      ' — try again in a minute; if it keeps failing, check the sheet is still in Alan\'s Drive');
     }
   }
   if (!create) return null;
@@ -192,6 +212,21 @@ function sheet_(create) {
   ss.getSheets()[0].setName(TABS.live);
   props.setProperty('MONEY_SHEET_ID', ss.getId());
   return ss;
+}
+
+/* openById happily opens a sheet sitting in Drive's trash, and saves would
+   keep landing there until Drive purges it 30 days later. Refuse to write. */
+function writable_(ss) {
+  var trashed;
+  try { trashed = DriveApp.getFileById(ss.getId()).isTrashed(); }
+  catch (err) { throw new Error('couldn\'t check the SNA Money sheet in Drive: ' + errText_(err) + ' — try again in a minute'); }
+  if (trashed) throw new Error('the SNA Money sheet is in Drive\'s trash — restore it before anything more is saved');
+}
+
+/* A new tab has 1,000 rows, and writing below the last one throws — add room first. */
+function room_(sh, row) {
+  var max = sh.getMaxRows();
+  if (row > max) sh.insertRowsAfter(max, Math.max(500, row - max));
 }
 
 function tab_(ss, name, head) {
@@ -260,7 +295,7 @@ function readRow_(cells, tz) {
   if (e.status !== 'live' && e.status !== 'void') return bad('Status must be live or void');
   e.rev = numIn_(g.Rev);
   if (!(e.rev >= 1) || e.rev % 1 !== 0) return bad('Rev must be a whole number, 1 or more');
-  e.receiptId = text_(g.ReceiptID); e.receiptName = text_(g.ReceiptName);
+  e.receiptId = text_(g.ReceiptID); e.receiptName = text_(g.ReceiptName); e.receiptSha = text_(g.ReceiptSHA);
   e.createdBy = text_(g.CreatedBy); e.createdAt = text_(g.CreatedAt);
   e.updatedBy = text_(g.UpdatedBy); e.updatedAt = text_(g.UpdatedAt);
   return {id: id, campaign: campaign, entry: e};
@@ -278,14 +313,16 @@ function writeRow_(sh, row, e) {
       values.push(guard_(v));
     }
   });
+  room_(sh, row);
   var range = sh.getRange(row, 1, 1, HEAD.length);
   range.setNumberFormats([formats]);
   range.setValues([values]);
 }
 
 function history_(ss, by, book, action, e) {
-  var sh = tab_(ss, 'History', HISTORY_HEAD);
-  var range = sh.getRange(sh.getLastRow() + 1, 1, 1, HISTORY_HEAD.length);
+  var sh = tab_(ss, 'History', HISTORY_HEAD), row = sh.getLastRow() + 1;
+  room_(sh, row);
+  var range = sh.getRange(row, 1, 1, HISTORY_HEAD.length);
   range.setNumberFormat('@');
   range.setValues([[new Date().toISOString(), by, book, action, e.id, JSON.stringify(e)]]);
 }
@@ -310,6 +347,9 @@ function day_(v, tz) {
 function isDate_(v) {
   return Object.prototype.toString.call(v) === '[object Date]';
 }
+function errText_(err) {
+  return String((err && err.message) || err);
+}
 function copy_(o) {
   var out = {};
   for (var k in o) out[k] = o[k];
@@ -329,40 +369,36 @@ function receiptIn_(r) {
   return {bytes: bytes, mime: mime, name: name || 'receipt', sha: sha256_(bytes)};
 }
 
-/* Files the receipt and points the entry at it. The file's description holds
-   its SHA-256, which is how a retried save recognises a receipt it already
-   filed — phones name every photo image.jpg, so the name can't tell. */
+/* Files the receipt and points the entry at it. The entry keeps the file's
+   SHA-256 (ReceiptSHA), which is how a retried save recognises a receipt it
+   already filed — phones name every photo image.jpg, so the name can't tell,
+   and the check needs no trip to Drive that could fail on its own. */
 function storeReceipt_(book, e, up) {
   var ext = up.mime === 'application/pdf' ? 'pdf' : up.mime.split('/')[1].replace('jpeg', 'jpg');
   var fileName = e.date + ' ' + e.kind + ' ' + e.amount.toFixed(2) + ' ' + e.id + '.' + ext;
   var file = folder_(book).createFile(Utilities.newBlob(up.bytes, up.mime, fileName));
-  file.setDescription(up.sha);
   e.receiptId = file.getId();
   e.receiptName = up.name;
+  e.receiptSha = up.sha;
 }
 
 function receiptSame_(cur, upload, drop) {
-  if (upload) return !!cur.receiptId && fileSha_(cur.receiptId) === upload.sha;
+  if (upload) return !!cur.receiptId && cur.receiptSha === upload.sha;
   if (drop) return !cur.receiptId;
   return true;
 }
-function fileSha_(id) {
-  try { return DriveApp.getFileById(id).getDescription() || ''; } catch (err) { return ''; }
-}
 
-/* The receipts folder, made the first time a receipt arrives. A folder that
-   was recorded and has since gone missing is an error, not a reason to start
-   another: the hub would stop finding every receipt already filed. */
+/* The receipts folder, made the first time a receipt arrives. A recorded
+   folder that won't open, or sits in the trash, is an error with the reason —
+   never a reason to start another, which would lose every receipt filed. */
 function folder_(book) {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(FOLDER_PROP[book]);
   if (id) {
-    var f = null;
-    try { f = DriveApp.getFolderById(id); } catch (err) { f = null; }
-    if (!f || f.isTrashed()) {
-      throw new Error('the receipts folder is missing from Drive (Script Property ' + FOLDER_PROP[book] +
-                      '). Restore it, or clear the property to start a new folder.');
-    }
+    var f;
+    try { f = DriveApp.getFolderById(id); }
+    catch (err) { throw new Error('couldn\'t open the receipts folder: ' + errText_(err) + ' — try again in a minute'); }
+    if (f.isTrashed()) throw new Error('the receipts folder is in Drive\'s trash — restore it (Script Property ' + FOLDER_PROP[book] + ')');
     return f;
   }
   var made = book === 'test' ? folder_('live').createFolder('Test') : DriveApp.createFolder('SNA Money Receipts');

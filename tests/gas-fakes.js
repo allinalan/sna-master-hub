@@ -17,7 +17,11 @@ const TZ = "America/Phoenix";                        // UTC-7 all year, so a dat
 function makeGas(opts){
   const o = opts || {};
   const state = {props:new Map(Object.entries(o.props || {})), spreadsheets:new Map(), files:new Map(),
-                 folders:new Map(), lockBusy:!!o.lockBusy, seq:0};
+                 folders:new Map(), lockBusy:!!o.lockBusy, seq:0, flushes:0,
+                 failSheet:o.failSheet || {},       // {TabName: "message"} — every range on that tab throws
+                 driveDown:"",                      // a message here makes DriveApp's lookups throw it
+                 logs:[],                           // what the script wrote to console (Apps Script's Executions log)
+                 maxRows:o.maxRows || 1000};        // a new tab's size, as in Sheets; writing past it throws
   const newId = prefix => prefix + String(++state.seq).padStart(4, "0") + "Zx9";
 
   class Range {
@@ -48,7 +52,7 @@ function makeGas(opts){
   }
 
   class Sheet {
-    constructor(name){ this.name = name; this.cells = new Map(); this.formats = new Map(); this.frozen = 0; }
+    constructor(name){ this.name = name; this.cells = new Map(); this.formats = new Map(); this.frozen = 0; this.maxRows = state.maxRows; }
     get(r, c){ const v = this.cells.get(r + ":" + c); return v === undefined ? "" : v; }
     put(r, c, v){
       const plain = this.formats.get(r + ":" + c) === "@";
@@ -64,14 +68,21 @@ function makeGas(opts){
     }
     getName(){ return this.name; }
     setName(n){ this.name = n; return this; }
-    getRange(row, col, rows, cols){ return new Range(this, row, col, rows === undefined ? 1 : rows, cols === undefined ? 1 : cols); }
+    getRange(row, col, rows, cols){
+      if(state.failSheet[this.name]) throw new Error(state.failSheet[this.name]);
+      const n = rows === undefined ? 1 : rows;
+      if(row + n - 1 > this.maxRows) throw new Error("The coordinates of the range are outside the dimensions of the sheet.");
+      return new Range(this, row, col, n, cols === undefined ? 1 : cols);
+    }
+    getMaxRows(){ return this.maxRows; }
+    insertRowsAfter(after, how){ if(after > this.maxRows) throw new Error("Those rows are out of bounds."); this.maxRows += how; return this; }
     getLastRow(){ let m = 0; for(const k of this.cells.keys()) m = Math.max(m, Number(k.split(":")[0])); return m; }
     getLastColumn(){ let m = 0; for(const k of this.cells.keys()) m = Math.max(m, Number(k.split(":")[1])); return m; }
     setFrozenRows(n){ this.frozen = n; return this; }
   }
 
   class Spreadsheet {
-    constructor(name){ this.id = newId("ss"); this.name = name; this.sheets = [new Sheet("Sheet1")]; }
+    constructor(name){ this.id = newId("ss"); this.name = name; this.sheets = [new Sheet("Sheet1")]; this.trashed = false; }
     getId(){ return this.id; }
     getName(){ return this.name; }
     getUrl(){ return "https://docs.google.com/spreadsheets/d/" + this.id + "/edit"; }
@@ -89,7 +100,8 @@ function makeGas(opts){
       const ss = state.spreadsheets.get(id);
       if(!ss) throw new Error("Unexpected error while getting the method or property openById on object SpreadsheetApp.");
       return ss;
-    }
+    },
+    flush(){ state.flushes++; }
   };
 
   const iterate = list => { let i = 0; return {hasNext:() => i < list.length, next:() => list[i++]}; };
@@ -113,10 +125,16 @@ function makeGas(opts){
     getParents(){ return iterate(this.parents.map(id => state.folders.get(id)).filter(Boolean)); }
     getBlob(){ return this.blob; }
   }
+  const down = () => { if(state.driveDown) throw new Error(state.driveDown); };
   const DriveApp = {
-    createFolder(name){ return new Folder(name, null); },
-    getFolderById(id){ const f = state.folders.get(id); if(!f) throw new Error("No item with the given ID could be found."); return f; },
-    getFileById(id){ const f = state.files.get(id); if(!f) throw new Error("No item with the given ID could be found."); return f; }
+    createFolder(name){ down(); return new Folder(name, null); },
+    getFolderById(id){ down(); const f = state.folders.get(id); if(!f) throw new Error("No item with the given ID could be found."); return f; },
+    getFileById(id){
+      down();
+      const ss = state.spreadsheets.get(id);                  // a spreadsheet is a Drive file too
+      if(ss) return {getId:() => ss.id, getName:() => ss.name, isTrashed:() => ss.trashed, setTrashed(t){ ss.trashed = !!t; return this; }};
+      const f = state.files.get(id); if(!f) throw new Error("No item with the given ID could be found."); return f;
+    }
   };
 
   const signed = buf => Array.from(buf, b => (b > 127 ? b - 256 : b));           // Apps Script bytes are signed
@@ -159,8 +177,9 @@ function makeGas(opts){
     createTextOutput(s){ return {setMimeType(){ return this; }, getContent:() => s}; }
   };
   const Logger = {log(){}};
+  const console = {error:(...a) => state.logs.push(a.join(" ")), log:(...a) => state.logs.push(a.join(" "))};
 
-  return {globals:{SpreadsheetApp, DriveApp, PropertiesService, LockService, ContentService, Utilities, Logger}, state};
+  return {globals:{SpreadsheetApp, DriveApp, PropertiesService, LockService, ContentService, Utilities, Logger, console}, state};
 }
 
 /* Run a .gs file with the fakes as its globals. Returns its entry points plus

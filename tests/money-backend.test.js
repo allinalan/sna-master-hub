@@ -247,17 +247,17 @@ const cases = [
   ["a hand-typed status or rev that doesn't read is a problem", () => {
     const t = setup();
     t.call("save", {by:"Ben", entry:income()});
-    t.tab("Ledger").put(2, 18, "gone");
+    t.tab("Ledger").put(2, 19, "gone");
     assert.strictEqual(t.call("list").problems[0].error, "Status must be live or void");
-    t.tab("Ledger").put(2, 18, "live"); t.tab("Ledger").put(2, 23, 0);
+    t.tab("Ledger").put(2, 19, "live"); t.tab("Ledger").put(2, 24, 0);
     assert.strictEqual(t.call("list").problems[0].error, "Rev must be a whole number, 1 or more");
   }],
   ["a duplicated ID is a problem on the later row", () => {
     const t = setup();
     t.call("save", {by:"Ben", entry:income()});
-    const sh = t.tab("Ledger"), row = sh.getRange(2, 1, 1, 23).getValues();
-    sh.getRange(3, 1, 1, 23).setNumberFormats([Array(23).fill("@")]);
-    sh.getRange(3, 1, 1, 23).setValues(row);
+    const sh = t.tab("Ledger"), row = sh.getRange(2, 1, 1, 24).getValues();
+    sh.getRange(3, 1, 1, 24).setNumberFormats([Array(24).fill("@")]);
+    sh.getRange(3, 1, 1, 24).setValues(row);
     const list = t.call("list");
     assert.strictEqual(list.entries.length, 1);
     assert.deepStrictEqual(list.problems.map(p => [p.row, p.error]), [[3, "the ID mtest0001 is also on row 2"]]);
@@ -267,7 +267,7 @@ const cases = [
     t.call("save", {by:"Ben", entry:income()});
     t.call("save", {by:"Alan", entry:expense()});
     const sh = t.tab("Ledger");
-    for(let c = 1; c <= 23; c++) sh.put(2, c, "");
+    for(let c = 1; c <= 24; c++) sh.put(2, c, "");
     const list = t.call("list");
     assert.deepStrictEqual([list.entries.length, list.problems.length], [1, 0]);
   }],
@@ -279,11 +279,56 @@ const cases = [
     assert.strictEqual(r.ok, false);
     assert.match(r.error, /the Ledger tab's header row was changed \(column 5 should read "Amount"\)/);
   }],
-  ["a missing sheet is an error, not a fresh sheet", () => {
+  ["a sheet that won't open is an error with the reason, never a fresh sheet", () => {
     const t = setup({props:{MONEY_KEY:KEY, MONEY_SHEET_ID:"gone"}});
-    assert.match(t.call("list").error, /can't be opened/);
-    assert.match(t.call("save", {by:"Ben", entry:income()}).error, /can't be opened/);
+    const r = t.call("list");
+    assert.strictEqual(r.ok, false);
+    assert.match(r.error, /^couldn't open the SNA Money sheet: Unexpected error while getting the method or property openById/);
+    assert.doesNotMatch(r.error, /clear/);                       // no advice that would start a second sheet
+    assert.match(t.call("save", {by:"Ben", entry:income()}).error, /couldn't open the SNA Money sheet/);
     assert.strictEqual(t.gas.state.spreadsheets.size, 0);
+  }],
+  ["a saved row is flushed to the sheet before the reply says ok", () => {
+    const t = setup();
+    t.call("save", {by:"Ben", entry:income()});
+    assert.ok(t.gas.state.flushes >= 1);
+  }],
+  ["a History line that can't be written doesn't turn a saved entry into an error", () => {
+    const t = setup({failSheet:{History:"Service Spreadsheets timed out"}});
+    const r = t.call("save", {by:"Ben", entry:income()});
+    assert.strictEqual(r.ok, true);
+    assert.match(r.warning, /^Saved, but the sheet's History tab couldn't record it \(Service Spreadsheets timed out\)/);
+    assert.strictEqual(t.call("list").entries.length, 1);
+    const v = t.call("void", {by:"Alan", id:"mtest0001", rev:1});
+    assert.deepStrictEqual([v.ok, v.entry.status], [true, "void"]);
+    assert.match(v.warning, /History tab couldn't record it/);
+    assert.ok(t.gas.state.logs.some(l => /create mtest0001 is saved, but History failed: Service Spreadsheets timed out/.test(l)));
+  }],
+  ["saving over an entry the other person voided is a conflict, not a quiet success", () => {
+    const t = setup();
+    t.call("save", {by:"Alan", entry:income()});
+    t.call("void", {by:"Ben", id:"mtest0001", rev:1});
+    const r = t.call("save", {by:"Alan", entry:income({status:"live"}), rev:1});
+    assert.deepStrictEqual([r.ok, r.conflict, r.entry.status, r.entry.rev], [false, true, "void", 2]);
+    const again = t.call("save", {by:"Ben", entry:income({status:"void"}), rev:1});
+    assert.deepStrictEqual([again.ok, again.entry.rev], [true, 2]);   // the one who voided it, retrying, is recognised
+  }],
+  ["the ledger and its History grow past a new tab's size", () => {
+    const t = setup({maxRows:3});                                   // a header and two rows fit
+    for(let i = 1; i <= 5; i++) assert.strictEqual(t.call("save", {by:"Ben", entry:income({id:"mgrow000" + i, amount:100 + i})}).ok, true, "save " + i);
+    assert.strictEqual(t.call("list").entries.length, 5);
+    assert.strictEqual(historyActions(t).length, 5);
+    assert.ok(t.tab("Ledger").getMaxRows() >= 6);
+  }],
+  ["a sheet sitting in Drive's trash takes no more writes, and says so", () => {
+    const t = setup();
+    t.call("save", {by:"Ben", entry:income()});
+    t.ss().trashed = true;
+    const r = t.call("save", {by:"Ben", entry:income({id:"mtest0009"})});
+    assert.strictEqual(r.ok, false);
+    assert.match(r.error, /^the SNA Money sheet is in Drive's trash — restore it/);
+    assert.match(t.call("void", {by:"Ben", id:"mtest0001", rev:1}).error, /in Drive's trash/);
+    assert.strictEqual(t.call("list").entries.length, 1);          // reading it still works, so nothing looks lost
   }],
   ["a busy lock is an error, not a silent wait", () => {
     assert.match(setup({lockBusy:true}).call("save", {by:"Ben", entry:income()}).error, /busy/);
@@ -297,7 +342,10 @@ const cases = [
     assert.strictEqual(file.getName(), "2026-09-17 expense 15.99 mtest0002.png");
     const folder = t.gas.state.folders.get(file.parents[0]);
     assert.strictEqual(folder.getName(), "SNA Money Receipts");
-    assert.strictEqual(file.getDescription(), require("crypto").createHash("sha256").update(Buffer.from(PNG, "base64")).digest("hex"));
+    const sha = require("crypto").createHash("sha256").update(Buffer.from(PNG, "base64")).digest("hex");
+    assert.strictEqual(r.entry.receiptSha, sha);
+    assert.strictEqual(t.tab("Ledger").get(2, 18), sha);
+    assert.strictEqual(t.call("list").entries[0].receiptSha, sha);
     assert.deepStrictEqual(t.call("receipt", {id:"mtest0002"}), {ok:true, name:"zoom receipt .png", mime:"image/png", b64:PNG});
   }],
   ["test-book receipts go in a Test folder inside the receipts folder", () => {
@@ -317,8 +365,11 @@ const cases = [
     const elsewhere = t.gas.globals.DriveApp.createFolder("Somewhere else");
     t.gas.state.files.get(r.entry.receiptId).parents = [elsewhere.getId()];
     assert.match(t.call("receipt", {id:"mtest0002"}).error, /isn't in the SNA Money receipts folder/);
+    t.gas.state.files.get(r.entry.receiptId).parents = [t.gas.state.files.get(r.entry.receiptId).parents[0]];
     t.gas.state.files.get(r.entry.receiptId).setTrashed(true);
-    assert.match(t.call("receipt", {id:"mtest0002"}).error, /gone from Drive/);
+    assert.match(t.call("receipt", {id:"mtest0002"}).error, /the receipt file is in Drive's trash/);
+    t.gas.state.driveDown = "Service error: Drive";
+    assert.strictEqual(t.call("receipt", {id:"mtest0002"}).error, "couldn't open the receipt file: Service error: Drive");
   }],
   ["a receipt has to be a photo or a PDF, 5 MB at most, and intact", () => {
     const t = setup();
@@ -358,7 +409,8 @@ const cases = [
     const folderId = t.gas.state.files.get(r.entry.receiptId).parents[0];
     t.gas.state.folders.get(folderId).setTrashed(true);
     const out = t.call("save", {by:"Alan", entry:expense({id:"mtest0009"}), receipt:{name:"b.png", mime:"image/png", b64:PNG}});
-    assert.match(out.error, /receipts folder is missing from Drive/);
+    assert.match(out.error, /^the receipts folder is in Drive's trash/);
+    assert.doesNotMatch(out.error, /clear/);
     assert.strictEqual(t.gas.state.folders.size, 1);
   }],
 ];

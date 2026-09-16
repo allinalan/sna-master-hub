@@ -889,6 +889,7 @@ table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
 .mreceipt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
 .mfile{position:relative;overflow:hidden;cursor:pointer}
 .mfile input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.mfile.is-busy{opacity:.5;pointer-events:none}
 #mfViewer{justify-self:stretch}
 #mfViewer img{display:block;max-width:100%;border:1px solid var(--line);border-radius:8px;margin-top:8px}
 #mfViewer iframe{display:block;width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-top:8px}
@@ -2983,10 +2984,13 @@ function mNewId(){ return "m" + Date.now().toString(36) + Math.random().toString
 /*MONEY_MATH_END*/
 
 const MONEY_API  = "";   // the SNA Money web app's /exec URL (SNA-Money.gs) — empty until it's deployed
-/* A copy of this page served from this machine only ever reads and writes the
-   sheet's Test tab, so trying the tab out can never touch the real ledger. */
-const MONEY_BOOK = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "test" : "live";
-const MONEY = {entries:null, problems:[], sheetUrl:"", loading:false, err:"", loadedAt:0,
+/* Only the published hub reads and writes the real ledger. Any other copy of
+   this page — this machine, a LAN address, a file opened from disk — uses the
+   sheet's Test tab, so trying it out can never touch the books. */
+const MONEY_BOOK = location.hostname === "allinalan.github.io" ? "live" : "test";
+const MONEY = {entries:null, problems:[], sheetUrl:"", loading:false, err:"", loadedAt:0, triedAt:0,
+               epoch:0,            // bumped as every write starts and ends — a list that crossed one is older than the page
+               warn:"",            // saved, but something after the save didn't go through; stays until dismissed
                campaign:"", form:null, busy:false, formErr:"", receiptUrl:""};
 const MONEY_CATEGORIES = ["Software", "Prizes & gifts", "Meals", "Events & venues", "Travel", "Marketing", "Fees", "Other"];
 const MONEY_NOUN = {income:"income", expense:"expense", settle:"settle-up"};
@@ -2999,21 +3003,33 @@ async function moneyCall(body){
 }
 async function moneyLoad(force){
   if(MONEY.loading || !TEAM.key || !MONEY_API) return;
-  if(!force && MONEY.entries && Date.now() - MONEY.loadedAt < 60000) return;
-  MONEY.loading = true; render();
+  if(!force && MONEY.entries && Date.now() - MONEY.triedAt < 60000) return;
+  MONEY.loading = true; MONEY.triedAt = Date.now(); render();
   /* /exec intermittently serves an error page instead of JSON (~1 in 5 on
-     2026-08-24) — ride it out before bothering anyone with an error */
-  for(let attempt = 1; attempt <= 3; attempt++){
-    try{
-      const out = await moneyCall({action:"list"});
-      if(out.ok) Object.assign(MONEY, {entries:out.entries || [], problems:out.problems || [], sheetUrl:out.sheetUrl || "",
-                                       loadedAt:Date.now(), err:""});
-      else await moneyRefused(out);
-      break;
-    }catch(e){
-      MONEY.err = "Couldn't reach the Money sheet — it's usually temporary.";
+     2026-08-24), so ride that out before bothering anyone. A save that starts
+     or lands while a list is on its way makes that list older than the page —
+     laid over the page it would hide the entry just saved — so read again. */
+  let out = null, failure = null;
+  for(let attempt = 1, rereads = 0; attempt <= 3; attempt++){
+    const epoch = MONEY.epoch;
+    try{ out = await moneyCall({action:"list"}); failure = null; }
+    catch(e){
+      out = null; failure = e;
       if(attempt < 3) await new Promise(r => setTimeout(r, attempt * 3000));
+      continue;
     }
+    if(out.ok && epoch !== MONEY.epoch && rereads++ < 3){ attempt--; continue; }
+    break;
+  }
+  if(out && out.ok && !MONEY.busy){
+    Object.assign(MONEY, {entries:out.entries || [], problems:out.problems || [], sheetUrl:out.sheetUrl || "", loadedAt:Date.now(), err:""});
+  } else if(out && out.ok){
+    MONEY.triedAt = 0;                             // a save is still on its way; the next render reads again once it lands
+  } else if(out){
+    await moneyRefused(out);
+  } else {
+    console.error("Money: the ledger didn't load", failure);
+    MONEY.err = "Couldn't reach the Money sheet (3 tries). It's usually a passing Google hiccup — try again in a minute.";
   }
   MONEY.loading = false; render();
   if(MONEY.entries && TEAM.key && !TEAM.rows && !TEAM.loading) teamLoad();     // the payer picker lists the roster
@@ -3062,7 +3078,7 @@ function renderMoney(){
     <div class="lede">What came in, what went out, and who owes whom — settled once a campaign. Income lands with
       Ben unless you say otherwise, and every entry splits <b>Ben ${M_DEFAULT_BEN} · Alan ${100 - M_DEFAULT_BEN}</b>
       unless it says otherwise. It all lives in a private sheet behind the coach key.</div>
-    ${MONEY_BOOK === "test" ? `<div class="mtest">Local copy · reads and writes the sheet's Test tab, never the real ledger</div>` : ""}
+    ${MONEY_BOOK === "test" ? `<div class="mtest">Not the published hub · reads and writes the sheet's Test tab, never the real ledger</div>` : ""}
   </div></div>`;
   if(!MONEY_API) return html + `<div class="empty-note">The Money sheet isn't connected yet — <code>MONEY_API</code> in index.html is empty until SNA-Money.gs is deployed.</div>`;
   if(!TEAM.key) return html + keyGateHtml("The books stay locked.");
@@ -3072,7 +3088,10 @@ function renderMoney(){
       ? `<div class="empty-note">${esc(MONEY.err)}<div style="margin-top:10px"><button class="btn" data-moneyact="reload">Try again</button></div></div>`
       : `<div class="empty-note">Fetching the ledger…</div>`);
   }
-  if(!MONEY.loading && Date.now() - MONEY.loadedAt > 60000) setTimeout(() => moneyLoad(false), 0);   // over a minute old: refresh quietly
+  /* over a minute since the last try: refresh quietly — but only after a
+     success. A failed load waits for Try again rather than retrying in a loop. */
+  if(!MONEY.loading && !MONEY.busy && !MONEY.err && Date.now() - MONEY.triedAt > 60000) setTimeout(() => moneyLoad(false), 0);
+  if(MONEY.form && !(moneyDrawerMine() && $("#adrawer").classList.contains("on"))) setTimeout(paintMoneyForm, 0);   // back from another tab with an entry still open
 
   const today = todayISO(), all = MONEY.entries, camp = moneyViewCampaign(), isAll = camp === "all";
   const scope = isAll ? all : all.filter(e => e.campaign === camp);
@@ -3097,8 +3116,8 @@ function renderMoney(){
       ${exportButtons("moneyBoard", "Money · " + (isAll ? "All campaigns" : camp))}
     </div>`);
 
-  if(MONEY.err) html += `<div class="mlate no-export no-print"><span>${esc(MONEY.err)} Showing what was loaded ${esc(ago(new Date(MONEY.loadedAt).toISOString()))}.</span>
-    <button class="btn sm" data-moneyact="reload">Try again</button></div>`;
+  if(MONEY.warn) html += `<div class="mlate no-export no-print"><span>${esc(MONEY.warn)}</span>
+    <button class="btn sm" data-moneyact="dismisswarn">OK</button></div>`;
   for(const s of mUnsettled(all, MONEY.problems, today)){
     if(s.campaign === camp) continue;
     html += `<div class="mlate no-export no-print"><span>${s.state === "blocked"
@@ -3106,21 +3125,27 @@ function renderMoney(){
       : `${esc(s.campaign)} isn't settled — <b>${esc(s.debtor)}</b> owes <b>${esc(s.creditor)}</b> ${esc(mFmt(s.owed))}.`}</span>
       <button class="btn sm" data-moneycamp="${esc(s.campaign)}">Open ${esc(s.campaign)}</button></div>`;
   }
-  const np = MONEY.problems.length;
-  if(np) html += `<div class="mproblems no-export no-print"><b>${np} row${np === 1 ? "" : "s"} in the sheet can't be read.</b>
-      ${np === 1 ? "It counts" : "They count"} for nothing, and ${np === 1 ? "its campaign" : "their campaigns"} won't settle until fixed.
-      <ul>${MONEY.problems.map(p => `<li>Row ${esc(p.row)}${p.campaign ? " · " + esc(p.campaign) : ""} — ${esc(p.error)}</li>`).join("")}</ul>
-      ${MONEY.sheetUrl ? `<a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a> — fix the row there, then Refresh.` : ""}</div>`;
-
   html += `<div id="moneyBoard" class="export-frame">`;
   html += printHead("Money · " + (isAll ? "All campaigns" : camp), `printed ${fmtFull(today)}`);
+  /* These two travel with an export or a printout: a picture of stale or
+     incomplete figures mustn't look like a current, complete one. */
+  if(MONEY.err) html += `<div class="mlate"><span>${esc(MONEY.err)} These figures are as of ${esc(fmtStamp(new Date(MONEY.loadedAt).toISOString()))}.</span>
+    <button class="btn sm no-export no-print" data-moneyact="reload">Try again</button></div>`;
+  const np = MONEY.problems.length;
+  if(np) html += `<div class="mproblems"><b>${np} row${np === 1 ? "" : "s"} in the sheet can't be read.</b>
+      ${np === 1 ? "It isn't" : "They aren't"} in any figure here, and ${np === 1 ? "its campaign" : "their campaigns"} won't settle until fixed.
+      <ul>${MONEY.problems.map(p => `<li>Row ${esc(p.row)}${p.campaign ? " · " + esc(p.campaign) : ""} — ${esc(p.error)}</li>`).join("")}</ul>
+      ${MONEY.sheetUrl ? `<span class="no-export no-print"><a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a> — fix the row there, then Refresh.</span>` : ""}</div>`;
+  /* a blocked campaign's totals would leave out the rows that can't be read, so show none */
+  const blocked = isAll ? np > 0 : mStatus(all, MONEY.problems, camp, today).state === "blocked";
+  const fig = cents => (blocked ? "—" : mFmt(cents));
   const payments = scope.filter(e => e.kind === "income" && e.status !== "void").length;
   html += `<div class="stats">
-    ${statBox("Income", mFmt(t.income), payments + " payment" + (payments === 1 ? "" : "s"))}
-    ${statBox("Expenses", mFmt(t.expense), "")}
-    ${statBox("Profit", mFmt(t.profit), "income − expenses", t.profit < 0)}
-    ${statBox("Ben's share", mFmt(t.share.Ben), t.uniform ? M_DEFAULT_BEN + "%" : "mixed splits")}
-    ${statBox("Alan's share", mFmt(t.share.Alan), t.uniform ? (100 - M_DEFAULT_BEN) + "%" : "mixed splits")}
+    ${statBox("Income", fig(t.income), blocked ? "rows need a look" : payments + " payment" + (payments === 1 ? "" : "s"))}
+    ${statBox("Expenses", fig(t.expense), "")}
+    ${statBox("Profit", fig(t.profit), "income − expenses", !blocked && t.profit < 0)}
+    ${statBox("Ben's share", fig(t.share.Ben), blocked ? "" : t.uniform ? M_DEFAULT_BEN + "%" : "mixed splits")}
+    ${statBox("Alan's share", fig(t.share.Alan), blocked ? "" : t.uniform ? (100 - M_DEFAULT_BEN) + "%" : "mixed splits")}
   </div>`;
   html += isAll ? moneyAllHtml(today) : moneyCardHtml(mStatus(all, MONEY.problems, camp, today));
   html += moneyListHtml(scope, isAll);
@@ -3137,7 +3162,7 @@ function moneyCardHtml(s){
   const button = (label, primary) => `<button class="btn${primary ? " primary" : ""} no-export no-print" data-moneyact="settle" data-camp="${esc(s.campaign)}">${label}</button>`;
   const c = esc(s.campaign), n = s.blockers.length;
   switch(s.state){
-    case "blocked":  return card("bad", `Can't work out ${c} yet`, `${n} row${n === 1 ? "" : "s"} in the sheet can't be read — see the red box above. Nothing shows as owed until ${n === 1 ? "it's" : "they're"} fixed.`);
+    case "blocked":  return card("bad", `Can't work out ${c} yet`, `${n} row${n === 1 ? "" : "s"} in the sheet can't be read — listed above. Nothing shows as owed until ${n === 1 ? "it's" : "they're"} fixed.`);
     case "empty":    return card("", `Nothing logged for ${c} yet`, "Add income or an expense above.");
     case "reopened": return card("warn", owes, `${c} was settled ${esc(fmtFull(s.last.date))}, but its entries have changed since — this is what's left.`, button("Record settle-up", true));
     case "running":  return card("", `So far: ${owes}`, `${c} settles after it ends on ${esc(fmtFull(s.end))}.`, button("Settle up now", false));
@@ -3157,9 +3182,10 @@ function moneyAllHtml(today){
     <th class="num">Expenses</th><th class="num">Profit</th><th class="num">Ben</th><th class="num">Alan</th><th>Settlement</th></tr></thead><tbody>`;
   for(const c of camps){
     const s = mStatus(MONEY.entries, MONEY.problems, c, today), t = s.tally;
+    const fig = cents => esc(s.state === "blocked" ? "—" : mFmt(cents));
     h += `<tr><td><button class="linkish" data-moneycamp="${esc(c)}">${esc(c)}</button></td>
-      <td class="num">${esc(mFmt(t.income))}</td><td class="num">${esc(mFmt(t.expense))}</td><td class="num">${esc(mFmt(t.profit))}</td>
-      <td class="num">${esc(mFmt(t.share.Ben))}</td><td class="num">${esc(mFmt(t.share.Alan))}</td>
+      <td class="num">${fig(t.income)}</td><td class="num">${fig(t.expense)}</td><td class="num">${fig(t.profit)}</td>
+      <td class="num">${fig(t.share.Ben)}</td><td class="num">${fig(t.share.Alan)}</td>
       <td class="mstate ${s.state}">${esc(says(s))}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
@@ -3212,10 +3238,11 @@ document.addEventListener("change", e => {
 document.addEventListener("click", e => {
   const camp = e.target.closest("[data-moneycamp]");
   if(camp){ e.preventDefault(); MONEY.campaign = camp.dataset.moneycamp; UI.q = ""; render(); window.scrollTo(0, 0); return; }
-  const act = e.target.closest('[data-moneyact="reload"],[data-moneyact="voided"]');
+  const act = e.target.closest('[data-moneyact="reload"],[data-moneyact="voided"],[data-moneyact="dismisswarn"]');
   if(!act) return;
   e.preventDefault();
   if(act.dataset.moneyact === "voided"){ UI.moneyVoid = !UI.moneyVoid; render(); return; }
+  if(act.dataset.moneyact === "dismisswarn"){ MONEY.warn = ""; render(); return; }
   MONEY.err = "";
   if(!MONEY.entries) render();
   moneyLoad(true);
@@ -3303,15 +3330,18 @@ function moneyReceiptField(f){
                `<button type="button" class="btn sm" data-moneyact="dropreceipt">Remove</button>`;
   if(e && e.receiptId && f.removeReceipt) h += `<span class="sw-hint">Comes off this entry when you save — the file stays in Drive.</span>` +
                `<button type="button" class="btn sm" data-moneyact="keepreceipt">Keep it</button>`;
+  if(f.receiptBusy) h += `<span class="sw-hint">Attaching…</span>`;
   if(f.receipt) h += `<span>New: ${esc(f.receipt.name)} · ${esc(moneySize(f.receipt.size))}</span>` +
                `<button type="button" class="btn sm" data-moneyact="clearpick">Don't attach</button>`;
   h += `<label class="btn sm mfile">${has || f.receipt ? "Replace…" : "Attach a photo or PDF"}<input type="file" id="mfFile" accept="image/*,application/pdf"></label>`;
   return h + `</div><div id="mfViewer"></div></div>`;
 }
 
+/* the shared drawer is showing a Money entry — not an Assignments cell */
+function moneyDrawerMine(){ return !!document.querySelector("#adrawer #mform"); }
 function paintMoneyForm(){
   const f = MONEY.form, d = $("#adrawer");
-  if(!f || !d) return;
+  if(!f || !d || TAB !== "money") return;            // a save that finishes on another tab never takes over its drawer
   const e = f.entry, dis = MONEY.busy ? " disabled" : "";
   const camps = new Set(moneyCampaigns()), now = mCampaignKey(mCampaignOf(todayISO()));
   for(let k = now - 3; k <= now + 1; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
@@ -3364,18 +3394,23 @@ function paintMoneyForm(){
 
   const noun = MONEY_NOUN[f.kind];
   const sub = f.mode === "new"
-    ? (MONEY_BOOK === "test" ? "Test tab — a local copy never writes the real ledger" : "Nothing is saved until you press Save")
+    ? (MONEY_BOOK === "test" ? "Test tab — only the published hub writes the real ledger" : "Nothing is saved until you press Save")
     : esc(mFmt(mCents(e.amount)) + " · " + fmtFull(e.date) + " · " + e.campaign);
   d.innerHTML = `<div class="ad-head"><div><div class="t">${f.mode === "new" ? "New " + noun : noun.charAt(0).toUpperCase() + noun.slice(1)}</div>
       <div class="s">${sub}</div></div><button class="btn sm" data-moneyact="close" title="Close"${dis}>✕</button></div>
     <div class="ad-body mform" id="mform">${body}</div>`;
+  /* while a save is on its way nothing in the drawer changes: an edit made now wouldn't be in what was sent */
+  if(MONEY.busy) d.querySelectorAll("input, select, button, label.mfile").forEach(el => { el.disabled = true; el.classList.add("is-busy"); });
   d.classList.add("on"); d.setAttribute("aria-hidden", "false");
 }
 function moneyCloseForm(){
   MONEY.form = null; MONEY.formErr = "";
   if(MONEY.receiptUrl){ URL.revokeObjectURL(MONEY.receiptUrl); MONEY.receiptUrl = ""; }
+  moneyHideDrawer();
+}
+function moneyHideDrawer(){
   const d = $("#adrawer");
-  if(d){ d.classList.remove("on"); d.setAttribute("aria-hidden", "true"); }
+  if(d && moneyDrawerMine()){ d.classList.remove("on"); d.setAttribute("aria-hidden", "true"); }
 }
 
 /* Copy what's typed in the drawer back into MONEY.form before anything redraws it. */
@@ -3410,7 +3445,8 @@ function moneyHarvest(){
   const share = val("mfBenPct"); if(share !== null && f.splitCustom) f.benPct = share;
 }
 function moneyEntryOf(f){
-  const e = {id:f.id, kind:f.kind, date:f.date, campaign:f.campaign, who:f.who, note:String(f.note).trim()};
+  const e = {id:f.id, kind:f.kind, date:f.date, campaign:f.campaign, who:f.who, note:String(f.note).trim(),
+             status:f.entry ? f.entry.status : "live"};    // so a save can't quietly land on an entry the other person voided
   if(f.kind === "settle"){ e.to = f.who === "Alan" ? "Ben" : f.who === "Ben" ? "Alan" : ""; e.amount = f.amount; return e; }
   e.party = String(f.party).trim(); e.benPct = f.benPct;
   if(f.kind === "expense"){ e.category = String(f.category).trim(); e.amount = f.amount; return e; }
@@ -3436,10 +3472,16 @@ function moneyApplyLastPlan(){
    double an entry. Nothing here shows anything as saved; the caller does, and
    only on ok. */
 async function moneyWrite(body){
-  for(let attempt = 1; attempt <= 2; attempt++){
-    try{ return await moneyCall(body); }
-    catch(e){ if(attempt === 2) return {ok:false, error:"network"}; await new Promise(r => setTimeout(r, 2500)); }
-  }
+  MONEY.epoch++;
+  try{
+    for(let attempt = 1; attempt <= 2; attempt++){
+      try{ return await moneyCall(body); }
+      catch(e){
+        if(attempt === 2){ console.error("Money: " + body.action + " got no reply", e); return {ok:false, error:"network"}; }
+        await new Promise(r => setTimeout(r, 2500));
+      }
+    }
+  } finally { MONEY.epoch++; }
 }
 function moneyMerge(e){
   if(!MONEY.entries || !e) return;
@@ -3467,6 +3509,7 @@ async function moneySave(){
   const f = MONEY.form;
   if(!f || MONEY.busy) return;
   moneyHarvest();
+  if(f.receiptBusy){ MONEY.formErr = "One moment — the receipt is still attaching."; paintMoneyForm(); return; }
   const by = moneySigner();
   if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks, so the entry is signed."; paintMoneyForm(); return; }
   const entry = moneyEntryOf(f), problem = mCheck(entry);
@@ -3478,11 +3521,15 @@ async function moneySave(){
   const out = await moneyWrite(body);
   MONEY.busy = false;
   if(out.ok){
-    moneyMerge(out.entry); moneyReveal(out.entry); moneyCloseForm(); render();
-    toast(f.mode === "new" ? `Saved to the sheet ✓ ${MONEY_NOUN[out.entry.kind]} ${mFmt(mCents(out.entry.amount))}` : "Changes saved to the sheet ✓");
+    moneyMerge(out.entry); moneyReveal(out.entry); moneyCloseForm();
+    if(out.warning) MONEY.warn = out.warning;
+    render();
+    toast(out.warning || (f.mode === "new" ? `Saved to the sheet ✓ ${MONEY_NOUN[out.entry.kind]} ${mFmt(mCents(out.entry.amount))}` : "Changes saved to the sheet ✓"));
     return;
   }
+  if(TAB !== "money") toast("Money: that save didn't go through — open the Money tab to see why and try again");
   if(out.conflict && out.entry) return moneyConflict(f, out.entry, entry);
+  if(out.error === "network") f.uncertain = true;
   MONEY.formErr = moneyWhy(out, "Nothing was saved", "Press Save again");
   paintMoneyForm();
 }
@@ -3491,7 +3538,8 @@ function moneyConflict(f, theirs, mine){
   const who = theirs.updatedBy || "The other person";
   const keep = confirm(`${who} changed this entry ${ago(theirs.updatedAt)}, after you opened it.\n\n` +
     `Theirs:  ${mEntryLine(theirs)}\nYours:   ${mEntryLine(Object.assign({}, theirs, mine))}\n\n` +
-    `OK saves yours over theirs. Cancel keeps theirs and closes this.`);
+    `OK saves yours over theirs. Cancel keeps theirs and closes this.` +
+    (theirs.status === "void" && mine.status !== "void" ? `\n\n(${who} voided it — saving yours keeps it void; Restore brings it back.)` : ""));
   if(keep){ f.rev = theirs.rev; f.entry = theirs; paintMoneyForm(); return moneySave(); }
   moneyCloseForm(); toast(`Kept ${who}'s version`);
 }
@@ -3499,15 +3547,19 @@ async function moneySetStatus(action){
   const f = MONEY.form;
   if(!f || !f.entry || MONEY.busy) return;
   const e = f.entry;
-  if(action === "void" && !confirm(`Void this ${mFmt(mCents(e.amount))} ${MONEY_NOUN[e.kind]}? It stays in the list, crossed out, and stops counting. You can restore it.`)) return;
+  if(action === "void" && !confirm(`Void this ${mFmt(mCents(e.amount))} ${MONEY_NOUN[e.kind]}? It stays in the list, crossed out, and stops counting. You can restore it.`)){
+    toast("Left as it was — nothing voided"); return;
+  }
   const by = moneySigner();
   if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks."; paintMoneyForm(); return; }
   MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
   const out = await moneyWrite({action, by, id:e.id, rev:e.rev});
   MONEY.busy = false;
   if(out.ok){
-    moneyMerge(out.entry); moneyCloseForm(); render();
-    toast(action === "void" ? "Voided — it no longer counts" + (UI.moneyVoid ? "" : " (Show voided to see it)") : "Restored — it counts again");
+    moneyMerge(out.entry); moneyCloseForm();
+    if(out.warning) MONEY.warn = out.warning;
+    render();
+    toast(out.warning || (action === "void" ? "Voided — it no longer counts" + (UI.moneyVoid ? "" : " (Show voided to see it)") : "Restored — it counts again"));
     return;
   }
   if(out.conflict && out.entry){
@@ -3517,6 +3569,7 @@ async function moneySetStatus(action){
     paintMoneyForm();
     return;
   }
+  if(out.error === "network") f.uncertain = true;
   MONEY.formErr = moneyWhy(out, "Nothing changed", `Press ${action === "void" ? "Void" : "Restore"} again`);
   paintMoneyForm();
 }
@@ -3569,8 +3622,16 @@ async function moneyViewReceipt(){
   const el = box();
   if(!el) return;
   if(!out.ok){ el.innerHTML = `<div class="merr">${esc(out.error === "network" ? "Couldn't reach the sheet — try again." : "Couldn't fetch it: " + out.error)}</div>`; return; }
-  const bin = atob(out.b64), bytes = new Uint8Array(bin.length);
-  for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  let bytes;
+  try{
+    const bin = atob(out.b64);
+    bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  }catch(err){
+    console.error("Money: receipt didn't decode", err);
+    el.innerHTML = `<div class="merr">The receipt came back damaged — try View again.</div>`;
+    return;
+  }
   if(MONEY.receiptUrl) URL.revokeObjectURL(MONEY.receiptUrl);
   const url = MONEY.receiptUrl = URL.createObjectURL(new Blob([bytes], {type:out.mime}));
   const shown = /^image\/(jpeg|png|gif|webp)$/.test(out.mime) ? `<img src="${url}" alt="Receipt">`
@@ -3603,7 +3664,7 @@ document.addEventListener("click", async e => {
   const act = e.target.closest("[data-moneyact]");
   if(!act) return;
   const k = act.dataset.moneyact;
-  if(k === "reload" || k === "voided") return;                    // the board's own controls, handled above
+  if(k === "reload" || k === "voided" || k === "dismisswarn") return;   // the board's own controls, handled above
   e.preventDefault();
   if(k === "new"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneyNewForm(act.dataset.kind); paintMoneyForm(); } return; }
   if(k === "settle"){
@@ -3615,7 +3676,14 @@ document.addEventListener("click", async e => {
     return;
   }
   if(!MONEY.form) return;
-  if(k === "close"){ if(!MONEY.busy) moneyCloseForm(); return; }
+  if(k === "close"){
+    if(MONEY.busy) return;
+    const unsure = MONEY.form.uncertain;
+    moneyCloseForm();
+    /* the last send never heard back, so it may be in the sheet: show the list as the sheet has it now */
+    if(unsure){ toast("That last send never heard back — reloading the list so you can see whether it's there"); moneyLoad(true); }
+    return;
+  }
   if(k === "save") return moneySave();
   if(k === "void" || k === "restore") return moneySetStatus(k);
   if(k === "viewreceipt") return moneyViewReceipt();
@@ -3640,11 +3708,13 @@ document.addEventListener("change", async e => {
   if(t.id === "mfCat"){ moneyHarvest(); paintMoneyForm(); if($("#mfCatNew")) $("#mfCatNew").focus(); return; }
   if(t.id === "mfFile"){
     const file = t.files && t.files[0];
-    if(!file) return;
+    if(!file || MONEY.busy) return;
     moneyHarvest();
+    f.receiptBusy = true; paintMoneyForm();
     try{ f.receipt = await moneyReadReceipt(file); f.removeReceipt = false; MONEY.formErr = ""; }
     catch(err){ MONEY.formErr = err.message; }
-    if(MONEY.form === f) paintMoneyForm();
+    f.receiptBusy = false;
+    if(MONEY.form === f && moneyDrawerMine()){ moneyHarvest(); paintMoneyForm(); }   // keep anything typed while it processed
   }
 });
 document.addEventListener("input", e => {
@@ -4720,7 +4790,7 @@ function render(){
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
   if(TAB!=="assign"&&ASSIGN.open)closeCell();
-  if(TAB !== "money" && MONEY.form && !MONEY.busy) moneyCloseForm();
+  if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
   if(CI_OPEN) closeCiPop();
   $("#view").innerHTML = editBanner() + currentTab().render();
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";

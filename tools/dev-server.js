@@ -15,8 +15,11 @@
 //   SLOW=1500 node tools/dev-server.js      every backend reply takes 1.5 s
 //   MONEY_KEY=other node tools/dev-server.js the money script expects a different key than the roster
 //   NO_KEY=1 node tools/dev-server.js        the money script has no MONEY_KEY set at all
+//   FAIL_HISTORY=1 node tools/dev-server.js  every History write fails (the entry itself still saves)
 //   curl -X POST localhost:8830/__fail -d 2  the next 2 money calls get an HTML error page,
 //                                           the way Apps Script's /exec sometimes answers
+//   curl -X POST localhost:8830/__cell -d '{"book":"test","row":2,"col":5,"value":"lots"}'
+//                                           a hand edit in the sheet (row 1 is the header)
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -39,11 +42,13 @@ function page(){
     if(!re.test(html)) throw new Error(`couldn't find ${name} in index.html — refusing to serve a page that would talk to a real backend`);
     html = html.replace(re, to);
   }
+  if(/script\.google\.com\/macros\/s\//.test(html)) throw new Error("a script.google.com web app URL is still in the page after the rewrites — refusing to serve it");
   return html;
 }
 page();                                              // fail at start, not on the first request
 
-const gas = makeGas({props:process.env.NO_KEY ? {} : {MONEY_KEY:process.env.MONEY_KEY || KEY}});
+const gas = makeGas({props:process.env.NO_KEY ? {} : {MONEY_KEY:process.env.MONEY_KEY || KEY},
+                    failSheet:process.env.FAIL_HISTORY ? {History:"Service Spreadsheets timed out"} : {}});
 const money = loadGs(path.join(ROOT, "SNA-Money.gs"), gas.globals);
 const ROSTER = [
   ["t01", "Jordan Sample", "The Path"], ["t02", "Casey Example", "The Dojo"], ["t03", "Riley Placeholder", "Masters"],
@@ -62,11 +67,20 @@ function team(body){
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   const send = (code, type, body) => { res.writeHead(code, {"Content-Type":type, "Cache-Control":"no-store"}); res.end(body); };
-  if(req.method === "POST" && ["/__money", "/__team", "/__fail"].includes(url.pathname)){
+  if(req.method === "POST" && ["/__money", "/__team", "/__fail", "/__cell"].includes(url.pathname)){
     let data = "";
     req.on("data", chunk => { data += chunk; });
     req.on("end", () => {
       if(url.pathname === "/__fail"){ failNext = Number(data) || 1; return send(200, "text/plain", `next ${failNext} money call(s) fail\n`); }
+      if(url.pathname === "/__cell"){
+        try{
+          const c = JSON.parse(data), ss = [...gas.state.spreadsheets.values()][0];
+          const sh = ss && ss.getSheetByName(c.book === "live" ? "Ledger" : "Test");
+          if(!sh) throw new Error("that tab doesn't exist yet — save an entry first");
+          sh.put(Number(c.row), Number(c.col), c.value);
+          return send(200, "text/plain", `row ${c.row} col ${c.col} is now ${JSON.stringify(sh.get(Number(c.row), Number(c.col)))}\n`);
+        }catch(e){ return send(400, "text/plain", String(e.message) + "\n"); }
+      }
       if(url.pathname === "/__money" && failNext > 0){
         failNext--;
         return setTimeout(() => send(200, "text/html", "<html><body>Sorry, unable to open the file at this time.</body></html>"), SLOW);
@@ -76,6 +90,7 @@ http.createServer((req, res) => {
         out = url.pathname === "/__team" ? team(JSON.parse(data || "{}"))
                                          : JSON.parse(money.doPost({postData:{contents:data}}).getContent());
       }catch(e){ out = {ok:false, error:String((e && e.message) || e)}; }
+      for(const line of gas.state.logs.splice(0)) console.log("[SNA-Money.gs] " + line);     // what Apps Script's Executions log would show
       setTimeout(() => send(200, "application/json", JSON.stringify(out)), SLOW);
     });
     return;

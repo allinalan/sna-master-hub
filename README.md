@@ -254,7 +254,9 @@ January still counts toward Fall — look at Fall, then add it. Under **All camp
 campaign follows the date until you pick one.
 
 Nothing autosaves. **Save** sends the entry, and the drawer only closes once the sheet has
-said yes. If it didn't go through, the drawer stays open and says why in red.
+said yes. If it didn't go through, the drawer stays open and says why in red. If the reply
+never came back, it says the entry *may* be in — pressing Save again can't add it twice, and
+closing the drawer reloads the list so you can see whether it landed.
 
 ### Settling a campaign
 
@@ -284,8 +286,9 @@ campaign until it is.
 - Every change is also written to the sheet's **History** tab (who, when, what the entry
   became), on top of Google's own version history.
 - A row edited by hand in the sheet so that it no longer reads (a word in the Amount column,
-  say) is listed in red with its row number, and its campaign won't show a settlement until
-  the row is fixed. The first 23 columns of the Ledger tab have to keep their headers, in
+  say) is listed in red with its row number, its campaign's figures show as **—**, and it won't
+  show a settlement until
+  the row is fixed. The first 24 columns of the Ledger tab have to keep their headers, in
   order; add your own columns after them.
 
 ### Where it lives
@@ -293,7 +296,7 @@ campaign until it is.
 | What | Where |
 |---|---|
 | The web app | Apps Script project **SNA Money**, code in [`SNA-Money.gs`](SNA-Money.gs); its `/exec` URL is `MONEY_API` in `index.html` |
-| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **History** and **Test** (a copy of this page served from your own machine only ever writes **Test**) |
+| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **History** and **Test**. Only the published hub (allinalan.github.io) reads and writes **Ledger**; any other copy of the page — your machine, a file, a LAN address — uses **Test**, and says so in a yellow badge. |
 | Receipts | Drive folder **SNA Money Receipts** (test receipts in its **Test** folder) |
 | The key | Script property `MONEY_KEY` in the SNA Money project — the same value as the coach key. The script records the sheet and folder IDs as script properties itself (`MONEY_SHEET_ID`, `MONEY_FOLDER_ID`, `MONEY_TEST_FOLDER_ID`). |
 

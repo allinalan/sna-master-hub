@@ -52,13 +52,14 @@ index.html (public GitHub Pages)
 - **Scopes:** Sheets (`spreadsheets`) and Drive (`drive`, which `DriveApp` needs to make the
   folder and files). Same scopes Alan already granted the SharpNinja script.
 - **Books.** `book: "live"` → tab `Ledger`; `book: "test"` → tab `Test` (and a `Test` receipts
-  subfolder). The page uses `test` whenever it is served from `localhost`, the same way
-  `DASH_BASE` already switches on localhost. Post-deploy verification only ever writes to the
+  subfolder). The page uses `live` only on `allinalan.github.io` and `test` everywhere else
+  (localhost, a LAN address, a file opened from disk), with a badge saying so. Post-deploy
+  verification only ever writes to the
   test book.
 
 ## Data model
 
-One row per entry. Header row, frozen. Column order is the contract: the first 23 columns must
+One row per entry. Header row, frozen. Column order is the contract: the first 24 columns must
 carry these headers in this order, and every call fails naming the first wrong column if they
 don't. Columns after them are left alone.
 
@@ -79,7 +80,7 @@ don't. Columns after them are left alone.
 | Base | number | `pct` only: the commission sales figure, > 0. |
 | Category | text ≤40 | expense only. Starter set in the hub; any new name allowed. |
 | Note | text ≤500 | optional. |
-| ReceiptID / ReceiptName | text | Drive file id and original name, expense or income (optional). |
+| ReceiptID / ReceiptName / ReceiptSHA | text | Drive file id, original name, and the file's SHA-256 — which is how a retried save recognises a receipt it already filed without a trip to Drive. Expense or income (optional). |
 | Status | text | `live` · `void`. Voided rows stay in the sheet and the list, out of every total. |
 | CreatedBy / CreatedAt / UpdatedBy / UpdatedAt | text | Hub name (`Alan`/`Ben`) and ISO timestamps. |
 | Rev | number | Starts at 1, +1 on every change. Optimistic concurrency. |
@@ -129,8 +130,15 @@ needs no key.
   - Otherwise `{ok:false, conflict:true, entry:<current row>}`.
   - `receipt: {name, mime, b64}` (≤ 5 MB decoded; images, PDF) → file saved in the receipts
     folder (Test subfolder for the test book) as `<date> <kind> <amount> <id>.<ext>` before
-    the row is written. `removeReceipt: true` clears ReceiptID/ReceiptName (the file stays in
+    the row is written. `removeReceipt: true` clears the three receipt columns (the file stays in
     Drive).
+  - Before writing: refuses a sheet sitting in Drive's trash (`openById` would keep opening it),
+    and adds rows when a tab is full (a new tab has 1,000).
+  - After writing: `SpreadsheetApp.flush()`, then the History line. If only the History line
+    fails, the reply is `{ok:true, entry, warning}` — the entry is in, and the page shows the
+    warning until dismissed — never an error that would read as "nothing was saved".
+  - The sender includes the status it was looking at; content that matches but lands on an
+    entry the other person voided is a conflict, not a quiet success.
 - `void {book, by, id, rev}` / `restore {book, by, id, rev}` → `{ok, entry}` · conflict · error.
   Idempotent: voiding a void row is ok.
 - `receipt {book, id}` → `{ok, name, mime, b64}`. Looks up the **entry** and returns only that
@@ -274,8 +282,15 @@ A problem row with no readable campaign blocks every campaign (it could belong t
   yours as one line each — **OK** saves yours on top of their rev; **Cancel** keeps theirs and
   closes the drawer.
 - **Load failure:** the tab shows the error and a Try again button instead of an empty ledger.
-  An empty ledger is only ever shown after a successful `list`.
-- **Blocked campaigns** (problem rows) never show an amount owed.
+  An empty ledger is only ever shown after a successful `list`. A failed refresh never retries
+  on its own (that looped); Try again does. A list that crossed a save is read again rather
+  than laid over the entry just saved.
+- **Blocked campaigns** (problem rows) never show an amount owed, and their figures show as
+  "—". The stale-data line and the unreadable-rows box sit inside the exported board, so a PNG
+  or printout carries them.
+- **Leaving the tab mid-save** hides the drawer without touching the shared `#adrawer` that
+  another tab may be using; a failure toasts, and the drawer comes back on return.
+- Server errors go to the Executions log (`console.error`) as well as the reply.
 
 ## Testing
 

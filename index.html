@@ -2438,8 +2438,8 @@ document.addEventListener("click", async e => {
   const row = (TEAM.rows || []).find(r => r.RepID === repId);
   if(!row) return;
   const name = row.Name.split(" ")[0];
-  if(!confirm(on ? `Bring ${row.Name} back? They'll reappear on the dashboard, in the weekly texts, and in the form dropdowns.`
-                 : `Mark ${row.Name} as former? They drop off the dashboard, the weekly texts, and both form dropdowns. Their history stays.`)) return;
+  if(!confirm(on ? `Bring ${row.Name} back? They'll reappear on the dashboard, in the weekly texts, on the Assignments board, and in the form dropdowns.`
+                 : `Mark ${row.Name} as former? They drop off the dashboard, the weekly texts, the Assignments board, and both form dropdowns. Their history stays.`)) return;
   const before = row.Active;
   row.Active = on;
   render();
@@ -2541,7 +2541,17 @@ function assignList(){   // catalog rows for the picked campaign, due-date order
     .filter(a=>ASSIGN.showArchived||!isArchived(a))
     .sort((x,y)=>String(dueISO(x.DueDate)||"9999").localeCompare(String(dueISO(y.DueDate)||"9999"))||String(x.Title||"").localeCompare(String(y.Title||"")));
 }
-function assignReps(){return (ASSIGN.rows.reps||[]).filter(r=>r.Active).sort((a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name));}
+/* Former mentees drop off the board and out of every count above it. The roster
+   is where someone is marked former, so once it's loaded it has the final say —
+   they vanish the moment they're marked, no Refresh. The feed's own flag covers
+   the second before the roster arrives, and anyone it doesn't list. The sheet
+   writes that flag Y/N, the roster true/false: read both. Their work stays. */
+const isActiveFlag=v=>v!==false&&!/^(n|no|false|0)$/i.test(String(v==null?"":v).trim());
+function assignReps(){
+  const roster=new Map((TEAM.rows||[]).map(t=>[String(t.RepID),t]));
+  return (ASSIGN.rows.reps||[]).filter(r=>{const t=roster.get(String(r.RepID));return isActiveFlag(t?t.Active:r.Active);})
+    .sort((a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name));
+}
 function cellState(rep,a){return assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());}
 function assignCounts(){
   const c={waiting:0,late:0,week:0,approved:0}; if(!ASSIGN.rows)return c;
@@ -2561,6 +2571,7 @@ function renderAssign(){
     <div class="eyebrow">Homework, both directions</div><div class="big serif">Assignments</div>
     <div class="lede">What each program owes this campaign, who has turned it in, and your critiques. Mentees submit from their dashboard; everything you post here lands on theirs.</div></div></div>`;
   if(!TEAM.key)return html+keyGateHtml();
+  if(!TEAM.rows&&!TEAM.loading&&!TEAM.err)teamLoad();   // the roster says who's former
   if(!ASSIGN.rows){
     if(!ASSIGN.loading&&!ASSIGN.err)assignLoad(true);
     return html+(ASSIGN.err?`<div class="empty-note">${esc(ASSIGN.err)}<div style="margin-top:10px"><button class="btn" data-assignact="reload">Try again</button></div></div>`

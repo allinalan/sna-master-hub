@@ -24,6 +24,9 @@
 // And since: clicking from a changed field A into B puts a plain caret at the character
 //   you clicked, not B's whole text selected (your first keystroke used to wipe B); a
 //   field just made by "+ item" still comes up all selected.
+// And: a render doesn't replay the page entrance. It used to, so every save faded the
+//   board in again and put the fields 10px below where you'd clicked. A tab switch still
+//   plays it, and a render in the middle of it carries on rather than starting over.
 "use strict";
 const net = require("net");
 const os = require("os");
@@ -355,6 +358,40 @@ async function focusingMovesNothing(){
   }
 }
 
+async function rendersDontReplayTheEntrance(){
+  console.log("\nThe page entrance — a tab switch plays it, a render never starts it over");
+  /* where each of #view's children is in its pageIn animation, in ms */
+  const entrance = page => page.evaluate(() => [...document.getElementById("view").children]
+    .flatMap(c => c.getAnimations()).filter(a => a.animationName === "pageIn").map(a => Math.round(a.currentTime)));
+  const settled = page => page.waitForFunction(() => ![...document.getElementById("view").children]
+    .flatMap(c => c.getAnimations()).some(a => a.animationName === "pageIn" && a.playState === "running"));
+
+  await onPage("#calendar", {edit: true}, async page => {
+    const [A] = await find(page, "topics", 1);
+    await settled(page);
+    await countRenders(page);
+    await page.click(sel(A)); await caretToEnd(page); await page.keyboard.type(" R");
+    await page.click("h1");                                       // leaving the changed field saves and re-renders
+    const st = {renders: await page.evaluate(() => window.__renders), entrance: await entrance(page)};
+    check("calendar: a changed field's save re-renders without replaying the entrance",
+          st.renders === 1 && st.entrance.length === 0, st);
+
+    await page.click(".tab-primary:not(.on)");
+    const tab = await entrance(page);
+    check("a tab switch plays the entrance from the start", tab.length > 0 && tab.every(t => t < 100), {entrance: tab});
+
+    await page.waitForTimeout(100);
+    const mid = await page.evaluate(() => {
+      const at = () => [...document.getElementById("view").children].flatMap(c => c.getAnimations())
+        .filter(a => a.animationName === "pageIn").map(a => Math.round(a.currentTime));
+      const before = at(); render(); return {before, after: at()};
+    });
+    const was = Math.max(...mid.before);                          // a child already done stops at its end
+    check("a render mid-entrance carries on where it was, not from the start",
+          was > 0 && mid.after.length > 0 && mid.after.every(t => t === was), mid);
+  });
+}
+
 (async () => {
   const {pw, from} = loadPlaywright();
   const server = process.env.BASE ? null : await startServer();
@@ -375,6 +412,7 @@ async function focusingMovesNothing(){
     await clickingFromFieldToField();
     await clickingAPlaceholder();
     await focusingMovesNothing();
+    await rendersDontReplayTheEntrance();
     const failed = results.filter(ok => !ok).length;
     console.log(`\n${results.length - failed}/${results.length} passed`);
     code = failed ? 1 : 0;

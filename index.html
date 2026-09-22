@@ -5936,8 +5936,8 @@ function paintTabs(){
    you're already in, or on one that isn't editable, moves no focus: skip it.
    It also notes how many characters into the field the click fell, so the
    cursor goes back to that spot. The browser's own caret for the click lands
-   in the destroyed field. Measured now, while the field is still where you
-   clicked it: after the re-render the page's entrance animation has it 10px lower. */
+   in the destroyed field. Measured now, on the field you clicked: the re-render
+   puts up a new one, and A's change can reflow it. */
 let PENDING_FOCUS = null;                        // {path, offset} — offset null: the click missed the text
 let JUST_TOGGLED = null, FLASH_TIMER = null;
 document.addEventListener("mousedown", e => {
@@ -5947,12 +5947,18 @@ document.addEventListener("mousedown", e => {
 });
 
 /* replay the staggered page entrance — only on real tab switches, never on
-   the re-render every keystroke causes */
+   the re-render every keystroke causes. render() keeps it that way: it swaps
+   #view's children, and new children under .page-enter play the entrance from
+   the start, so every save used to fade and slide the whole board in again
+   (fixed 2026-09-22). Once the entrance is over render() takes the class off
+   and the new children land in place; mid-entrance they carry on from where
+   the old ones had got to. */
 function pageIn(){
   const v = $("#view");
   v.classList.remove("page-enter"); void v.offsetWidth;   // restart the animation
   v.classList.add("page-enter");
 }
+const entranceOf = v => [...v.children].flatMap(c => c.getAnimations()).filter(a => a.animationName === "pageIn");
 
 function render(){
   /* the search box and the "add a task" box are rebuilt by every render (a
@@ -5964,7 +5970,12 @@ function render(){
   if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance
   if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
   if(CI_OPEN) closeCiPop();
-  $("#view").innerHTML = editBanner() + currentTab().render();
+  const v = $("#view");
+  const mid = v.classList.contains("page-enter") && entranceOf(v).find(a => a.playState === "running");
+  const at = mid ? mid.currentTime : null;       // read now: swapping the children cancels it
+  if(!mid) v.classList.remove("page-enter");     // the entrance is over (see pageIn)
+  v.innerHTML = editBanner() + currentTab().render();
+  if(mid) entranceOf(v).forEach(a => { a.currentTime = at; });
   if(AT.open){ if(TAB === "attend") paintRoll(); else closeRoll(); }
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();

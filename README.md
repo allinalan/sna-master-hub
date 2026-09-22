@@ -235,7 +235,8 @@ node tools/edit-focus-check.js
 It clicks and types through the real page in a browser, against its own copy of the dev
 server, and checks where the cursor ends up: Enter, Tab and Escape leave the field (and no
 later refresh puts you back in it), clicking from a changed field into another lands in
-the second one, typing after clicking a `+ note` goes into the note whatever you clicked
+the second one with the cursor where you clicked (not its whole text selected, ready to be
+typed over), typing after clicking a `+ note` goes into the note whatever you clicked
 before it, and clicking into a note never moves its text. `--chrome` runs it in the
 installed Google Chrome instead of Playwright's Chromium; `--headed` lets you watch.
 

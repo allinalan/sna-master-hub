@@ -707,6 +707,81 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 @media (max-width:760px){.fgroup{flex:none}}
 @media print{.ci{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
+/* ═══════════ call attendance ═══════════
+   The check-in board's squares, one lane per call instead of per week. The
+   extra shapes: a dot for "not expected on that call", a ringed green for a
+   drop-in, and a small corner badge for how the replay is going. */
+#atBoard table.grid{min-width:0}
+table.atboard th.call{text-align:left;padding:9px 8px 8px;min-width:96px;max-width:118px;border-left:1px solid var(--line-soft);vertical-align:bottom}
+table.atboard th.call .wn{display:block;font-size:9px;color:var(--ink-faint);letter-spacing:.12em}
+table.atboard th.call .ct{display:block;font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--ink);letter-spacing:0;text-transform:none;
+  margin:4px 0 5px;white-space:normal;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+table.atboard th.call .tl{display:flex;gap:6px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+table.atboard th.call .tally{font-family:var(--monof);font-size:10.5px;color:var(--ink);letter-spacing:0;text-transform:none}
+table.atboard th.call .tally small{color:var(--good);margin-left:3px}
+table.atboard th.call .tierchip{font-size:7.5px;padding:1px 5px}
+table.atboard th.call button.rollhd{all:unset;cursor:pointer;display:block;border-radius:6px}
+table.atboard th.call button.rollhd:hover .ct{color:var(--accent)}
+table.atboard th.call button.rollhd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+table.atboard th.call .take{font-family:var(--monof);font-size:9.5px;letter-spacing:.06em;color:var(--accent);text-transform:none}
+table.atboard th.call.cur{background:rgba(174,59,21,.07);box-shadow:inset 0 3px 0 var(--accent)}
+table.atboard th.call.cur .wn{color:var(--accent);font-weight:600}
+table.atboard th.call.fut{opacity:.45}
+table.atboard td.cc.cur{background:rgba(174,59,21,.06)}
+table.atboard td.an .flag2{margin-left:6px}
+.ci{position:relative}
+.ci.na{background:transparent;border:none;cursor:default}
+.ci.na::after{content:"";width:4px;height:4px;border-radius:50%;background:var(--line)}
+.ci.na:hover{transform:none;box-shadow:none}
+.ci.drop{background:#2E7D4F;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px #2E7D4F}
+.ci.blank.pend{border-style:dashed;border-color:var(--accent)}
+.mu{display:inline-block;min-width:13px;height:13px;border-radius:7px;padding:0 2px;font-style:normal;font-family:var(--monof);font-size:8px;line-height:13px;
+  text-align:center;font-weight:700;color:#fff;background:var(--ink-soft);box-shadow:0 0 0 1.5px var(--card)}
+.ci .mu{position:absolute;top:-6px;right:-7px}
+.mu.late{background:#C0392B}
+.mu.waiting{background:var(--accent)}
+.mu.revise{background:var(--brass)}
+.mu.approved{background:#2E7D4F}
+.mu.unsent{background:var(--card-raised);color:var(--ink-soft);box-shadow:0 0 0 1.5px var(--line-strong)}
+.flag2{font-family:var(--monof);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--bad);background:var(--bad-bg);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.at-banner{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;
+  border:1px solid var(--warn);background:var(--warn-bg);border-radius:10px;font-size:13px}
+.at-banner.err{border-color:var(--bad);background:var(--bad-bg)}
+/* the roll-call drawer */
+.rc-exp{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--ink-soft)}
+.rc-tally{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rc-tally .chip{font-size:10.5px;padding:4px 10px}
+.rc-actions{display:flex;gap:8px;align-items:center}
+.rc-actions .search{flex:1;min-width:0;width:auto}
+.rc-sec{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);margin-top:6px}
+.rc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.rc-row.on{border-color:#2E7D4F;background:#EAF2EC}
+.rc-row.ex{background:var(--paper-deep)}
+.rc-name{min-width:0}
+.rc-name b{font-size:13.5px}
+.rc-name .an-sub{display:flex;gap:5px;margin-top:3px;flex-wrap:wrap}
+.rc-name .chip{font-size:9px;padding:2px 7px}
+.rc-seg{display:flex;gap:4px;flex-shrink:0}
+.rc-seg button{font-family:var(--monof);font-size:10.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card-raised);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+.rc-seg button:disabled{opacity:.5;cursor:default}
+.rc-seg button.here.on{background:#2E7D4F;border-color:#2E7D4F;color:#fff;font-weight:600}
+.rc-seg button.exc.on{background:#1C1712;border-color:#1C1712;color:#F4EEDF}
+.rc-guest{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px dashed var(--line-strong);border-radius:10px}
+.rc-guest .step{display:flex;align-items:center;gap:10px;font-family:var(--monof);font-size:15px}
+.rc-guest small,.rc-mu small{display:block;font-size:11px;color:var(--ink-faint);margin-top:3px;line-height:1.45}
+.rc-mu{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.rc-mu .ad-row input{flex:1;min-width:0;font-size:12.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.rc-mu .who{display:flex;gap:5px;flex-wrap:wrap}
+.rc-msg{font-size:12px;color:var(--good)}
+.rc-msg.err{color:var(--bad)}
+.rc-msg.busy{color:var(--ink-soft)}
+.rc-foot{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink-soft)}
+.rc-add{font-family:var(--monof);font-size:11px;padding:7px 9px;border:1px dashed var(--line-strong);border-radius:8px;background:var(--card-raised);color:var(--ink-soft);justify-self:start;max-width:100%}
+/* the calendar's roll chip — counts only, never names; the names are behind the coach key */
+.chip.roll{background:var(--good-bg);border-color:transparent;color:var(--good);font-weight:600;cursor:pointer}
+.chip.rollopen{background:transparent;border-color:var(--accent);color:var(--accent);font-weight:600;cursor:pointer}
+.chip.rollopen:hover{background:var(--accent);color:#fff}
+
 /* ═══════════ phones — the campaign calendar as a stack, not a two-column ledger ═══════════
    On a 390px screen the desktop row (96px date column + time + type + host, then
    the topic in whatever is left) squeezed the topic into a sliver one letter wide.
@@ -975,6 +1050,16 @@ const SEED = {
      ones stay readable. Lives here in the shared hub data rather than the
      private roster sheet so both coaches see every mark. */
   checkins: {},
+
+  /* ── Call attendance (Mentees ▸ Call Attendance) ───────────────────────
+     attendance[cid] = {for, expected:[RepID…], marks:{RepID:"on"|"x"}, guests, done, makeup}
+     keyed by the call's cid (every call on the calendar carries one — see
+     ensureCids). `for` is "all" or one program; `expected` is who that was when the roll was taken,
+     so someone who joins later is never counted as having missed it. Marks:
+     on the call · excused; anyone expected with no mark has missed it once the
+     roll is `done`. `makeup` is the AssignmentID of that call's replay. RepIDs
+     only, like checkins — names stay on the private roster. */
+  attendance: {},
 
   /* ── Tab 1: the 2026 group-call calendar ──────────────────────────────
      one row per Tuesday. `alt` = the earlier 2026 draft that lives at the
@@ -1367,6 +1452,7 @@ const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:
              tier:"all", assignView:"board", assignProg:"all", assignFormer:false,   // show ticked-off items too — hiding them reads as deletion
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"",     // Mentees ▸ Weekly Check-ins
+             atProgs:[],   atCoaches:[],   atGroup:"coach", atCampaign:"",     // Mentees ▸ Call Attendance
              moneyKind:"all", moneyWho:"all", moneyCat:"", moneyVoid:false };  // Money filters
 /* Check-in marks made since the last successful sync, and how many other
    kinds of edit happened alongside them. Two coaches marking the same board
@@ -1454,7 +1540,27 @@ function migrate(d){
     }
   }
   ensureYears(d);
+  ensureCids(d);
   return d;
+}
+
+/* ── every call has a cid ───────────────────────────────────────────────
+   The roll has to stay attached to its call when the call moves to another
+   night, and a night can hold two calls, so a date can't be the key. Each
+   call (a week's main call, and every r.extra[] call) carries a cid instead.
+   A missing one is made from the call's night and slot — the same on Alan's
+   copy and Ben's — skipping any id already taken by a call or a roll, so a
+   cleared-and-replanned week never inherits the old call's roll. save() runs
+   this too, so a call added in the page has its id before it's shared. ── */
+function ensureCids(d){
+  if(!Array.isArray(d.calendar)) return;
+  const taken = new Set(Object.keys(d.attendance || {}));
+  d.calendar.forEach(r => { if(r.cid) taken.add(r.cid); (r.extra || []).forEach(x => { if(x && x.cid) taken.add(x.cid); }); });
+  const fresh = base => { let id = base, n = 1; while(taken.has(id)) id = base + "." + (++n); taken.add(id); return id; };
+  d.calendar.forEach(r => {
+    if(!r.cid) r.cid = fresh("c" + r.date);
+    (r.extra || []).forEach((x, j) => { if(x && !x.cid) x.cid = fresh("c" + r.date + "x" + (j + 1)); });
+  });
 }
 
 /* ── the calendar rolls itself forward ──────────────────────────────────
@@ -1495,7 +1601,9 @@ function blankYear(cal, year){
 }
 function save(kind){
   try{
-    if(kind !== "checkin") OTHER_EDITS++;          // anything but a check-in mark still gets the conflict prompt
+    /* anything but a check-in mark or a roll mark still gets the conflict prompt */
+    if(kind !== "checkin" && kind !== "roll") OTHER_EDITS++;
+    ensureCids(DATA);
     localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
     DIRTY = true; DF = null; paintSaveState();   // topic weights are rebuilt from the edited data
     if(typeof scheduleSync === "function") scheduleSync();
@@ -2238,6 +2346,11 @@ function setCheckin(camp, rep, week, state){
   CI_JOURNAL.push({camp, rep, week, state});   // replayed if the save collides with the other coach's
   save("checkin");
 }
+/* one journaled mark, put back on top of the other coach's copy — a check-in
+   square, or a change to a call's roll (Call Attendance) */
+function replayMark(j){
+  if(j.roll) applyRoll(j); else applyCheckin(j.camp, j.rep, j.week, j.state);
+}
 /* this week, everyone eligible, no filters — feeds the tab-bar count */
 function ciWeekTally(){
   const mon = thisWeekStart(), camp = thisCampaign();
@@ -2537,7 +2650,7 @@ async function assignLoad(force){
 function assignCampaigns(){const set=new Set([currentCampaignLabel()]);(ASSIGN.rows?ASSIGN.rows.assignments:[]).forEach(a=>{if(a.Campaign)set.add(String(a.Campaign).trim());});return [...set].sort((a,b)=>campKeyHub(b)-campKeyHub(a));}
 const isArchived=a=>String(a.Active||"Y").toUpperCase()==="N";
 function assignList(){   // catalog rows for the picked campaign, due-date order
-  return (ASSIGN.rows.assignments||[]).filter(a=>a.AssignmentID&&String(a.Campaign||"").trim()===ASSIGN.campaign)
+  return (ASSIGN.rows.assignments||[]).filter(a=>a.AssignmentID&&String(a.Campaign||"").trim()===ASSIGN.campaign&&!atIsMakeup(a))   // make-ups live on Call Attendance
     .filter(a=>ASSIGN.showArchived||!isArchived(a))
     .sort((x,y)=>String(dueISO(x.DueDate)||"9999").localeCompare(String(dueISO(y.DueDate)||"9999"))||String(x.Title||"").localeCompare(String(y.Title||"")));
 }
@@ -2783,6 +2896,743 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASSIGN.open)closeCell();});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB — CALL ATTENDANCE (Mentees ▸ Call Attendance · coach-key gated)
+
+   A roll for every group call. Tick who's on; once the roll is in, anyone the
+   call was for who isn't ticked has missed it. Excused only means the absence
+   isn't held against them: they still owe the replay. A replay never counts
+   as being on the call.
+
+   A call is for its own program: a T1 topic is for The Dojo, T2 for The Path,
+   T3 for The Masters, and an untagged topic (a hot seat, say) for everyone.
+   Someone from another program who joins is a drop-in and never owes a
+   replay. The roll can set it for one call.
+
+   The roll lives in DATA.attendance, keyed by the call's cid: RepIDs and marks
+   only, like the check-in board. Names come from the private roster.
+
+   A missed call becomes a make-up: one catalog assignment per call ("Replay ·
+   topic · date", due the Friday after the call at midnight) that everyone in
+   its programs who doesn't owe it has marked not applicable. So it lands only
+   on the dashboards of the people who missed, with the Assignments tab's
+   reminder texts and review drawer, and asks nothing new of the check-in
+   script. Make-ups stay off the Assignments board; they're read here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/*ATTEND_MATH_BEGIN*/
+/* The rules, free of the page so tests/attend-math.test.js can run them under
+   node. Leans on the ASSIGN_STATE block (tierRank, tierName, assignPrograms,
+   dueISO); the test loads the two together. */
+/* who a call is for: "all", or one program. Its topic's tier sets it — T1 The
+   Dojo, T2 The Path, T3 The Masters, untagged everyone — so a Masters mentee
+   never owes the replay of a Path call. */
+const AT_FOR = {all:"Everyone", Dojo:"Dojo", Path:"Path", Masters:"Masters"};
+const AT_FOR_CHIP = {all:"t0", Dojo:"t1", Path:"t2", Masters:"t3"};
+function atForOf(tier){ return {1:"Dojo", 2:"Path", 3:"Masters"}[Number(tier)] || "all"; }
+function atExpects(forWhom, program){ return !AT_FOR[forWhom] || forWhom === "all" || tierName(program) === forWhom; }
+const atForName = f => f === "all" || !AT_FOR[f] ? "everyone" : "The " + f;
+/* a replay is due the Friday after the call, at midnight: a Tuesday call's is
+   that Friday, a Friday call's the Friday after */
+function atDueFriday(iso){
+  const [y, m, d] = String(iso).split("-").map(Number), t = new Date(y, m - 1, d);
+  t.setDate(t.getDate() + ((12 - t.getDay()) % 7 || 7));
+  return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+}
+/* on the call · excused · not marked, over the people the call was for; plus
+   drop-ins (on it without being expected) and guests */
+function atCount(roll){
+  const exp = new Set((roll && roll.expected) || []), marks = (roll && roll.marks) || {};
+  const c = {expected:exp.size, on:0, excused:0, unmarked:0, drop:0, guests:Number((roll && roll.guests) || 0)};
+  for(const id of exp){ const m = marks[id]; if(m === "on") c.on++; else if(m === "x") c.excused++; else c.unmarked++; }
+  for(const id of Object.keys(marks)) if(marks[id] === "on" && !exp.has(id)) c.drop++;
+  return c;
+}
+/* who owes the replay: everyone the call was for who wasn't on it, excused
+   included — once the roll is in, and never for a call marked "no roll" */
+function atOwes(roll){
+  if(!roll || !roll.done || roll.skip) return [];
+  const marks = roll.marks || {};
+  return (roll.expected || []).filter(id => marks[id] !== "on");
+}
+const atSame = (a, b) => String(a == null ? "" : a).replace(/\s+/g, " ").trim() === String(b == null ? "" : b).replace(/\s+/g, " ").trim();
+const atLive = a => String(a.Active == null || a.Active === "" ? "Y" : a.Active).trim().toUpperCase() !== "N";
+/* a mentee still on the program: the sheet writes Y/N, the roster true/false */
+const atOn = r => !!r && r.Active !== false && !/^(n|no|false|0)$/i.test(String(r.Active == null ? "" : r.Active).trim());
+/* What it takes for a call's make-up to match its roll. `a` is the catalog row
+   (null until there is one), `want` how it should read. Its programs are the
+   owers' programs, and everyone else in those programs gets a "not applicable"
+   override: `ops` says whose to set, or to lift for someone who owes it after
+   all. `create` / `save` / `archive` are what the row itself needs. Run ops
+   before save, so a program is never added to a live row while people in it
+   who don't owe the replay could still see it. */
+function atPlan(owe, reps, a, overrides, want){
+  const oweSet = new Set((owe || []).map(String));
+  const live = (reps || []).filter(atOn);
+  const owers = live.filter(r => oweSet.has(String(r.RepID)));
+  if(!owers.length) return {create:false, archive:!!a && atLive(a), ops:[], save:null, programs:[]};
+  const programs = [...new Set(owers.map(r => tierName(r.Tier)))].sort((x, y) => tierRank(x) - tierRank(y));
+  const id = a ? String(a.AssignmentID) : "";
+  /* first match wins, the way assignState reads overrides */
+  const naFor = r => { const o = id && (overrides || []).find(o => String(o.AssignmentID) === id && String(o.RepID) === String(r.RepID));
+                       return !!o && dueISO(o.DueDate) === "NA"; };
+  const ops = [];
+  for(const r of live){
+    if(programs.indexOf(tierName(r.Tier)) < 0) continue;
+    const owes = oweSet.has(String(r.RepID)), na = naFor(r);
+    if(owes && na) ops.push({repId:String(r.RepID), dueDate:""});
+    else if(!owes && !na) ops.push({repId:String(r.RepID), dueDate:"NA"});
+  }
+  const row = {programs, campaign:want.campaign, title:want.title, instructions:want.instructions,
+               materialsUrl:want.materialsUrl || "", dueDate:want.dueDate, active:true};
+  const same = !!a && atLive(a) && assignPrograms(a).join() === programs.join() && atSame(a.Campaign, row.campaign) &&
+    atSame(a.Title, row.title) && atSame(a.Instructions, row.instructions) && atSame(a.MaterialsURL, row.materialsUrl) &&
+    dueISO(a.DueDate) === row.dueDate;
+  return {create:!a, archive:false, ops, save:same ? null : row, programs};
+}
+/*ATTEND_MATH_END*/
+
+const AT = {open:null, url:null, q:"", busy:false, note:"", err:"", pending:null, tidied:0};
+const AT_MU = {open:{g:"", t:"replay owed", c:""}, late:{g:"!", t:"replay overdue", c:"note"}, waiting:{g:"●", t:"takeaways in · waiting on you", c:"track"},
+               revise:{g:"✎", t:"sent back · waiting on them", c:""}, approved:{g:"✓", t:"made up", c:"roll"}, unsent:{g:"?", t:"make-up not sent yet", c:""}};
+
+function rollOf(cid){ return (DATA.attendance || {})[cid] || null; }
+/* one change to a roll — made here, and put back on top of the other coach's
+   copy if a save collides (see push()), the way check-in marks are */
+function applyRoll(j){
+  if(!DATA.attendance) DATA.attendance = {};
+  const roll = DATA.attendance[j.cid] || (DATA.attendance[j.cid] = {expected:[], marks:{}});
+  if(!roll.marks) roll.marks = {};
+  if(j.key === "mark"){ if(j.value) roll.marks[j.rep] = j.value; else delete roll.marks[j.rep]; }
+  else if(j.value === undefined || j.value === null || j.value === "") delete roll[j.key];
+  else roll[j.key] = j.value;
+}
+function setRoll(cid, key, value, rep){
+  const j = {roll:true, cid, key, value, rep};
+  applyRoll(j); CI_JOURNAL.push(j); save("roll");
+}
+
+/* every call on the calendar: its cid, night, topic, type and host */
+function atCalls(){
+  ensureCids(DATA);
+  const out = [];
+  DATA.calendar.forEach(r => {
+    if(isBlocked(r) || isOff(r)) return;
+    if(isPlanned(r)) out.push({cid:r.cid, date:r.date, topic:r.topic, type:r.callType || "group", presenter:r.presenter, time:r.time || callTime(), j:-1});
+    (r.extra || []).forEach((x, j) => { if(isLiveCall(x))
+      out.push({cid:x.cid, date:callDateOf(r, x), topic:x.topic || x.speaker, type:x.type || "group", presenter:x.presenter, time:x.time, j}); });
+  });
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.j - b.j);
+}
+const atCampOf = iso => weekCampaign(isoOf(weekStartOf(parseDate(iso))));
+function atCallFor(c){ const roll = rollOf(c.cid); return roll && AT_FOR[roll.for] ? roll.for : atForOf(tierOf(c.topic)); }
+function atRoster(){ return (TEAM.rows || []).filter(r => r.Active); }
+function atExpectedNow(forWhom){ return atRoster().filter(r => atExpects(forWhom, programOf(r))).map(r => String(r.RepID)); }
+/* was this call for them? the roll's own list once there is one — so nobody
+   who joined later is ever counted as missing it — and the tier rule until then */
+function atIsFor(c, rep){
+  const roll = rollOf(c.cid);
+  return roll ? (roll.expected || []).includes(String(rep.RepID)) : atExpects(atCallFor(c), programOf(rep));
+}
+/* the first change to a call's roll fixes who the call was for */
+function atStart(c){
+  if(rollOf(c.cid)) return;
+  const f = atCallFor(c);
+  setRoll(c.cid, "expected", atExpectedNow(f)); setRoll(c.cid, "for", f);
+}
+/* one mentee on one call — what their square says */
+function atState(c, rep, today){
+  const roll = rollOf(c.cid), id = String(rep.RepID);
+  if(roll && roll.skip) return "na";
+  const isFor = atIsFor(c, rep), m = roll && roll.marks ? roll.marks[id] : "";
+  if(m === "on") return isFor ? "on" : "drop";
+  if(c.date > today) return isFor ? "fut" : "na";
+  if(!isFor) return "na";
+  if(m === "x") return "x";
+  return roll && roll.done ? "miss" : "open";
+}
+function atMakeupRow(roll){
+  if(!roll || !roll.makeup || !ASSIGN.rows) return null;
+  return (ASSIGN.rows.assignments || []).find(a => String(a.AssignmentID) === String(roll.makeup)) || null;
+}
+/* how someone's replay is going, once the roll is in: an assignState, or
+   "unsent" while the make-up hasn't reached their dashboard */
+function atMakeup(c, rep){
+  const roll = rollOf(c.cid);
+  if(!roll || !roll.done || !ASSIGN.rows) return null;
+  const a = atMakeupRow(roll);
+  if(!a || !atLive(a)) return {state:"unsent"};
+  const ar = (ASSIGN.rows.reps || []).find(r => String(r.RepID) === String(rep.RepID));
+  const s = assignState({id:String(rep.RepID), tier:ar ? ar.Tier : programOf(rep)}, a, ASSIGN.rows.overrides || [], ASSIGN.rows.submissions || [], todayISO());
+  return s.state === "na" ? {state:"unsent"} : s;
+}
+/* make-ups stay off the Assignments board — they're read and approved here */
+function atIsMakeup(a){
+  const id = String(a.AssignmentID);
+  return /^Replay · /.test(String(a.Title || "")) || Object.values(DATA.attendance || {}).some(r => r && String(r.makeup || "") === id);
+}
+function atCampaigns(){
+  const set = new Set([thisCampaign()]);
+  for(const c of atCalls()) if(rollOf(c.cid)) set.add(atCampOf(c.date));
+  return [...set].filter(x => campaignWeeks(x).length).sort((a, b) => campKeyHub(b) - campKeyHub(a));
+}
+/* calls that have happened with no roll in yet (and not marked "no roll") */
+function atToTake(camp){
+  const t = todayISO();
+  return atCalls().filter(c => { const r = rollOf(c.cid) || {}; return atCampOf(c.date) === camp && c.date <= t && !r.done && !r.skip; });
+}
+/* rolls still to take, and replays whose takeaways are in and waiting on a coach */
+function atNavCount(){
+  if(!TEAM.key || !TEAM.rows) return "";
+  const camp = thisCampaign(), take = atToTake(camp).length, byId = new Map(TEAM.rows.map(r => [String(r.RepID), r]));
+  let waiting = 0;
+  if(ASSIGN.rows) for(const c of atCalls()){
+    if(atCampOf(c.date) !== camp) continue;
+    for(const id of atOwes(rollOf(c.cid))){ const s = atMakeup(c, byId.get(id) || {RepID:id}); if(s && s.state === "waiting") waiting++; }
+  }
+  return [take ? take + " to take" : "", waiting ? waiting + " waiting" : ""].filter(Boolean).join(" · ");
+}
+function atInstructions(c, hasLink){
+  return `You missed the ${WEEKDAYS[parseDate(c.date).getDay()]} ${fmtDate(c.date)} call, so this one is yours to catch up on by Friday at midnight.\n\n` +
+    `1. Watch the recording${hasLink ? " (the Materials link)" : " (the link shows up here as soon as it's posted)"}.\n` +
+    `2. Post your takeaways in the GroupMe.\n` +
+    `3. Then answer here: did you post your takeaways in the GroupMe? What was it?`;
+}
+function atWant(c, link){
+  const topic = String(c.topic || "").trim() || "Group call";
+  return {campaign:atCampOf(c.date), title:`Replay · ${topic} · ${fmtDate(c.date)}`, instructions:atInstructions(c, !!link),
+          materialsUrl:link || "", dueDate:atDueFriday(c.date)};
+}
+/* the plan for a call, against what the assignments sheet says right now.
+   `link` null keeps whatever recording link the make-up already has. */
+/* the assignments feed's mentees, minus former ones — the roster has the final say (assignIsActive) */
+function atReps(){ return (ASSIGN.rows.reps || []).filter(assignIsActive); }
+function atPlanFor(c, link){
+  const roll = rollOf(c.cid), a = atMakeupRow(roll);
+  const url = link != null ? link : (a ? String(a.MaterialsURL || "") : "");
+  return atPlan(atOwes(roll), atReps(), a, ASSIGN.rows.overrides, atWant(c, url));
+}
+function atNeedsSync(c, link){
+  const roll = rollOf(c.cid);
+  if(!ASSIGN.rows || !roll || !roll.done || roll.skip) return false;
+  const p = atPlanFor(c, link);
+  return p.create || p.archive || p.ops.length > 0 || !!p.save;
+}
+const atFirst = r => String(r && r.Name || "").split(" ")[0];
+const atDayMD = iso => fmtDay(iso) + " " + fmtMD(parseDate(iso));
+
+function renderAttend(){
+  let html = `
+  <div class="page-head no-export no-print">
+    <div>
+      <div class="eyebrow">Call by call</div>
+      <div class="big serif">Call Attendance</div>
+      <div class="lede">A roll for every group call. Click a call to take it: tick who's on, and once the roll is in,
+        anyone the call was for who isn't ticked has missed it, and owes the replay. Excused doesn't get anyone out of the
+        replay, and a replay never counts as being on the call.</div>
+      <div class="lede how" style="margin-top:6px">Each call is for its own program, from its topic's tier: T1 is The Dojo,
+        T2 The Path, T3 The Masters, and an untagged topic is for everyone. Anyone else on it is a drop-in and never owes
+        the replay. A make-up lands on the dashboard of each person who owes one, due the Friday after the call at
+        midnight: watch the recording, post takeaways in the GroupMe, then say what they posted.</div>
+    </div>
+  </div>`;
+
+  const gate = teamGateHtml(html);
+  if(gate) return gate;
+  if(!ASSIGN.rows && !ASSIGN.loading && !ASSIGN.err) setTimeout(() => assignLoad(), 0);
+  if(AT.pending){ const cid = AT.pending; AT.pending = null; setTimeout(() => openRoll(cid), 0); }
+  if(ASSIGN.rows && AT.tidied !== ASSIGN.loadedAt && !AT.busy){ AT.tidied = ASSIGN.loadedAt; setTimeout(atTidy, 0); }
+
+  const today = todayISO(), camps = atCampaigns();
+  if(!camps.includes(UI.atCampaign)) UI.atCampaign = thisCampaign();
+  const camp = UI.atCampaign, curWeek = thisWeekStart();
+  const calls = atCalls().filter(c => atCampOf(c.date) === camp);
+  const q = UI.q.toLowerCase();
+  const everyone = atRoster().sort((a, b) => a.Name.localeCompare(b.Name));
+  const rows = everyone.filter(r => passesFilters(r, UI.atProgs, UI.atCoaches));
+  const visible = rows.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+  const groups = groupRows(visible, UI.atGroup);
+
+  /* only rolls that are in count: a roll still being taken isn't anyone's miss yet */
+  const done = calls.filter(c => { const r = rollOf(c.cid); return r && r.done && !r.skip; });
+  const last = done.filter(c => c.date <= today).slice(-1)[0];
+  const toTake = atToTake(camp);
+  const per = new Map();
+  let onN = 0, needN = 0, owed = 0, late = 0, waiting = 0;
+  const streak = [];
+  for(const r of visible){
+    const p = {on:0, need:0, owed:0, seq:[]};
+    for(const c of done){
+      const s = atState(c, r, today);
+      if(s === "on"){ p.on++; p.need++; p.seq.push("on"); }
+      else if(s === "miss"){ p.need++; p.seq.push("miss"); }
+      if(s === "miss" || s === "x"){
+        const mu = atMakeup(c, r);
+        if(!mu || mu.state !== "approved"){ p.owed++; if(mu && mu.state === "late") late++; if(mu && mu.state === "waiting") waiting++; }
+      }
+    }
+    p.streak = p.seq.length >= 2 && p.seq.slice(-2).every(x => x === "miss");
+    if(p.streak) streak.push(r);
+    onN += p.on; needN += p.need; owed += p.owed;
+    per.set(r.RepID, p);
+  }
+  const pct = needN ? Math.round(onN / needN * 100) : 0;
+
+  html += toolbar(`
+    <div class="tb-filters">
+      <select class="btn sm" data-atcamp title="Which campaign's calls" style="padding:5px 8px">${camps.map(x => `<option${x === camp ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
+      ${fgroup("Program", mseg("atProgs", [{v:"",l:"All"},{v:"Dojo",l:"Dojo"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}], UI.atProgs))}
+      ${fgroup("Coach", mseg("atCoaches", coachFilterOpts(), UI.atCoaches))}
+      ${fgroup("Group", seg("atGroup", [{v:"coach",l:"By coach"},{v:"program",l:"By program"},{v:"none",l:"None"}], UI.atGroup))}
+    </div>
+    <input class="search" id="q" placeholder="Search ${rows.length} mentees…" value="${esc(UI.q)}">
+    <div class="tb-actions">
+      <button class="btn" data-teamact="reload" title="Re-pull the roster from the sheet">Refresh</button>
+      ${exportButtons("atBoard", "Attendance " + camp)}
+    </div>`);
+
+  /* make-ups that don't match their roll yet — a roll changed after they went
+     out, a send that didn't finish, or a make-up that was never sent */
+  if(AT.busy && !AT.open) html += `<div class="at-banner no-export no-print"><span>${esc(AT.note || "Working on the make-ups…")}</span></div>`;
+  else if(AT.err && !AT.open) html += `<div class="at-banner err no-export no-print"><span>${esc(AT.err)}</span><button class="btn sm" data-atsync="clear">Dismiss</button></div>`;
+  if(ASSIGN.rows && !AT.busy){
+    const stale = done.filter(c => atNeedsSync(c, null));
+    if(stale.length) html += `<div class="at-banner no-export no-print"><span><b>Make-ups to send or update</b> on ${stale.length === 1 ? "the " + esc(atDayMD(stale[0].date)) + " call" : stale.length + " calls: " + esc(stale.map(c => atDayMD(c.date)).join(", "))} — the roll changed, or they haven't gone out yet.</span>
+      <button class="btn sm primary" data-atsync="all">Send / update</button></div>`;
+  } else if(ASSIGN.err && !ASSIGN.rows) html += `<div class="at-banner err no-export no-print"><span>Couldn't load the make-ups: ${esc(ASSIGN.err)}</span><button class="btn sm" data-assignact="reload">Try again</button></div>`;
+
+  html += `<div id="atBoard" class="export-frame">`;
+  html += printHead("Call Attendance · " + camp, `${visible.length} mentees · ${done.length} of ${calls.filter(c => c.date <= today).length} rolls in · printed ${fmtFull(today)}`);
+  const lastN = last ? atCount(rollOf(last.cid)) : null;
+  html += `<div class="stats">
+    ${statBox("Last call", lastN ? lastN.on + "/" + lastN.expected : "—", last ? atDayMD(last.date) + " · " + esc(last.topic) : "no roll in yet")}
+    ${statBox("Rolls to take", toTake.length, toTake.length ? esc(toTake.map(c => atDayMD(c.date)).join(", ")) : "all caught up", toTake.length > 0)}
+    ${statBox("Attendance", needN ? pct + "%" : "—", needN ? `${onN} of ${needN} · replays don't count` : "once a roll is in")}
+    ${statBox("Replays owed", owed, !ASSIGN.rows ? "loading make-ups…" : owed ? `${late} late · ${waiting} waiting on you` : "nobody owes one", late > 0)}
+    ${statBox("Missed the last 2", streak.length, streak.length ? esc(streak.map(atFirst).join(", ")) : "nobody", streak.length > 0)}
+  </div>`;
+
+  if(!calls.length) html += `<div class="empty-note">No calls on the calendar for ${esc(camp)} yet — plan one on the Campaign Calendar and it shows up here.</div>`;
+  else if(!everyone.length) html += `<div class="empty-note">Nobody on the roster is active right now.</div>`;
+  else if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
+  else{
+    const head = c => {
+      const roll = rollOf(c.cid), f = atCallFor(c), past = c.date <= today, cur = isoOf(weekStartOf(parseDate(c.date))) === curWeek;
+      const n = roll && !roll.skip ? atCount(roll) : null;
+      const tally = roll && roll.skip ? `<span class="take" style="color:var(--ink-faint)">no roll</span>`
+        : n && (roll.done || n.on || n.excused) ? `<span class="tally">${n.on}/${n.expected}${n.drop ? `<small>+${n.drop}</small>` : ""}</span>`
+        : past ? `<span class="take no-export no-print">take roll →</span>` : "";
+      const icon = c.type === "hotseat" ? "🔥 " : c.type === "guest" ? "🎤 " : "";
+      const inner = `<span class="wn">${esc(atDayMD(c.date))}</span><span class="ct">${icon}${esc(c.topic)}</span><span class="tl"><span class="tierchip ${AT_FOR_CHIP[f]}">${AT_FOR[f]}</span>${tally}</span>`;
+      const title = `${WEEKDAYS[parseDate(c.date).getDay()]} ${fmtDate(c.date)} · ${c.topic} · for ${atForName(f)}${roll && roll.done ? " · roll in" : past ? " · click to take the roll" : ""}`;
+      return `<th class="call${past ? "" : " fut"}${cur ? " cur" : ""}" title="${esc(title)}">${past ? `<button class="rollhd" data-rollopen="${esc(c.cid)}">${inner}</button>` : inner}</th>`;
+    };
+    const GLYPH = {on:["yes", "✓", "on the call"], drop:["drop", "✓", "dropped in — the call wasn't for them"], x:["off", "–", "excused — still owes the replay"],
+                   miss:["no", "✕", "missed"], open:["blank pend", "", "roll not in yet"], fut:["blank fut", "", "not yet"], na:["na", "", "the call wasn't for them"]};
+    html += `<div class="tbl citbl"><table class="grid ciboard atboard"><thead><tr><th class="mentee">Mentee</th>${calls.map(head).join("")}<th class="tt"></th></tr></thead><tbody>`;
+    for(const g of groups){
+      if(g.label) html += `<tr class="grp"><td colspan="${calls.length + 2}">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      for(const r of g.rows){
+        const p = per.get(r.RepID);
+        html += `<tr><td class="an"><b>${esc(r.Name)}</b>${p.streak ? `<span class="flag2">missed last 2</span>` : ""}<div class="an-sub">${programOf(r) ? `<span class="chip">${esc(programOf(r))}</span>` : ""}${coachChip(r)}</div></td>`;
+        for(const c of calls){
+          const s = atState(c, r, today), [cls, glyph, what] = GLYPH[s];
+          const cur = isoOf(weekStartOf(parseDate(c.date))) === curWeek ? " cur" : "";
+          let badge = "", mut = "";
+          if(s === "miss" || s === "x"){
+            const mu = atMakeup(c, r);
+            if(mu && AT_MU[mu.state]){ mut = " · " + AT_MU[mu.state].t + (mu.due && mu.state !== "approved" ? " · due " + fmtDueHub(mu.due) : "");
+                                       if(AT_MU[mu.state].g) badge = `<i class="mu ${mu.state}">${AT_MU[mu.state].g}</i>`; }
+          }
+          const click = c.date <= today && s !== "na" && !(rollOf(c.cid) || {}).skip;
+          html += `<td class="cc${cur}"><button class="ci ${cls}"${click ? ` data-atcell="${esc(c.cid)}|${esc(r.RepID)}"` : ""} title="${esc(r.Name)} · ${esc(atDayMD(c.date))} ${esc(c.topic)} · ${what}${esc(mut)}">${glyph}${badge}</button></td>`;
+        }
+        html += `<td class="tot" title="on the call / calls that were for them, excused left out">${p.on}/${p.need}${p.owed ? ` · <span style="color:var(--bad)">${p.owed} owed</span>` : ""}</td></tr>`;
+      }
+    }
+    html += `</tbody></table></div>`;
+    html += `<div class="cilegend">
+      <span><i class="ci yes">✓</i> On the call</span>
+      <span><i class="ci drop">✓</i> Dropped in</span>
+      <span><i class="ci off">–</i> Excused · still owes the replay</span>
+      <span><i class="ci no">✕</i> Missed</span>
+      <span><i class="ci blank pend"></i> Roll not in yet</span>
+      <span><i class="ci na"></i> The call wasn't for them</span>
+      <span>Replay: <i class="mu late">!</i> late <i class="mu waiting">●</i> waiting on you <i class="mu approved">✓</i> made up <i class="mu unsent">?</i> not sent</span>
+    </div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+/* ── the roll-call drawer. Lives in #adrawer, outside #view, so a background
+   sync render repaints it instead of wiping it mid-tap. ── */
+function openRoll(cid, focusRep){
+  if(!TEAM.rows){ AT.pending = cid; return; }
+  const c = atCalls().find(x => x.cid === cid);
+  if(!c) return;
+  if(ASSIGN.open) closeCell();
+  AT.open = cid; AT.url = null; AT.q = "";
+  if(!AT.busy){ AT.note = ""; AT.err = ""; }
+  paintRoll();
+  const d = $("#adrawer"); d.classList.add("on"); d.setAttribute("aria-hidden", "false");
+  if(!ASSIGN.rows && !ASSIGN.loading) assignLoad();
+  if(focusRep) setTimeout(() => {
+    const el = document.querySelector(`#adrawer [data-rep="${CSS.escape(focusRep)}"]`);
+    if(el){ el.scrollIntoView({block:"center"}); el.style.outline = "2px solid var(--accent)"; setTimeout(() => { el.style.outline = ""; }, 1400); }
+  }, 60);
+}
+function closeRoll(){
+  if(!AT.open) return;
+  AT.open = null;
+  const d = $("#adrawer"); d.classList.remove("on"); d.setAttribute("aria-hidden", "true");
+}
+function paintRoll(){
+  const d = $("#adrawer"), c = AT.open && atCalls().find(x => x.cid === AT.open);
+  if(!d || !AT.open) return;
+  if(!c){ closeRoll(); return; }
+  const body = d.querySelector(".ad-body"), top = body ? body.scrollTop : 0, act = document.activeElement, focus = act && d.contains(act) ? act.id : "";
+  d.innerHTML = rollHtml(c);
+  const nb = d.querySelector(".ad-body"); if(nb) nb.scrollTop = top;
+  const f = focus && document.getElementById(focus);
+  if(f){ f.focus(); try{ f.setSelectionRange(f.value.length, f.value.length); }catch(e){} }
+}
+function rollHtml(c){
+  const roll = rollOf(c.cid), f = atCallFor(c), today = todayISO(), dis = AT.busy ? " disabled" : "";
+  const marks = (roll && roll.marks) || {}, expIds = roll ? (roll.expected || []) : atExpectedNow(f);
+  const n = roll ? atCount(roll) : {expected:expIds.length, on:0, excused:0, unmarked:expIds.length, drop:0, guests:0};
+  const byId = new Map((TEAM.rows || []).map(r => [String(r.RepID), r]));
+  const person = id => byId.get(id) || {RepID:id, Name:id};
+  const byName = (a, b) => String(a.Name).localeCompare(String(b.Name));
+  const q = AT.q.trim().toLowerCase(), match = r => !q || String(r.Name || "").toLowerCase().includes(q);
+  const done = !!(roll && roll.done), time = fmtTime(c.time, c.date);
+
+  let h = `<div class="ad-head"><div>
+      <div class="ad-sub">Roll call · ${esc(CALL_TYPES[c.type] || "Group")}</div>
+      <div class="t">${esc(c.topic)}</div>
+      <div class="s"><span class="mono">${esc(WEEKDAYS[parseDate(c.date).getDay()].slice(0, 3))} ${esc(fmtDate(c.date))}${time ? " · " + esc(time) : ""}</span>${
+        c.presenter ? `<span class="chip ${presenterClass(c.presenter)}">${esc(c.presenter)}</span>` : ""}</div>
+    </div><button class="btn sm" data-roll="close">Close</button></div><div class="ad-body">`;
+
+  if(c.date > today){
+    h += `<div class="empty-note" style="padding:18px">This call hasn't happened yet — the roll opens on the night.</div></div>`;
+    return h + rollFoot();
+  }
+  if(roll && roll.skip){
+    h += `<div class="rc-mu"><div><b>No roll for this call.</b> It doesn't count for or against anyone, and nobody owes a replay.</div>
+      <button class="btn" data-roll="unskip">Take the roll after all</button></div></div>`;
+    return h + rollFoot();
+  }
+
+  h += `<div class="rc-exp"><span class="flab">The call was for</span><div class="seg">${Object.keys(AT_FOR).map(v =>
+    `<button class="${f === v ? "on" : ""}" data-rollfor="${v}"${dis}>${AT_FOR[v]}</button>`).join("")}</div></div>`;
+  h += `<div class="rc-tally"><span class="chip roll">${n.on} of ${n.expected} on the call</span>${
+    n.drop ? `<span class="chip roll">+${n.drop} dropped in</span>` : ""}${
+    n.excused ? `<span class="chip">${n.excused} excused</span>` : ""}${
+    n.unmarked ? `<span class="chip note">${n.unmarked} ${done ? "missed" : "not marked yet"}</span>` : ""}${
+    n.guests ? `<span class="chip count">${n.guests} guest${n.guests === 1 ? "" : "s"}</span>` : ""}</div>`;
+  h += `<div class="rc-actions"><input class="search" id="rollQ" placeholder="Find a name…" value="${esc(AT.q)}" autocomplete="off">
+    <button class="btn sm" data-roll="all"${dis} title="Tick everyone who isn't marked yet">✓ Everyone on</button></div>`;
+
+  const row = (r, isFor) => {
+    const id = String(r.RepID), m = marks[id] || "", prog = programOf(r);
+    return `<div class="rc-row${m === "on" ? " on" : m === "x" ? " ex" : ""}" data-rep="${esc(id)}">
+      <div class="rc-name"><b>${esc(r.Name)}</b><div class="an-sub">${prog ? `<span class="chip">${esc(prog)}</span>` : ""}${coachChip(r)}${r.Active === false ? `<span class="chip">former</span>` : ""}${isFor ? rollMuChip(c, r) : ""}</div></div>
+      <div class="rc-seg">${isFor
+        ? `<button class="here${m === "on" ? " on" : ""}" data-rollmark="${esc(id)}|on"${dis}>✓ On</button><button class="exc${m === "x" ? " on" : ""}" data-rollmark="${esc(id)}|x"${dis}>– Excused</button>`
+        : `<button class="here on" disabled>✓ On</button><button data-rollmark="${esc(id)}|" title="Take them off this call"${dis}>×</button>`}</div></div>`;
+  };
+  const expRows = expIds.map(person).filter(match).sort(byName);
+  h += `<div class="rc-sec">For ${esc(atForName(f))} · ${expIds.length}</div>`;
+  h += expRows.length ? expRows.map(r => row(r, true)).join("")
+       : `<div class="empty-note" style="padding:12px">${q ? "No name matches." : "Nobody on the roster is in " + esc(atForName(f)) + "."}</div>`;
+
+  const dropIds = Object.keys(marks).filter(id => marks[id] === "on" && !expIds.includes(id));
+  const others = atRoster().filter(r => !expIds.includes(String(r.RepID)) && marks[String(r.RepID)] !== "on").sort(byName);
+  h += `<div class="rc-sec">Dropped in · on it without the call being for them</div>`;
+  h += dropIds.map(person).sort(byName).map(r => row(r, false)).join("");
+  h += others.length ? `<select class="rc-add" data-rolladd${dis}><option value="">+ someone the call wasn't for…</option>${
+         others.map(r => `<option value="${esc(r.RepID)}">${esc(r.Name)}${programOf(r) ? " · " + esc(programOf(r)) : ""}</option>`).join("")}</select>`
+       : (dropIds.length ? "" : `<div style="font-size:12px;color:var(--ink-faint)">Everyone on the roster was expected on this one.</div>`);
+
+  h += `<div class="rc-sec">Guests</div><div class="rc-guest"><div><b style="font-size:13px">Prospects &amp; visitors</b>
+      <small>A count only — names never go in the shared copy.</small></div>
+    <div class="step"><button class="btn sm" data-rollguests="-1"${n.guests ? dis : " disabled"}>−</button><b>${n.guests}</b><button class="btn sm" data-rollguests="1"${dis}>+</button></div></div>`;
+
+  h += `<div class="rc-sec">Make-ups</div>` + rollMakeupHtml(c, roll);
+  if(!roll || (!done && !Object.keys(marks).length))
+    h += `<button class="btn sm" data-roll="skip" style="justify-self:start" title="Nobody took a roll on this one — it won't count for or against anyone"${dis}>No roll for this call</button>`;
+  h += `</div>`;
+  return h + rollFoot();
+}
+function rollFoot(){
+  const other = whoAmI() === "Ben" ? "Alan" : whoAmI() === "Alan" ? "Ben" : "the other coach";
+  return `<div class="rc-foot"><span>Saves as you tap · shared with ${esc(other)}</span><button class="btn primary" data-roll="close">Done</button></div>`;
+}
+function rollMuChip(c, r){
+  const roll = rollOf(c.cid);
+  if(!roll || !roll.done || !atOwes(roll).includes(String(r.RepID))) return "";
+  const s = atMakeup(c, r);
+  if(!s) return "";
+  const m = AT_MU[s.state] || AT_MU.open;
+  return `<span class="chip ${m.c}">${esc(m.t)}</span>`;
+}
+function rollMakeupHtml(c, roll){
+  const due = atDueFriday(c.date), dueTxt = `${WEEKDAYS[parseDate(due).getDay()]} ${fmtDate(due)} at midnight`;
+  const a = atMakeupRow(roll), dis = AT.busy ? " disabled" : "";
+  const url = AT.url != null ? AT.url : (a ? String(a.MaterialsURL || "") : "");
+  const status = AT.busy ? `<div class="rc-msg busy">${esc(AT.note || "Working…")}</div>`
+               : AT.err ? `<div class="rc-msg err">${esc(AT.err)}</div>`
+               : AT.note ? `<div class="rc-msg">${esc(AT.note)}</div>` : "";
+  /* once a make-up is out, the link gets its own Save — typing doesn't repaint the drawer */
+  const link = `<div class="ad-row"><input id="rollUrl" type="url" placeholder="Recording link — https://… (now or later)" value="${esc(url)}"${dis}>${
+    roll && roll.done && a && atLive(a) ? `<button class="btn sm" data-roll="sync"${dis} title="Put this link on the make-up">Save link</button>` : ""}</div>`;
+  if(!roll || !roll.done){
+    const k = roll ? atCount(roll).unmarked + atCount(roll).excused : atExpectedNow(atCallFor(c)).length;
+    return `<div class="rc-mu"><div>When everyone's marked, put the roll in. Anyone the call was for who isn't on it — excused
+        included — gets a make-up on their dashboard, due ${esc(dueTxt)}.
+        <small>They watch the recording, post takeaways in the GroupMe, then answer: did you post them, and what was it?</small></div>
+      ${link}<button class="btn primary" data-roll="in"${dis}>Roll's in${k ? ` · send ${k} make-up${k === 1 ? "" : "s"}` : " · everyone was on"}</button>${status}</div>`;
+  }
+  const owe = atOwes(roll), byId = new Map((TEAM.rows || []).map(r => [String(r.RepID), r]));
+  let h = owe.length
+    ? `<div><b>${owe.length} owe${owe.length === 1 ? "s" : ""} the replay</b>, due ${esc(dueTxt)}.</div>`
+    : `<div>Everyone the call was for was on it — nothing to make up.</div>`;
+  if(owe.length || a) h += link;
+  if(!ASSIGN.rows) h += `<div class="rc-msg${ASSIGN.err ? " err" : " busy"}">${ASSIGN.err ? esc(ASSIGN.err) : "Loading the make-ups…"}</div>`;
+  else if(atNeedsSync(c, AT.url != null ? AT.url.trim() : null))
+    h += `<button class="btn primary" data-roll="sync"${dis}>${a && atLive(a) ? "Update make-ups" : owe.length ? `Send ${owe.length} make-up${owe.length === 1 ? "" : "s"}` : "Take the make-up down"}</button>`;
+  else if(owe.length && !status) h += `<div class="rc-msg">On their dashboards ✓</div>`;
+  h += status;
+  if(!a && !AT.busy) h += `<button class="btn sm" data-roll="undo" style="justify-self:start">Not in yet — keep marking</button>`;
+  return `<div class="rc-mu">${h}</div>`;
+}
+
+/* ── make-ups: bring a call's replay assignment in line with its roll ── */
+const atSleep = ms => new Promise(r => setTimeout(r, ms));
+async function atFresh(){
+  while(ASSIGN.loading) await atSleep(150);
+  await assignLoad(true);
+  if(!ASSIGN.rows) throw new Error(ASSIGN.err || "Couldn't load the assignments sheet.");
+}
+/* /exec sometimes answers with a Google error page instead of JSON — ride
+   that out. A real "no" from the script stops at once. */
+async function atWrite(body, tries){
+  for(let attempt = 1; ; attempt++){
+    let out;
+    try{ out = await teamCall(Object.assign({by:whoAmI()}, body)); }
+    catch(e){
+      if(attempt >= (tries || 3)) throw new Error("Couldn't reach the assignments sheet — try again in a minute.");
+      await atSleep(attempt * 2000); continue;
+    }
+    if(out && out.ok) return out;
+    throw new Error("The assignments sheet said no: " + ((out && out.error) || "no reason given"));
+  }
+}
+function atFind(want){
+  const linked = new Set(Object.values(DATA.attendance || {}).map(r => String(r && r.makeup || "")));
+  const hits = (ASSIGN.rows.assignments || []).filter(a => a.AssignmentID && atSame(a.Title, want.title) && atSame(a.Campaign, want.campaign));
+  return hits.filter(a => !linked.has(String(a.AssignmentID))).pop() || hits.pop() || null;
+}
+/* A create is never blindly retried: if the reply is lost, look for the row
+   before trying again, so one call never grows two make-ups. */
+async function atCreate(row, want){
+  const idOf = out => String(out.id || out.assignmentId || out.AssignmentID || (out.assignment && out.assignment.AssignmentID) || "");
+  try{ return idOf(await atWrite({action:"saveAssignment", a:row}, 1)); }
+  catch(e){
+    if(/said no/.test(e.message)) throw e;
+    await atFresh();
+    const hit = atFind(want);
+    if(hit) return String(hit.AssignmentID);
+    return idOf(await atWrite({action:"saveAssignment", a:row}, 1));
+  }
+}
+async function atSync(cid, link){
+  if(AT.busy) return;
+  const c = atCalls().find(x => x.cid === cid), r0 = rollOf(cid);
+  if(!c || !r0 || !r0.done || r0.skip) return;
+  if(whoAmI() === "someone") askWho(true);
+  AT.busy = true; AT.err = ""; AT.note = "Checking the assignments sheet…"; render();
+  try{
+    await atFresh();
+    let a = atMakeupRow(rollOf(cid));
+    const url = link != null ? link : (a ? String(a.MaterialsURL || "") : "");
+    const want = atWant(c, url);
+    let plan = atPlan(atOwes(rollOf(cid)), atReps(), a, ASSIGN.rows.overrides, want);
+    if(plan.archive){
+      AT.note = "Nobody owes this one any more — taking the make-up down…"; render();
+      await atWrite({action:"saveAssignment", a:Object.assign(editingFrom(a), {active:false})});
+      AT.note = "Nobody owes a replay — make-up taken down ✓";
+    } else if(plan.create || plan.ops.length || plan.save){
+      if(plan.create){
+        a = atFind(want);                                   // the other coach may have just sent it
+        if(!a){
+          AT.note = "Creating the make-up…"; render();
+          /* made switched off, so nobody sees it until the overrides are in */
+          const id = await atCreate(Object.assign({id:""}, plan.save, {active:false}), want);
+          await atFresh();
+          a = (id && (ASSIGN.rows.assignments || []).find(x => String(x.AssignmentID) === id)) || atFind(want);
+          if(!a) throw new Error("The make-up was made, but the sheet isn't showing it yet — press Send again in a minute.");
+        }
+        if(String(rollOf(cid).makeup || "") !== String(a.AssignmentID)) setRoll(cid, "makeup", String(a.AssignmentID));
+        plan = atPlan(atOwes(rollOf(cid)), atReps(), a, ASSIGN.rows.overrides, want);
+      }
+      const id = String(a.AssignmentID);
+      /* one at a time — the check-in script writes the overrides tab row by row */
+      for(let i = 0; i < plan.ops.length; i++){
+        AT.note = `Setting who owes it · ${i + 1} of ${plan.ops.length}`; render();
+        await atWrite({action:"setOverride", repId:plan.ops[i].repId, assignmentId:id, dueDate:plan.ops[i].dueDate});
+      }
+      if(plan.save){ AT.note = "Putting it on their dashboards…"; render(); await atWrite({action:"saveAssignment", a:Object.assign({id}, plan.save)}); }
+      const k = atOwes(rollOf(cid)).length;
+      AT.note = `${k} make-up${k === 1 ? "" : "s"} on their dashboard${k === 1 ? "" : "s"} · due ${fmtDay(want.dueDate)} ${fmtDate(want.dueDate)} at midnight ✓`;
+    } else AT.note = "The make-ups already match the roll ✓";
+    if(link != null && AT.open === cid) AT.url = null;
+    await atFresh();
+  }catch(e){
+    AT.err = (e && e.message) || "Something went wrong — try again."; AT.note = "";
+  }finally{
+    AT.busy = false; render();
+  }
+}
+async function atSyncAll(){
+  const t = todayISO();
+  for(const c of atCalls().filter(c => c.date <= t)){
+    if(AT.err) break;
+    if(atNeedsSync(c, null)) await atSync(c.cid, null);
+  }
+}
+/* The one change made without asking: anyone who can see a make-up they
+   don't owe — a mentee who joined after the call, or someone the roll now has
+   on it — has it taken off their dashboard. Handing a make-up out always waits
+   for a coach to press the button. */
+async function atTidy(){
+  if(AT.busy || !ASSIGN.rows || !TEAM.key) return;
+  const work = [], today = todayISO();
+  for(const c of atCalls()){
+    const roll = rollOf(c.cid), a = atMakeupRow(roll);
+    if(!roll || !roll.done || roll.skip || !a || !atLive(a)) continue;
+    const owe = new Set(atOwes(roll));
+    for(const r of atReps()){
+      if(owe.has(String(r.RepID))) continue;
+      if(assignState({id:String(r.RepID), tier:r.Tier}, a, ASSIGN.rows.overrides || [], [], today).state !== "na")
+        work.push({repId:String(r.RepID), id:String(a.AssignmentID)});
+    }
+  }
+  if(!work.length) return;
+  AT.busy = true; AT.note = `Taking ${work.length} make-up${work.length === 1 ? "" : "s"} off dashboards that don't owe them…`; render();
+  try{
+    for(const w of work) await atWrite({action:"setOverride", repId:w.repId, assignmentId:w.id, dueDate:"NA"});
+    AT.note = "";
+    await atFresh();
+  }catch(e){ AT.err = "Couldn't tidy the make-ups: " + e.message; AT.note = ""; }
+  finally{ AT.busy = false; render(); }
+}
+
+/* ── clicks, typing, keys — document-level, so they survive re-renders ── */
+function atReadUrl(){
+  if(AT.url == null) return null;
+  const v = AT.url.trim();
+  if(v && !/^https?:\/\//i.test(v)){ toast("The recording link needs to start with http:// or https://"); return false; }
+  return v;
+}
+document.addEventListener("click", e => {
+  const open = e.target.closest("[data-rollopen]");
+  if(open){
+    e.preventDefault();
+    if(TAB !== "attend"){ TAB = "attend"; location.hash = TAB; UI.q = ""; render(); window.scrollTo(0, 0); }
+    openRoll(open.dataset.rollopen);
+    return;
+  }
+  const cell = e.target.closest("[data-atcell]");
+  if(cell){
+    const [cid, repId] = cell.dataset.atcell.split("|");
+    const roll = rollOf(cid), a = atMakeupRow(roll);
+    /* a replay with something to read goes straight to the review drawer */
+    if(a && atOwes(roll).includes(repId) && (ASSIGN.rows.reps || []).some(r => String(r.RepID) === repId)){
+      closeRoll(); openCell(repId, String(a.AssignmentID)); return;
+    }
+    openRoll(cid, repId); return;
+  }
+  const sync = e.target.closest("[data-atsync]");
+  if(sync){ if(sync.dataset.atsync === "clear"){ AT.err = ""; render(); } else atSyncAll(); return; }
+
+  if(!AT.open || !e.target.closest("#adrawer")) return;
+  const c = atCalls().find(x => x.cid === AT.open);
+  if(!c) return;
+  const mk = e.target.closest("[data-rollmark]"), fr = e.target.closest("[data-rollfor]"), gs = e.target.closest("[data-rollguests]"), act = e.target.closest("[data-roll]");
+  if(mk){
+    const [rep, v] = mk.dataset.rollmark.split("|");
+    atStart(c);
+    const cur = (rollOf(c.cid).marks || {})[rep] || "";
+    setRoll(c.cid, "mark", cur === v ? "" : v, rep);
+    render(); return;
+  }
+  if(fr){
+    const v = fr.dataset.rollfor;
+    if(v === atCallFor(c)) return;
+    atStart(c);
+    setRoll(c.cid, "for", v); setRoll(c.cid, "expected", atExpectedNow(v));
+    render(); return;
+  }
+  if(gs){
+    atStart(c);
+    const g = Math.max(0, Number(rollOf(c.cid).guests || 0) + Number(gs.dataset.rollguests));
+    setRoll(c.cid, "guests", g || ""); render(); return;
+  }
+  if(!act) return;
+  const k = act.dataset.roll;
+  if(k === "close"){ closeRoll(); return; }
+  if(k === "all"){
+    atStart(c);
+    const roll = rollOf(c.cid);
+    for(const id of roll.expected || []) if(!roll.marks[id]) setRoll(c.cid, "mark", "on", id);
+    render(); return;
+  }
+  if(k === "skip"){ setRoll(c.cid, "skip", true); render(); return; }
+  if(k === "unskip"){
+    const f = atCallFor(c);
+    setRoll(c.cid, "skip", ""); setRoll(c.cid, "expected", atExpectedNow(f)); setRoll(c.cid, "for", f);
+    render(); return;
+  }
+  if(k === "undo"){ setRoll(c.cid, "done", ""); AT.note = ""; AT.err = ""; render(); return; }
+  if(k === "in" || k === "sync"){
+    const url = atReadUrl();
+    if(url === false) return;
+    if(k === "in"){ atStart(c); setRoll(c.cid, "done", true); }
+    atSync(c.cid, url);
+  }
+});
+document.addEventListener("input", e => {
+  if(e.target.id === "rollQ"){ AT.q = e.target.value; paintRoll(); }
+  if(e.target.id === "rollUrl"){ AT.url = e.target.value; }     // no repaint — let them type
+});
+document.addEventListener("change", e => {
+  const add = e.target.closest("select[data-rolladd]");
+  if(add && add.value && AT.open){
+    const c = atCalls().find(x => x.cid === AT.open);
+    if(c){ atStart(c); setRoll(c.cid, "mark", "on", add.value); render(); }
+    return;
+  }
+  const s = e.target.closest("select[data-atcamp]");
+  if(s){ UI.atCampaign = s.value; render(); }
+});
+document.addEventListener("keydown", e => { if(e.key === "Escape" && AT.open) closeRoll(); });
+
+/* the calendar's roll chip: a count once the roll is in — never names, the
+   calendar isn't behind the coach key — or a nudge to take it this campaign */
+function atChip(cid, date){
+  if(!cid || date > todayISO()) return "";
+  const roll = rollOf(cid);
+  if(roll && roll.skip) return "";
+  if(roll && roll.done){
+    const n = atCount(roll);
+    return `<div class="wk-meta no-export no-print"><button class="chip roll" data-rollopen="${esc(cid)}" title="Open the roll">✓ ${n.on} of ${n.expected} on the call${n.drop ? " · +" + n.drop + " dropped in" : ""}</button></div>`;
+  }
+  if(atCampOf(date) !== thisCampaign()) return "";          // no nagging about calls from before the board existed
+  return `<div class="wk-meta no-export no-print"><button class="chip rollopen" data-rollopen="${esc(cid)}">${roll ? "Finish the roll →" : "Take the roll →"}</button></div>`;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TAB — PERFORMANCE (the mentee dashboard, embedded)
@@ -3822,6 +4672,9 @@ const TABS = [
    count:()=>{ if(!TEAM.rows) return ""; const c = ciWeekTally(); return c.total ? c.open + " open" : ""; },
    render:renderCheckins},
 
+  {id:"attend", label:"Call Attendance", sub:"Call Attendance", section:"team", printable:true,
+   count:atNavCount, render:renderAttend},
+
   {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
    count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : "",
    render:renderAssign},
@@ -3885,6 +4738,7 @@ function statBox(lab, val, meta, alert){
    TAB 1 — CAMPAIGN CALENDAR
    ═══════════════════════════════════════════════════════════════════════════ */
 function renderCalendar(){
+  ensureCids(DATA);
   const years = yearsIn(DATA.calendar);
   if(!years.includes(UI.year)) UI.year = years.includes(new Date().getFullYear())
     ? new Date().getFullYear() : years[years.length - 1];
@@ -4084,7 +4938,7 @@ function weekRow(r, idx, wkNum){
   if(planned){
     slots.push({date:r.date, j:-1, html:
       `<div class="slot main ${mainType} t${mainType === "hotseat" ? 0 : tierOf(r.topic)}">${sdate(p+".date", r.date, r.date)}${stime(p+".time", r.time, callTime(), r.date)}${stag(p+".callType", mainType)}<span class="stopic">${ed(p+".topic", r.topic)}${mainType === "hotseat" ? "" : tierChip(r.topic)}</span>${spk(p+".speaker", mainType, r.speaker)}${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`
-      + noteLines(p + ".mainNotes", r.mainNotes)});
+      + (off ? "" : atChip(r.cid, r.date)) + noteLines(p + ".mainNotes", r.mainNotes)});
   } else if(blocked){
     main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
   } else {
@@ -4095,7 +4949,7 @@ function weekRow(r, idx, wkNum){
     const xp = `${p}.extra.${j}`, xt = x.type || "group";
     slots.push({date:callDateOf(r, x), j, html:
       `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sdate(xp+".date", callDateOf(r, x), r.date)}${x.day ? sday(xp+".day", x.day) : ""}${stime(xp+".time", x.time, "", callDateOf(r, x))}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`
-      + noteLines(xp + ".notes", x.notes)});
+      + (isLiveCall(x) && !off && !blocked ? atChip(x.cid, callDateOf(r, x)) : "") + noteLines(xp + ".notes", x.notes)});
   });
   slots.sort((a, b) => a.date.localeCompare(b.date) || a.j - b.j);
   main += slots.map(sl => sl.html).join("");
@@ -4643,7 +5497,7 @@ async function pull(quiet){
            its reply settles that either way. Someone else's: warn — the save
            will ask before overwriting them. */
         if(body.by !== whoAmI())
-          syncStatus(body.by + " also saved — " + (OTHER_EDITS ? "you'll be asked" : "merging check-ins"), "warn");
+          syncStatus(body.by + " also saved — " + (OTHER_EDITS ? "you'll be asked" : "merging marks"), "warn");
         return;
       }
       const own = !!LAST_SENT && JSON.stringify(body.data) === LAST_SENT;   // our save, whose reply we never got
@@ -4651,7 +5505,7 @@ async function pull(quiet){
       /* marks a failed push left behind go back on top of the fresh copy;
          any other stranded edit is lost the way it always was */
       const replay = !OTHER_EDITS && CI_JOURNAL.length > 0;
-      if(replay) for(const j of CI_JOURNAL) applyCheckin(j.camp, j.rep, j.week, j.state);
+      if(replay) for(const j of CI_JOURNAL) replayMark(j);
       else { CI_JOURNAL = []; OTHER_EDITS = 0; }
       localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
       setRev(body.rev);                            // after the copy — sibling tabs read the copy when this changes
@@ -4701,11 +5555,11 @@ async function push(attempt){
         syncStatus("shared · saved just now");
         return;
       }
-      /* Only check-in marks since our last sync? Take their copy, put our
-         marks back on top, and push again — the two boards simply combine. */
+      /* Only check-in or roll marks since our last sync? Take their copy, put
+         our marks back on top, and push again — the two boards simply combine. */
       if(CI_JOURNAL.length && !OTHER_EDITS && body.data){
         DATA = migrate(body.data); DF = null;
-        for(const j of CI_JOURNAL) applyCheckin(j.camp, j.rep, j.week, j.state);
+        for(const j of CI_JOURNAL) replayMark(j);
         localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
         setRev(body.rev);                          // after the copy — sibling tabs read the copy when this changes
         render();
@@ -4812,10 +5666,11 @@ function render(){
   const focused = document.activeElement && document.activeElement.id === "q";
   const caret = focused ? document.activeElement.selectionStart : null;
   paintTabs();
-  if(TAB!=="assign"&&ASSIGN.open)closeCell();
+  if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance
   if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
   if(CI_OPEN) closeCiPop();
   $("#view").innerHTML = editBanner() + currentTab().render();
+  if(AT.open){ if(TAB === "attend") paintRoll(); else closeRoll(); }
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";
   applyEdit();
   if(TAB === "checkins") ciScrollHint();

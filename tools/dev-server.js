@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Preview the hub on this machine with fake backends, so the Money tab can be
-// driven end to end without touching Google or the shared hub copy.
+// Preview the hub on this machine with fake backends, so the Money tab and the
+// Call Attendance make-ups can be driven end to end without touching Google or
+// the shared hub copy.
 //
 //   node tools/dev-server.js        → http://localhost:8830/#money   (coach key: dev)
+//                                     http://localhost:8830/#attend
 //
 // The page it serves is index.html with three constants rewritten; nothing in
 // index.html knows about this server:
 //   SYNC.url  → ""        hub sync off — the shared calendar is never read or written
-//   TEAM_API  → /__team   invented mentees, so the payer picker has names
+//   TEAM_API  → /__team   invented mentees, and an in-memory assignments sheet
+//                         (catalog, per-mentee overrides, submissions)
 //   MONEY_API → /__money  the real SNA-Money.gs, running on in-memory fakes
 // It refuses to start if any of the three can't be found, rather than serve a
 // page that talks to the real backends.
@@ -20,6 +23,8 @@
 //                                           the way Apps Script's /exec sometimes answers
 //   curl -X POST localhost:8830/__cell -d '{"book":"test","row":2,"col":5,"value":"lots"}'
 //                                           a hand edit in the sheet (row 1 is the header)
+//   curl -X POST localhost:8830/__submit -d '{"repId":"t02","assignmentId":"A1","text":"posted it"}'
+//                                           a mentee turns something in from their dashboard
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -51,27 +56,65 @@ const gas = makeGas({props:process.env.NO_KEY ? {} : {MONEY_KEY:process.env.MONE
                     failSheet:process.env.FAIL_HISTORY ? {History:"Service Spreadsheets timed out"} : {}});
 const money = loadGs(path.join(ROOT, "SNA-Money.gs"), gas.globals);
 const ROSTER = [
-  ["t01", "Jordan Sample", "The Path"], ["t02", "Casey Example", "The Dojo"], ["t03", "Riley Placeholder", "Masters"],
-  ["t04", "Morgan Testcase", "The Path"], ["t05", "Quinn Former", "The Path", false],
-].map(([RepID, Name, Program, Active = true]) => ({RepID, Name, Program, Tier:Program.replace("The ", ""), Active, OnRoster:true,
-  CutcoRepNo:"", Phone:"", Email:"", Division:"", Manager:"", ManagerPhone:"", ManagerEmail:"", CareerSales:"", Joined:"", Coach:"", Goal:"", JoinWeek:""}));
+  ["t01", "Jordan Sample", "The Path", "Alan"], ["t02", "Casey Example", "The Dojo"], ["t03", "Riley Placeholder", "Masters", "Ben"],
+  ["t04", "Morgan Testcase", "The Path", "Ben"], ["t05", "Quinn Former", "The Path", "", false],
+  ["t06", "Sam Standin", "The Dojo"], ["t07", "Drew Dummy", "The Dojo"], ["t08", "Kai Mockup", "Masters", "Alan"],
+].map(([RepID, Name, Program, Coach = "", Active = true]) => ({RepID, Name, Program, Tier:Program.replace("The ", ""), Active, OnRoster:true,
+  CutcoRepNo:"", Phone:"", Email:"", Division:"", Manager:"", ManagerPhone:"", ManagerEmail:"", CareerSales:"", Joined:"", Coach, Goal:"", JoinWeek:""}));
+/* the assignments sheet, the way the check-in script's assignmentBoard hands
+   it over: catalog rows, per-mentee overrides (a date, or "NA"), submissions */
+const BOARD = {assignments:[], overrides:[], submissions:[]};
+let nextAssign = 0, nextSub = 0;
 let failNext = 0;
 
 function team(body){
   if(body.key !== KEY) return {ok:false, error:"bad key"};
   if(body.action === "coachRoster") return {ok:true, reps:ROSTER, coaches:[{Name:"Alan", Phone:""}, {Name:"Ben", Phone:""}]};
   if(body.action === "getSettings") return {ok:true, switches:{texts:false, digest:false, emails:false, replinks:false, assignments:false}};
-  return {ok:false, error:"the dev server only fakes coachRoster and getSettings"};
+  if(body.action === "assignmentBoard") return {ok:true, assignments:BOARD.assignments, overrides:BOARD.overrides, submissions:BOARD.submissions,
+    reps:ROSTER.map(r => ({RepID:r.RepID, Name:r.Name, Tier:r.Tier, Active:r.Active, HasEmail:false}))};
+  if(body.action === "saveAssignment"){
+    const a = body.a || {};
+    let row = a.id && BOARD.assignments.find(x => x.AssignmentID === a.id);
+    if(a.id && !row) return {ok:false, error:"no assignment " + a.id};
+    if(!row){ row = {AssignmentID:"A" + (++nextAssign)}; BOARD.assignments.push(row); }
+    Object.assign(row, {Programs:(a.programs || []).join(", "), Campaign:a.campaign || "", Title:a.title || "", Instructions:a.instructions || "",
+      MaterialsURL:a.materialsUrl || "", DueDate:a.dueDate || "", Active:a.active === false ? "N" : "Y"});
+    console.log(`[assignments] ${a.id ? "saved" : "created"} ${row.AssignmentID} · ${row.Title} · ${row.Programs} · active ${row.Active}`);
+    return {ok:true, id:row.AssignmentID};
+  }
+  if(body.action === "setOverride"){
+    const i = BOARD.overrides.findIndex(o => o.AssignmentID === body.assignmentId && o.RepID === body.repId);
+    if(i >= 0) BOARD.overrides.splice(i, 1);
+    if(body.dueDate) BOARD.overrides.push({AssignmentID:body.assignmentId, RepID:body.repId, DueDate:body.dueDate});
+    return {ok:true};
+  }
+  if(body.action === "reviewSubmission"){
+    const sub = BOARD.submissions.find(x => x.SubmissionID === body.submissionId);
+    if(!sub) return {ok:false, error:"no submission " + body.submissionId};
+    Object.assign(sub, {Status:body.status, Feedback:body.feedback || "", ReviewedBy:body.by || "", ReviewedAt:new Date().toISOString()});
+    return {ok:true, emailed:false, hasEmail:false};
+  }
+  if(body.action === "remindAssignment") return {ok:true, emailed:false, hasEmail:false};
+  return {ok:false, error:"the dev server doesn't fake " + body.action};
 }
 
 http.createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
   const send = (code, type, body) => { res.writeHead(code, {"Content-Type":type, "Cache-Control":"no-store"}); res.end(body); };
-  if(req.method === "POST" && ["/__money", "/__team", "/__fail", "/__cell"].includes(url.pathname)){
+  if(req.method === "POST" && ["/__money", "/__team", "/__fail", "/__cell", "/__submit"].includes(url.pathname)){
     let data = "";
     req.on("data", chunk => { data += chunk; });
     req.on("end", () => {
       if(url.pathname === "/__fail"){ failNext = Number(data) || 1; return send(200, "text/plain", `next ${failNext} money call(s) fail\n`); }
+      if(url.pathname === "/__submit"){
+        try{
+          const b = JSON.parse(data), prior = BOARD.submissions.filter(x => x.AssignmentID === b.assignmentId && x.RepID === b.repId).length;
+          BOARD.submissions.push({SubmissionID:"S" + (++nextSub), AssignmentID:b.assignmentId, RepID:b.repId, Version:String(prior + 1), Text:b.text || "",
+            LinkURL:"", FileURL:"", FileName:"", SubmittedAt:new Date().toISOString(), Status:"submitted", Feedback:"", ReviewedBy:"", ReviewedAt:""});
+          return send(200, "text/plain", `${b.repId} turned in ${b.assignmentId}\n`);
+        }catch(e){ return send(400, "text/plain", String(e.message) + "\n"); }
+      }
       if(url.pathname === "/__cell"){
         try{
           const c = JSON.parse(data), ss = [...gas.state.spreadsheets.values()][0];

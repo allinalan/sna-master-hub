@@ -969,7 +969,19 @@ table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
 #mfViewer img{display:block;max-width:100%;border:1px solid var(--line);border-radius:8px;margin-top:8px}
 #mfViewer iframe{display:block;width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-top:8px}
 .maudit{font-size:11.5px;color:var(--ink-faint)}
-@media (max-width:640px){.mform .mrow2{grid-template-columns:1fr}}
+/* its own box rather than .tbl: two short columns fit a phone-wide drawer as they are, so it never turns into cards */
+.msplitsbox{justify-self:stretch;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto}
+table.msplits{min-width:0;font-size:12.5px}
+table.msplits th,table.msplits td{padding:7px 8px}
+table.msplits td{white-space:nowrap}
+table.msplits td:first-child{white-space:normal}
+table.msplits .msub{font-size:11px;color:var(--ink-faint);margin-top:2px}
+table.msplits .linkish{font-size:11px}
+table.msplits .chip{font-size:9px;padding:1px 7px;margin-left:4px}
+@media (max-width:640px){
+  .mform .mrow2{grid-template-columns:1fr}
+  table.msplits td{white-space:normal}
+}
 </style>
 </head>
 <body>
@@ -3680,12 +3692,13 @@ window.addEventListener("message", e => {
    TAB — MONEY (coach-key gated · docs/superpowers/specs/2026-09-16-money-tab-design.md)
 
    Income, expenses and settle-ups between Alan and Ben. Every entry carries its
-   own split (Ben 60 · Alan 40 unless it says otherwise) and its campaign, and
-   each campaign settles once. Like Mentees and Assignments this never touches
-   DATA or hub sync — the shared hub copy is readable by anyone who reads this
-   page's source. It round-trips through the SNA Money Apps Script
-   (SNA-Money.gs) with the coach key, and nothing reads as saved until the sheet
-   says so.
+   own split and its campaign, and each campaign settles once. A new entry
+   starts from its campaign's split — Ben 60 · Alan 40 until Splits says
+   otherwise — and keeps whatever it was saved with. Like Mentees and
+   Assignments this never touches DATA or hub sync — the shared hub copy is
+   readable by anyone who reads this page's source. It round-trips through the
+   SNA Money Apps Script (SNA-Money.gs) with the coach key, and nothing reads as
+   saved until the sheet says so.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /*MONEY_MATH_BEGIN*/
@@ -3694,7 +3707,9 @@ window.addEventListener("message", e => {
    on what an entry may be; mCheck() says the same things in the same words so
    the drawer can answer before anything is sent, and a test holds the two
    together. */
-const M_DEFAULT_BEN = 60;
+/* Before any change on the Splits tab: the contract's year 1–2 split, Ben 62.5 ·
+   Alan 37.5 — the year the Money tab started in. Later years go on the Splits tab. */
+const M_FIRST_SPLIT = {from:"", benPct:62.5};
 const M_CAMPAIGN_RE = /^(Spring|Summer|Fall) \d{4}$/;
 const M_WHO_LABEL = {income:"Received by", expense:"Paid by", settle:"From"};
 
@@ -3740,14 +3755,14 @@ function mCampaignKey(label){
    them is who owes whom: owedToBen > 0 means Alan owes Ben. */
 function mTally(entries){
   const t = {income:0, expense:0, profit:0, share:{Ben:0, Alan:0}, holds:{Ben:0, Alan:0}, owedToBen:0,
-             count:0, settles:[], uniform:true};
+             count:0, settles:[], pcts:[]};      // pcts: every Ben's share in use
   for(const e of entries || []){
     if(e.status === "void") continue;
     t.count++;
     const c = mCents(e.amount);
     if(e.kind === "settle"){ t.holds[e.who] -= c; t.holds[e.to] += c; t.settles.push(e); continue; }
     const s = mShares(e), income = e.kind === "income";
-    if(Number(e.benPct) !== M_DEFAULT_BEN) t.uniform = false;
+    if(!t.pcts.includes(Number(e.benPct))) t.pcts.push(Number(e.benPct));
     t[e.kind] += c;
     t.share.Ben += income ? s.Ben : -s.Ben;
     t.share.Alan += income ? s.Alan : -s.Alan;
@@ -3801,6 +3816,39 @@ function mPerson(name){
 function mSplitLabel(benPct){
   const b = Math.round(Number(benPct) * 100) / 100;
   return b === 100 ? "all Ben" : b === 0 ? "all Alan" : b + "/" + Math.round((100 - b) * 100) / 100;
+}
+/* the same, in words: "Ben 60 · Alan 40", "50 · 50", "All Ben" */
+function mSplitName(benPct){
+  const b = Math.round(Number(benPct) * 100) / 100;
+  return b === 100 ? "All Ben" : b === 0 ? "All Alan" : b === 50 ? "50 · 50" : `Ben ${b} · Alan ${Math.round((100 - b) * 100) / 100}`;
+}
+/* The split a new entry in this campaign starts from, income and expenses
+   alike: the latest change on the Splits tab at or before it, else
+   M_FIRST_SPLIT. Changes are listed oldest first. */
+function mSplitFor(splits, campaign){
+  const k = mCampaignKey(campaign);
+  let at = M_FIRST_SPLIT;
+  for(const s of splits || []) if(mCampaignKey(s.from) <= k) at = s;
+  return at;
+}
+/* The campaigns one split change covers: from its own up to the next change. */
+function mSplitCovers(splits, from, campaign){
+  const k = mCampaignKey(campaign), next = (splits || []).find(s => mCampaignKey(s.from) > mCampaignKey(from));
+  return k >= mCampaignKey(from) && (!next || k < mCampaignKey(next.from));
+}
+/* What the Ben's share / Alan's share stats say under their figures: the
+   split when every entry in view used one, "mixed splits" when they didn't.
+   With nothing logged it's the campaign's split (fallback), or nothing. */
+function mShareNote(t, person, fallback){
+  const pcts = t.pcts.length ? t.pcts : fallback === null || fallback === undefined ? [] : [Number(fallback)];
+  if(pcts.length > 1) return "mixed splits";
+  if(!pcts.length) return "";
+  return (person === "Ben" ? Math.round(pcts[0] * 100) / 100 : Math.round((100 - pcts[0]) * 100) / 100) + "%";
+}
+/* SNA-Money.gs split_(), in the same words (a typed % sign is fine here: the page takes it off before sending) */
+function mSplitCheck(benPct){
+  const n = mNum(String(benPct === null || benPct === undefined ? "" : benPct).replace(/%/g, ""));
+  return n !== null && !isNaN(n) && n >= 0 && n <= 100 ? "" : "Ben's share must be from 0 to 100%";
 }
 
 function mText(v, max){ return String(v === null || v === undefined ? "" : v).replace(/\s+/g, " ").trim().slice(0, max); }
@@ -3862,11 +3910,14 @@ const MONEY_API  = "https://script.google.com/macros/s/AKfycbxnSsFut-0qq6oqWkJO1
    sheet's Test tab, so trying it out can never touch the books. */
 const MONEY_BOOK = location.hostname === "allinalan.github.io" ? "live" : "test";
 const MONEY = {entries:null, problems:[], sheetUrl:"", loading:false, err:"", loadedAt:0, triedAt:0,
+               splits:null,        // the Splits tab's changes, oldest first; null until a list brings them (an older SNA-Money.gs never does)
+               splitProblems:[],   // Splits rows the script couldn't read
                epoch:0,            // bumped as every write starts and ends — a list that crossed one is older than the page
                warn:"",            // saved, but something after the save didn't go through; stays until dismissed
                campaign:"", form:null, busy:false, formErr:"", receiptUrl:""};
 const MONEY_CATEGORIES = ["Software", "Prizes & gifts", "Meals", "Events & venues", "Travel", "Marketing", "Fees", "Other"];
 const MONEY_NOUN = {income:"income", expense:"expense", settle:"settle-up"};
+const MONEY_SPLITS_TAB = MONEY_BOOK === "test" ? "Test Splits" : "Splits";     // the sheet tab this copy's split changes live on
 
 /* ── talking to the sheet ── */
 async function moneyCall(body){
@@ -3895,7 +3946,8 @@ async function moneyLoad(force){
     break;
   }
   if(out && out.ok && !MONEY.busy){
-    Object.assign(MONEY, {entries:out.entries || [], problems:out.problems || [], sheetUrl:out.sheetUrl || "", loadedAt:Date.now(), err:""});
+    Object.assign(MONEY, {entries:out.entries || [], problems:out.problems || [], sheetUrl:out.sheetUrl || "", loadedAt:Date.now(), err:"",
+                          splits:Array.isArray(out.splits) ? out.splits : null, splitProblems:out.splitProblems || []});
   } else if(out && out.ok){
     MONEY.triedAt = 0;                             // a save is still on its way; the next render reads again once it lands
   } else if(out){
@@ -3932,6 +3984,8 @@ async function moneyRefused(out){
 }
 
 /* ── the board ── */
+/* Ben's share of a new entry in this campaign — income and expenses alike */
+function moneySplit(camp){ return mSplitFor(MONEY.splits, camp).benPct; }
 function moneyCampaigns(){
   const set = new Set([mCampaignOf(todayISO())]);
   for(const e of MONEY.entries || []) set.add(e.campaign);
@@ -3946,11 +4000,13 @@ function moneyNavCount(){
 }
 
 function renderMoney(){
+  const ledeCamp = MONEY.campaign && MONEY.campaign !== "all" ? MONEY.campaign : mCampaignOf(todayISO());
   let html = `<div class="page-head no-export no-print"><div>
     <div class="eyebrow">Between the two of you</div><div class="big serif">Money</div>
     <div class="lede">What came in, what went out, and who owes whom — settled once a campaign. Income lands with
-      Ben unless you say otherwise, and every entry splits <b>Ben ${M_DEFAULT_BEN} · Alan ${100 - M_DEFAULT_BEN}</b>
-      unless it says otherwise. It all lives in a private sheet behind the coach key.</div>
+      Ben unless you say otherwise, and ${MONEY.entries ? `in ${esc(ledeCamp)} every entry splits <b>${esc(mSplitName(moneySplit(ledeCamp)))}</b> unless it says otherwise`
+      : "every entry carries its own split"}.
+      It all lives in a private sheet behind the coach key.</div>
     ${MONEY_BOOK === "test" ? `<div class="mtest">Not the published hub · reads and writes the sheet's Test tab, never the real ledger</div>` : ""}
   </div></div>`;
   if(!MONEY_API) return html + `<div class="empty-note">The Money sheet isn't connected yet — <code>MONEY_API</code> in index.html is empty until SNA-Money.gs is deployed.</div>`;
@@ -3985,12 +4041,17 @@ function renderMoney(){
       <button class="btn" data-moneyact="new" data-kind="income">+ Income</button>
       <button class="btn" data-moneyact="new" data-kind="expense">+ Expense</button>
       <button class="btn" data-moneyact="settle" data-camp="${esc(isAll ? mCampaignOf(today) : camp)}">Settle up</button>
+      <button class="btn" data-moneyact="splits" title="The split new entries start from, campaign by campaign">Splits</button>
       <button class="btn" data-moneyact="reload" title="Pull the latest from the sheet"${MONEY.loading ? " disabled" : ""}>${MONEY.loading ? "Refreshing…" : "Refresh"}</button>
       ${exportButtons("moneyBoard", "Money · " + (isAll ? "All campaigns" : camp))}
     </div>`);
 
   if(MONEY.warn) html += `<div class="mlate no-export no-print"><span>${esc(MONEY.warn)}</span>
     <button class="btn sm" data-moneyact="dismisswarn">OK</button></div>`;
+  const nsp = MONEY.splitProblems.length;
+  if(nsp) html += `<div class="mlate no-export no-print"><span>${nsp === 1 ? "A row" : nsp + " rows"} on the sheet's ${MONEY_SPLITS_TAB} tab can't be read, so new
+    entries may start from the wrong split until ${nsp === 1 ? "it's" : "they're"} fixed. Entries already saved aren't touched.</span>
+    <button class="btn sm" data-moneyact="splits">See which</button></div>`;
   for(const s of mUnsettled(all, MONEY.problems, today)){
     if(s.campaign === camp) continue;
     html += `<div class="mlate no-export no-print"><span>${s.state === "blocked"
@@ -4017,8 +4078,8 @@ function renderMoney(){
     ${statBox("Income", fig(t.income), blocked ? "rows need a look" : payments + " payment" + (payments === 1 ? "" : "s"))}
     ${statBox("Expenses", fig(t.expense), "")}
     ${statBox("Profit", fig(t.profit), "income − expenses", !blocked && t.profit < 0)}
-    ${statBox("Ben's share", fig(t.share.Ben), blocked ? "" : t.uniform ? M_DEFAULT_BEN + "%" : "mixed splits")}
-    ${statBox("Alan's share", fig(t.share.Alan), blocked ? "" : t.uniform ? (100 - M_DEFAULT_BEN) + "%" : "mixed splits")}
+    ${statBox("Ben's share", fig(t.share.Ben), blocked ? "" : mShareNote(t, "Ben", isAll ? null : moneySplit(camp)))}
+    ${statBox("Alan's share", fig(t.share.Alan), blocked ? "" : mShareNote(t, "Alan", isAll ? null : moneySplit(camp)))}
   </div>`;
   html += isAll ? moneyAllHtml(today) : moneyCardHtml(mStatus(all, MONEY.problems, camp, today));
   html += moneyListHtml(scope, isAll);
@@ -4127,7 +4188,7 @@ document.addEventListener("click", e => {
    red if it didn't go. It reuses the Assignments drawer (#adrawer). */
 function moneySeg(key, opts, cur){
   return `<div class="seg">` + opts.map(o => `<button type="button" data-mset="${key}:${esc(o.v)}" class="${
-    String(cur) === String(o.v) ? "on" : ""}">${esc(o.l)}</button>`).join("") + `</div>`;
+    String(cur) === String(o.v) ? "on" : ""}"${o.t ? ` title="${esc(o.t)}"` : ""}>${esc(o.l)}</button>`).join("") + `</div>`;
 }
 function moneyInput(id, label, val, affix, ph){
   return `<label class="mlab"><span class="mlt">${esc(label)}</span><span class="mmoney">${affix === "$" ? "<i>$</i>" : ""}` +
@@ -4147,20 +4208,26 @@ function moneySigner(){
 
 function moneyNewForm(kind, over){
   const today = todayISO(), view = moneyViewCampaign() === "all" ? "" : moneyViewCampaign();
-  return Object.assign({mode:"new", id:mNewId(), rev:0, kind, date:today,
+  const f = Object.assign({mode:"new", id:mNewId(), rev:0, kind, date:today,
     campaign:view || mCampaignOf(today), campAuto:!view,           // under All campaigns, the campaign follows the date until picked
     party:"", repId:"", partyOther:false, plan:"pct", base:"", rate:"", amount:"", autoRate:false, autoAmount:false,
     who:kind === "income" ? "Ben" : kind === "expense" ? mPerson(whoAmI()) : "",
-    benPct:M_DEFAULT_BEN, splitCustom:false, category:"", catNew:false, note:"",
+    benPct:null, splitAuto:true, splitCustom:false, category:"", catNew:false, note:"",   // the split follows the campaign until picked
     receipt:null, removeReceipt:false, entry:null}, over || {});
+  moneyFollowSplit(f);
+  return f;
+}
+/* A new entry's split is its campaign's, until someone picks one by hand. */
+function moneyFollowSplit(f){
+  if(f.mode === "new" && f.splitAuto && f.kind !== "settle") Object.assign(f, {benPct:moneySplit(f.campaign), splitCustom:false});
 }
 function moneyEditForm(e){
   return {mode:"edit", id:e.id, rev:e.rev, kind:e.kind, date:e.date, campaign:e.campaign, campAuto:false,
     party:e.party || "", repId:e.repId || "", partyOther:false, plan:e.plan || "pct",
     base:e.base == null ? "" : String(e.base), rate:e.rate == null ? "" : String(e.rate),
     amount:e.amount == null ? "" : String(e.amount), autoRate:false, autoAmount:false, who:e.who,
-    benPct:e.benPct == null ? M_DEFAULT_BEN : e.benPct,
-    splitCustom:e.benPct != null && ![60, 50, 100, 0].includes(Number(e.benPct)),
+    benPct:e.kind === "settle" ? null : e.benPct == null ? moneySplit(e.campaign) : e.benPct,
+    splitAuto:false, splitCustom:false,                            // its own split is always one of the buttons
     category:e.category || "", catNew:false, note:e.note || "", receipt:null, removeReceipt:false, entry:e};
 }
 /* opened from the card: the debtor, the creditor, the exact amount — editable for a part payment */
@@ -4215,6 +4282,7 @@ function moneyDrawerMine(){ return !!document.querySelector("#adrawer #mform"); 
 function paintMoneyForm(){
   const f = MONEY.form, d = $("#adrawer");
   if(!f || !d || TAB !== "money") return;            // a save that finishes on another tab never takes over its drawer
+  if(f.mode === "splits") return paintMoneySplits(f, d);
   const e = f.entry, dis = MONEY.busy ? " disabled" : "";
   const camps = new Set(moneyCampaigns()), now = mCampaignKey(mCampaignOf(todayISO()));
   for(let k = now - 3; k <= now + 1; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
@@ -4250,9 +4318,15 @@ function paintMoneyForm(){
     body += moneyInput("mfAmount", "Amount", f.amount, "$");
   }
   if(f.kind !== "settle"){
-    body += `<div class="mlab"><span class="mlt">Split</span>${moneySeg("split", [{v:"60", l:"Ben 60 · Alan 40"}, {v:"50", l:"50 · 50"},
-      {v:"100", l:"All Ben"}, {v:"0", l:"All Alan"}, {v:"custom", l:"Custom"}], f.splitCustom ? "custom" : String(Number(f.benPct)))}</div>`;
+    /* the campaign's split first, then the entry's own (when saved with another), then the usual ones */
+    const def = moneySplit(f.campaign);
+    const vals = [def].concat(e && e.benPct != null ? [Number(e.benPct)] : [], [50, 100, 0]).filter((v, i, a) => a.indexOf(v) === i);
+    const opts = vals.map(v => ({v:String(v), l:mSplitName(v), t:v === def ? `The ${f.campaign} split` : ""}));
+    body += `<div class="mlab"><span class="mlt">Split</span>${moneySeg("split", opts.concat([{v:"custom", l:"Custom"}]),
+      f.splitCustom ? "custom" : String(Number(f.benPct)))}</div>`;
     if(f.splitCustom) body += moneyInput("mfBenPct", "Ben's share", f.benPct, "%", "e.g. 55");
+    const mine = mNum(String(f.benPct === null ? "" : f.benPct).replace(/%/g, ""));
+    if(mine !== null && !isNaN(mine) && mine !== def) body += `<div class="sw-hint" style="margin-top:-6px">Not the ${esc(f.campaign)} split, which is ${esc(mSplitName(def))}.</div>`;
     body += moneyReceiptField(f);
   }
   body += `<label class="mlab"><span class="mlt">Note</span><input class="search" id="mfNote" value="${esc(f.note)}" placeholder="optional" autocomplete="off"></label>`;
@@ -4291,6 +4365,10 @@ function moneyHarvest(){
   const f = MONEY.form;
   if(!f) return;
   const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  if(f.mode === "splits"){
+    for(const [id, key] of [["mfFrom", "from"], ["mfSplitPct", "benPct"]]){ const v = val(id); if(v !== null) f[key] = v; }
+    return;
+  }
   const date = $("#mfDate"); if(date) f.date = date.dataset.iso || "";
   const camp = val("mfCamp"); if(camp !== null) f.campaign = camp;
   const party = val("mfParty");
@@ -4375,6 +4453,7 @@ function moneyReveal(e){
 function moneyWhy(out, nothing, again){
   if(out.error === "network") return `Couldn't reach the sheet, so this may not have gone through. ${again} — it can't go in twice.`;
   if(out.error === "bad key" || out.error === "key not set") return `The sheet refused the key. ${nothing}. Close this and press Refresh to see why.`;
+  if(out.error === "unknown action") return `${MONEY_OLD_SCRIPT} ${nothing}.`;
   return `The sheet said no: ${out.error || "no reason given"}. ${nothing}.`;
 }
 
@@ -4446,6 +4525,150 @@ async function moneySetStatus(action){
   MONEY.formErr = moneyWhy(out, "Nothing changed", `Press ${action === "void" ? "Void" : "Restore"} again`);
   paintMoneyForm();
 }
+
+/* ── splits: where new entries start, campaign by campaign ──
+   One row per change on the sheet's Splits tab: "from this campaign on, Ben's
+   share is X%", income and expenses alike. It only sets where a new entry
+   starts — every entry keeps the split it was saved with, so a change never
+   rewrites an entry or a campaign already settled. */
+const MONEY_OLD_SCRIPT = "The SNA Money script on Google is older than this page, so it can't change splits yet. Alan: paste the new " +
+  "SNA-Money.gs into the SNA Money project, then Deploy ▸ Manage deployments ▸ edit ▸ New version, and press Refresh here.";
+function moneySplitsForm(){
+  const view = moneyViewCampaign(), from = view === "all" ? mCampaignOf(todayISO()) : view;
+  return {mode:"splits", from, benPct:String(moneySplit(from)), typed:false};
+}
+function moneyPctIn(v){ const n = mNum(String(v === null || v === undefined ? "" : v).replace(/%/g, "")); return n === null || isNaN(n) ? null : Math.round(n * 100) / 100; }
+/* "Alan gets 37.5%", as the box reads right now */
+function moneyAlanLine(f){
+  const b = moneyPctIn(f.benPct);
+  return b === null || b < 0 || b > 100 ? "" : `Alan gets ${Math.round((100 - b) * 100) / 100}%`;
+}
+/* Entries this change would cover that were saved with another split. They keep it; say so before anyone wonders. */
+function moneySplitKeepLine(f){
+  const b = moneyPctIn(f.benPct);
+  if(b === null || !M_CAMPAIGN_RE.test(f.from)) return "";
+  const differ = (MONEY.entries || []).filter(e => e.status !== "void" && e.kind !== "settle" && mSplitCovers(MONEY.splits, f.from, e.campaign) &&
+    Number(e.benPct) !== b);
+  if(!differ.length) return "";
+  const camps = [...new Set(differ.map(e => e.campaign))].sort((x, y) => mCampaignKey(x) - mCampaignKey(y));
+  const where = camps.length === 1 ? camps[0] : camps.slice(0, -1).join(", ") + " and " + camps[camps.length - 1];
+  return `${differ.length} entr${differ.length === 1 ? "y" : "ies"} already in ${where} ${differ.length === 1 ? "was" : "were"} saved with another split and ` +
+    `${differ.length === 1 ? "keeps it" : "keep theirs"}. This only changes where new entries start — open an entry to change its own.`;
+}
+function paintMoneySplits(f, d){
+  const dis = MONEY.busy ? " disabled" : "", splits = MONEY.splits || [], old = MONEY.splits === null;
+  const nowCamp = mCampaignOf(todayISO()), nowAt = mSplitFor(splits, nowCamp);
+  const camps = new Set(splits.map(x => x.from).concat(moneyCampaigns(), [f.from])), now = mCampaignKey(nowCamp);
+  for(let k = now - 3; k <= now + 6; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
+  const fromOpts = [...camps].filter(c => M_CAMPAIGN_RE.test(c)).sort((a, b) => mCampaignKey(a) - mCampaignKey(b))
+    .map(c => `<option value="${esc(c)}"${c === f.from ? " selected" : ""}>${esc(c)}${c === nowCamp ? " (now)" : ""}</option>`).join("");
+  const nowChip = at => at === nowAt ? ` <span class="chip">now</span>` : "";
+
+  let body = "";
+  if(old) body += `<div class="mproblems">${esc(MONEY_OLD_SCRIPT)}</div>`;
+  if(MONEY.splitProblems.length) body += `<div class="mproblems"><b>The sheet's ${MONEY_SPLITS_TAB} tab has ${MONEY.splitProblems.length === 1 ? "a row" : "rows"} it can't read.</b>
+      ${MONEY.splitProblems.length === 1 ? "It's" : "They're"} left out, so the campaigns ${MONEY.splitProblems.length === 1 ? "it covers" : "they cover"} start from the change before.
+      <ul>${MONEY.splitProblems.map(p => `<li>Row ${esc(p.row)}${p.from ? " · " + esc(p.from) : ""} — ${esc(p.error)}</li>`).join("")}</ul>
+      ${MONEY.sheetUrl ? `<a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a> — fix it there, then Refresh.` : ""}</div>`;
+  body += `<div class="mlab"><span class="mlt">Where new entries start</span><div class="msplitsbox"><table class="grid msplits"><thead><tr>
+      <th>Campaigns</th><th>Split</th></tr></thead><tbody>
+      <tr><td>${splits.length ? "Before " + esc(splits[0].from) : "Every campaign"}${nowChip(M_FIRST_SPLIT)}</td>
+        <td>${esc(mSplitName(M_FIRST_SPLIT.benPct))}</td></tr>
+      ${splits.map(x => `<tr><td>From ${esc(x.from)}${nowChip(x)}<div class="msub">${x.setBy ? `${esc(x.setBy)} · ${fmtStamp(x.setAt)} · ` : ""}<button type="button"
+          class="linkish" data-moneyact="unsplit" data-from="${esc(x.from)}" title="Take this change out"${dis}>remove</button></div></td>
+        <td>${esc(mSplitName(x.benPct))}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+  body += `<div class="mlt" style="margin-top:6px">Change it</div>
+    <div class="mrow2"><label class="mlab"><span class="mlt">Starting with</span><select id="mfFrom">${fromOpts}</select></label>
+      ${moneyInput("mfSplitPct", "Ben's share", f.benPct, "%", "e.g. 57.5")}</div>
+    <div class="mcalc" id="mfAlan">${esc(moneyAlanLine(f))}</div>
+    <div class="sw-hint" id="mfKeep">${esc(moneySplitKeepLine(f))}</div>`;
+  body += `<div class="merr" id="mfErr" role="alert">${esc(MONEY.formErr)}</div>`;
+  body += `<div class="ad-row">
+      <button class="btn primary" data-moneyact="save"${dis || (old ? " disabled" : "")}>${MONEY.busy ? "Saving…" : "Save"}</button>
+      <button class="btn" data-moneyact="close"${dis}>${old ? "Close" : "Cancel"}</button></div>`;
+  body += `<div class="maudit">One split covers income and expenses alike. Every entry keeps the split it was saved with, so a change
+    here never rewrites an entry or a campaign you've settled. Each change is also on the sheet's ${MONEY_SPLITS_TAB} and History tabs.</div>`;
+  d.innerHTML = `<div class="ad-head"><div><div class="t">Splits</div>
+      <div class="s">${MONEY_BOOK === "test" ? "Test tab — only the published hub changes the real splits" : "Who gets what share of new entries, campaign by campaign"}</div></div>
+      <button class="btn sm" data-moneyact="close" title="Close"${dis}>✕</button></div>
+    <div class="ad-body mform" id="mform">${body}</div>`;
+  if(MONEY.busy) d.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; el.classList.add("is-busy"); });
+  d.classList.add("on"); d.setAttribute("aria-hidden", "false");
+}
+/* the box follows the campaign picked until someone types in it */
+function moneySplitsPrefill(f){
+  if(!f.typed) f.benPct = String(moneySplit(f.from));
+}
+async function moneySaveSplit(){
+  const f = MONEY.form;
+  if(!f || f.mode !== "splits" || MONEY.busy) return;
+  moneyHarvest();
+  if(MONEY.splits === null){ MONEY.formErr = MONEY_OLD_SCRIPT; paintMoneyForm(); return; }
+  const problem = mSplitCheck(f.benPct);
+  if(problem){ MONEY.formErr = problem; paintMoneyForm(); return; }
+  const benPct = moneyPctIn(f.benPct);
+  if(moneySplit(f.from) === benPct){ MONEY.formErr = `${f.from} already starts from ${mSplitName(benPct)} — nothing to change.`; paintMoneyForm(); return; }
+  const by = moneySigner();
+  if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks, so the change is signed."; paintMoneyForm(); return; }
+  const cur = MONEY.splits.find(x => x.from === f.from);
+  MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
+  const out = await moneyWrite({action:"split", by, from:f.from, benPct, was:cur ? cur.benPct : null});
+  MONEY.busy = false;
+  if(out.ok){
+    MONEY.splits = out.splits || MONEY.splits;
+    moneyCloseForm();
+    if(out.warning) MONEY.warn = out.warning;
+    render();
+    toast(out.warning || `New entries from ${f.from} on start at ${mSplitName(benPct)} ✓`);
+    return;
+  }
+  if(TAB !== "money") toast("Money: that split didn't save — open the Money tab to see why and try again");
+  if(out.conflict && out.splits){
+    MONEY.splits = out.splits; render();
+    const theirs = out.splits.find(x => x.from === f.from);
+    MONEY.formErr = theirs
+      ? `${theirs.setBy || "The other person"} changed the ${f.from} split first — it's now ${mSplitName(theirs.benPct)}. Save again to put yours in its place.`
+      : `The ${f.from} split was taken out while you had this open. Save again to set yours.`;
+    paintMoneyForm();
+    return;
+  }
+  if(out.error === "network") f.uncertain = true;
+  MONEY.formErr = moneyWhy(out, "Nothing was changed", "Press Save again");
+  paintMoneyForm();
+}
+async function moneyRemoveSplit(from){
+  const f = MONEY.form, x = (MONEY.splits || []).find(s => s.from === from);
+  if(!f || f.mode !== "splits" || !x || MONEY.busy) return;
+  moneyHarvest();
+  const back = mSplitFor(MONEY.splits.filter(s => s !== x), from).benPct;
+  if(!confirm(`Take out the ${from} change? New entries in the campaigns it covered go back to ${mSplitName(back)}.\n\nEntries already saved keep their own split.`)){
+    toast("Left as it was"); return;
+  }
+  const by = moneySigner();
+  if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks."; paintMoneyForm(); return; }
+  MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
+  const out = await moneyWrite({action:"split", by, from, remove:true, was:x.benPct});
+  MONEY.busy = false;
+  if(out.ok){
+    MONEY.splits = out.splits || MONEY.splits;
+    if(out.warning) MONEY.warn = out.warning;
+    if(MONEY.form === f){ moneySplitsPrefill(f); MONEY.formErr = ""; }
+    render(); paintMoneyForm();
+    toast(out.warning || `Took out the ${from} change`);
+    return;
+  }
+  if(out.conflict && out.splits){
+    MONEY.splits = out.splits; render();
+    MONEY.formErr = `The ${from} split changed while you had this open — here it is as it stands. Remove it again if you still mean to.`;
+    paintMoneyForm();
+    return;
+  }
+  if(out.error === "network") f.uncertain = true;
+  MONEY.formErr = moneyWhy(out, "Nothing was changed", "Press Remove again");
+  paintMoneyForm();
+}
+function moneySubmit(){ return MONEY.form && MONEY.form.mode === "splits" ? moneySaveSplit() : moneySave(); }
 
 /* ── receipts ── */
 const MONEY_MAX_RECEIPT = 5 * 1024 * 1024;
@@ -4529,7 +4752,7 @@ document.addEventListener("click", async e => {
     moneyHarvest();
     const f = MONEY.form, raw = set.dataset.mset, i = raw.indexOf(":"), key = raw.slice(0, i), v = raw.slice(i + 1);
     if(key === "kind"){ if(v !== f.kind) MONEY.form = moneyNewForm(v, {id:f.id, date:f.date, campaign:f.campaign, campAuto:f.campAuto, note:f.note, amount:f.amount}); }
-    else if(key === "split"){ f.splitCustom = v === "custom"; if(v !== "custom") f.benPct = Number(v); }
+    else if(key === "split"){ f.splitCustom = v === "custom"; f.splitAuto = false; if(v !== "custom") f.benPct = Number(v); }
     else if(key === "plan" || key === "who") f[key] = v;
     MONEY.formErr = ""; paintMoneyForm();
     return;
@@ -4540,6 +4763,7 @@ document.addEventListener("click", async e => {
   if(k === "reload" || k === "voided" || k === "dismisswarn") return;   // the board's own controls, handled above
   e.preventDefault();
   if(k === "new"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneyNewForm(act.dataset.kind); paintMoneyForm(); } return; }
+  if(k === "splits"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneySplitsForm(); paintMoneyForm(); } return; }
   if(k === "settle"){
     if(MONEY.busy) return;
     if(mStatus(MONEY.entries || [], MONEY.problems, act.dataset.camp, todayISO()).state === "blocked"){
@@ -4557,7 +4781,8 @@ document.addEventListener("click", async e => {
     if(unsure){ toast("That last send never heard back — reloading the list so you can see whether it's there"); moneyLoad(true); }
     return;
   }
-  if(k === "save") return moneySave();
+  if(k === "save") return moneySubmit();
+  if(k === "unsplit") return moneyRemoveSplit(act.dataset.from);
   if(k === "void" || k === "restore") return moneySetStatus(k);
   if(k === "viewreceipt") return moneyViewReceipt();
   moneyHarvest();
@@ -4569,8 +4794,9 @@ document.addEventListener("click", async e => {
 document.addEventListener("change", async e => {
   const f = MONEY.form, t = e.target;
   if(!f || !/^mf/.test(t.id || "")) return;
-  if(t.id === "mfDate"){ moneyHarvest(); if(f.campAuto && f.date) f.campaign = mCampaignOf(f.date); paintMoneyForm(); return; }
-  if(t.id === "mfCamp"){ f.campaign = t.value; f.campAuto = false; return; }
+  if(t.id === "mfFrom"){ moneyHarvest(); moneySplitsPrefill(f); MONEY.formErr = ""; paintMoneyForm(); return; }
+  if(t.id === "mfDate"){ moneyHarvest(); if(f.campAuto && f.date) f.campaign = mCampaignOf(f.date); moneyFollowSplit(f); paintMoneyForm(); return; }
+  if(t.id === "mfCamp"){ moneyHarvest(); f.campAuto = false; moneyFollowSplit(f); paintMoneyForm(); return; }
   if(t.id === "mfParty"){
     moneyHarvest();
     if(f.mode === "new") moneyApplyLastPlan();
@@ -4593,6 +4819,12 @@ document.addEventListener("change", async e => {
 document.addEventListener("input", e => {
   const f = MONEY.form, id = e.target.id || "";
   if(!f || !/^mf/.test(id)) return;
+  if(id === "mfSplitPct"){
+    f.typed = true; moneyHarvest();
+    if($("#mfAlan")) $("#mfAlan").textContent = moneyAlanLine(f);
+    if($("#mfKeep")) $("#mfKeep").textContent = moneySplitKeepLine(f);
+    return;
+  }
   if(id === "mfRate") f.autoRate = false;
   if(id === "mfAmount") f.autoAmount = false;
   if(id === "mfBase" || id === "mfRate"){
@@ -4605,7 +4837,7 @@ document.addEventListener("keydown", e => {
   /* registered before the date picker's own Escape, so an open calendar closes first and the drawer stays */
   if(e.key === "Escape" && MONEY.form && !MONEY.busy && $("#datePop").classList.contains("hidden")) moneyCloseForm();
   if(e.key === "Enter" && e.target.matches && e.target.matches("tr[data-moneyopen]")){ e.preventDefault(); e.target.click(); }
-  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct)$/.test(e.target.id || "")){ e.preventDefault(); moneySave(); }
+  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct|SplitPct)$/.test(e.target.id || "")){ e.preventDefault(); moneySubmit(); }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

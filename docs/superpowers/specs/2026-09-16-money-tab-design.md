@@ -21,7 +21,8 @@ expenses, and the hub works out the split between them for each campaign.
 | 10 | Backend setup | Claude creates and deploys it through Alan's Chrome. Alan clicks Google's **Allow**, types the key into the script's settings, and merges the PR. |
 
 Split: **Ben 60 · Alan 40**, stored on every entry so a future change of deal never rewrites
-old campaigns.
+old campaigns. (Since 2026-09-22 the split a new entry starts from can change by campaign — see
+[Changing the split](#changing-the-split-2026-09-22).)
 
 ## Architecture
 
@@ -72,7 +73,7 @@ don't. Columns after them are left alone.
 | Amount | number, 2 dp | Always positive. For a % income entry the script computes it: `round2(Base × Rate / 100)`. |
 | Who | text | income: **received by** · expense: **paid by** · settle: **from**. `Alan` or `Ben`. |
 | To | text | settle only: `Alan` or `Ben`, never equal to Who. |
-| BenPct | number 0–100 | Ben's share of this entry, up to 2 dp; Alan's is `100 − BenPct`. Income and expense only. Default 60. |
+| BenPct | number 0–100 | Ben's share of this entry, up to 2 dp; Alan's is `100 − BenPct`. Income and expense only. Default: its campaign's split (see below; was 60). |
 | Party | text ≤120 | income: who paid (mentee name or anyone) · expense: what it was for. Required for both. |
 | RepID | text | income from a roster mentee: their RepID; blank otherwise. |
 | Plan | text | income only: `pct` (% of commission sales) or `flat`. |
@@ -226,7 +227,8 @@ A problem row with no readable campaign blocks every campaign (it could belong t
   ended and is in state due, reopened or blocked: "Summer 2026 isn't settled — Ben owes Alan
   $X · Open".
 - **Stats** for the chosen campaign: Income · Expenses · Profit · Ben's share · Alan's share
-  (meta shows "60%" when every entry used 60/40, else "mixed splits").
+  (meta shows the split every entry used, else "mixed splits"; with nothing logged, the
+  campaign's split).
 - **Settlement card** (one campaign): the states above.
 - **All campaigns:** the stats cover everything; the card becomes a table, one row per
   campaign: Income · Expenses · Profit · Ben · Alan · status.
@@ -342,3 +344,69 @@ A problem row with no readable campaign blocks every campaign (it could belong t
 Billing / owed-but-unpaid tracking, pulling commission sales from the dashboard, bank or
 Venmo CSV import, tax-year reports, a separate money key, rate limiting bad keys (the coach
 key is memorable; a longer key is the fix and covers Mentees too).
+
+## Changing the split (2026-09-22)
+
+Alan: "It's not going to be 60/40 forever." The partnership contract sets the split by contract
+year, and a year never changes partway through a campaign (Alan). One split covers income and
+expenses — Alan doesn't want them to differ. The Money tab started in year 1–2, whose split is
+**Ben 62.5 · Alan 37.5**, not the 60 · 40 the tab shipped with; the starting split is now 62.5.
+Later years, and a buyout if it happens, go on the Splits tab — the sheet, not this public repo.
+
+The split each entry carries doesn't change; what changes is **where a new entry starts**.
+
+**Model.** A schedule of changes, each "from this campaign on, Ben's share is X%", in force until
+the next change. Before the first change it is `M_FIRST_SPLIT` (62.5). A campaign's split is the
+latest change at or before it (`mSplitFor`), so a back-logged entry for an old campaign starts
+from that campaign's split, not today's. Changing a split never rewrites an entry: the drawer
+counts the entries a change covers that were saved with another split and says they keep it,
+and an entry whose split isn't its campaign's says so when opened, with the campaign's split as
+its first button. No bulk re-split: the deal never changes mid-campaign, and the only entries
+off-split are the few logged at 60 · 40 before this, fixed one click each.
+
+**Storage.** Its own tab in the SNA Money sheet — `Splits` for the live book, `Test Splits` for
+the test book — not the shared hub copy (anyone who reads the page source can read that) and
+not Script Properties (a rebuilt project would lose them). Header row, frozen:
+
+| Column | Type | Meaning |
+|---|---|---|
+| From | text | `Spring 2027` … — the campaign the change starts at. One row per campaign. |
+| BenPct | number 0–100, 2 dp | Ben's share of every income and expense entry from then on. |
+| SetBy / SetAt | text | `Alan`/`Ben` and the ISO time of the last change to the row. |
+
+A row that doesn't read (bad From, a share that isn't 0–100, a campaign on two rows) comes back
+in `splitProblems: [{row, from, error}]` and is left out; a changed header row leaves the whole
+tab out. Neither stops `list` or the ledger: splits only choose where a new entry starts, which
+the drawer shows before anything is saved. The page lists them in red.
+
+**API** (`VERSION` 2).
+
+- `list` also returns `splits: [{from, benPct, setBy, setAt}]` (oldest campaign first) and
+  `splitProblems`. A page that gets no `splits` back is talking to version 1: it starts every
+  entry at `M_FIRST_SPLIT` and the Splits drawer says the script needs a new version deployed.
+- `split {book, by, from, benPct, was}` → `{ok, splits}` · conflict · error, under the lock.
+  `was` is Ben's share the sender saw at `from`, or `null` for no change there. Already reads
+  what was asked → ok without writing (a lost-reply retry). Otherwise `was` must match what's
+  there, else `{ok:false, conflict:true, splits}`. Writes the row in place or appends one, then a
+  History line: Action `split`, ID the campaign, Entry `{from, benPct}`.
+- `split {book, by, from, remove:true, was}` takes a change out (clears its row; a blank row is
+  skipped on read). History Action `unsplit`, Entry `{from, removed:true}`. Retrying finds no row
+  and is ok.
+- Refused: unsigned (`who are you?`), a malformed campaign, a share outside 0–100 ("Ben's share
+  must be from 0 to 100%", which `mSplitCheck` mirrors word for word), a trashed sheet, a problem
+  row on the same campaign or a changed header ("row N of the Splits tab needs a look first: …").
+
+**Page.** A **Splits** button in the toolbar opens the drawer: the schedule (the change in force
+now marked, each with who set it and a **remove** link), then "Starting with" (defaults to the
+campaign in view; the share box follows it until typed in), Ben's share, a live "Alan gets …"
+line, and the count of covered entries that keep another split. Saving what the campaign already
+starts from is refused as nothing to change. The entry drawer's **Split** row puts the
+campaign's split first, then the entry's own when it was saved with another, then 50 · 50 /
+All Ben / All Alan / Custom; a new entry's split follows its campaign until one is picked by
+hand. The lede names the split of the campaign in view; the share stats name the split their
+entries used, or "mixed splits".
+
+**Tests.** `money-math.test.js`: the starting split, schedule lookup, coverage, share notes,
+labels, the check. `money-backend.test.js`: save/list/History, ordering, validation, conflicts
+and retries, remove, the test book, unreadable and duplicate rows, a changed header, trash and
+lock, a failed History line, and `mSplitCheck` against the script.

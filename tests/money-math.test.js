@@ -64,7 +64,7 @@ const cases = [
     assert.deepStrictEqual(t.share, {Ben:552000, Alan:368000});
     assert.deepStrictEqual(t.holds, {Ben:970000, Alan:-50000});
     assert.strictEqual(t.owedToBen, -418000);
-    assert.deepStrictEqual(t.pcts, {income:[60], expense:[60]});
+    assert.deepStrictEqual(t.pcts, [60]);
     assert.strictEqual(t.count, 3);
   }],
   ["a settle-up for the full amount makes it square, and isn't income or expense", () => {
@@ -80,52 +80,48 @@ const cases = [
   ["income that landed with Alan leaves Alan owing Ben his share", () => {
     assert.strictEqual(M.mTally([inc({amount:200, who:"Alan"})]).owedToBen, 12000);
   }],
-  ["the tally knows every split in use, by kind, and settle-ups have none", () => {
-    assert.deepStrictEqual(M.mTally([inc({benPct:50}), inc({benPct:"50"}), inc({benPct:60}), exp({benPct:55}), inc({benPct:0, status:"void"})]).pcts,
-                           {income:[50, 60], expense:[55]});
-    assert.deepStrictEqual(M.mTally([stl()]).pcts, {income:[], expense:[]});
+  ["the tally knows every split in use, and settle-ups have none", () => {
+    assert.deepStrictEqual(M.mTally([inc({benPct:50}), inc({benPct:"50"}), inc({benPct:60}), exp({benPct:62.5}), inc({benPct:0, status:"void"})]).pcts,
+                           [50, 60, 62.5]);
+    assert.deepStrictEqual(M.mTally([stl()]).pcts, []);
   }],
-  ["the share stats name the split when there's one, both when income and expenses differ, else mixed", () => {
+  ["the share stats name the split when every entry used one, else say mixed", () => {
     const note = (entries, who, fb) => M.mShareNote(M.mTally(entries), who, fb);
     assert.strictEqual(note(EXAMPLE(), "Ben"), "60%");
     assert.strictEqual(note(EXAMPLE(), "Alan"), "40%");
-    assert.strictEqual(note([inc({benPct:50}), exp({benPct:60})], "Ben"), "50% of income · 60% of expenses");
-    assert.strictEqual(note([inc({benPct:50}), exp({benPct:60})], "Alan"), "50% of income · 40% of expenses");
+    assert.strictEqual(note([inc({benPct:62.5}), exp({benPct:62.5})], "Alan"), "37.5%");
     assert.strictEqual(note([exp({benPct:66.67})], "Alan"), "33.33%");
-    assert.strictEqual(note([inc({benPct:50}), inc({benPct:60})], "Ben"), "mixed splits");
-    assert.strictEqual(note([], "Ben", {income:55, expense:55}), "55%");       // nothing logged: the campaign's own split
-    assert.strictEqual(note([], "Alan", {income:50, expense:60}), "50% of income · 40% of expenses");
+    assert.strictEqual(note([inc({benPct:62.5}), exp({benPct:60})], "Ben"), "mixed splits");
+    assert.strictEqual(note([], "Ben", 57.5), "57.5%");                    // nothing logged: the campaign's own split
+    assert.strictEqual(note([], "Alan", 57.5), "42.5%");
     assert.strictEqual(note([], "Ben"), "");
-    assert.strictEqual(note([stl()], "Ben", {income:60, expense:60}), "60%");
+    assert.strictEqual(note([stl()], "Ben", 62.5), "62.5%");
   }],
-  ["before any change every campaign starts from Ben 60 · Alan 40", () => {
-    assert.deepStrictEqual([M.M_FIRST_SPLIT.income, M.M_FIRST_SPLIT.expense], [60, 60]);
+  ["before any change every campaign starts from the contract's year 1–2 split, Ben 62.5 · Alan 37.5", () => {
+    assert.strictEqual(M.M_FIRST_SPLIT.benPct, 62.5);
     assert.strictEqual(M.mSplitFor([], "Fall 2026"), M.M_FIRST_SPLIT);
     assert.strictEqual(M.mSplitFor(null, "Fall 2026"), M.M_FIRST_SPLIT);
   }],
   ["a campaign starts from the latest change at or before it", () => {
-    const splits = [{from:"Spring 2027", income:50, expense:50}, {from:"Fall 2027", income:70, expense:65}];
+    const splits = [{from:"Summer 2027", benPct:57.5}, {from:"Summer 2028", benPct:50}];
     assert.strictEqual(M.mSplitFor(splits, "Fall 2026"), M.M_FIRST_SPLIT);
-    assert.strictEqual(M.mSplitFor(splits, "Spring 2027").income, 50);
-    assert.strictEqual(M.mSplitFor(splits, "Summer 2027").income, 50);
-    assert.deepStrictEqual([M.mSplitFor(splits, "Fall 2027").income, M.mSplitFor(splits, "Fall 2027").expense], [70, 65]);
-    assert.strictEqual(M.mSplitFor(splits, "Spring 2030").income, 70);
+    assert.strictEqual(M.mSplitFor(splits, "Spring 2027"), M.M_FIRST_SPLIT);
+    assert.strictEqual(M.mSplitFor(splits, "Summer 2027").benPct, 57.5);
+    assert.strictEqual(M.mSplitFor(splits, "Spring 2028").benPct, 57.5);
+    assert.strictEqual(M.mSplitFor(splits, "Summer 2028").benPct, 50);
+    assert.strictEqual(M.mSplitFor(splits, "Spring 2031").benPct, 50);
   }],
   ["a change covers its own campaign up to the next change", () => {
-    const splits = [{from:"Spring 2027", income:50, expense:50}, {from:"Fall 2027", income:70, expense:70}];
+    const splits = [{from:"Summer 2027", benPct:57.5}, {from:"Summer 2028", benPct:50}];
     const covers = (from, c) => M.mSplitCovers(splits, from, c);
-    assert.deepStrictEqual(["Fall 2026", "Spring 2027", "Summer 2027", "Fall 2027"].map(c => covers("Spring 2027", c)), [false, true, true, false]);
-    assert.deepStrictEqual(["Summer 2027", "Fall 2027", "Spring 2031"].map(c => covers("Fall 2027", c)), [false, true, true]);
-    assert.deepStrictEqual(["Summer 2026", "Fall 2026", "Spring 2027"].map(c => covers("Fall 2026", c)), [false, true, false]);   // a new change slotted in before Spring 2027
+    assert.deepStrictEqual(["Spring 2027", "Summer 2027", "Spring 2028", "Summer 2028"].map(c => covers("Summer 2027", c)), [false, true, true, false]);
+    assert.deepStrictEqual(["Spring 2028", "Summer 2028", "Fall 2031"].map(c => covers("Summer 2028", c)), [false, true, true]);
+    assert.deepStrictEqual(["Summer 2026", "Fall 2026", "Summer 2027"].map(c => covers("Fall 2026", c)), [false, true, false]);   // a new change slotted in before Summer 2027
     assert.strictEqual(M.mSplitCovers([], "Fall 2026", "Fall 2040"), true);
   }],
-  ["a split's two shares must each be 0 to 100", () => {
-    assert.strictEqual(M.mSplitCheck("50", "60"), "");
-    assert.strictEqual(M.mSplitCheck("0", "100%"), "");
-    assert.strictEqual(M.mSplitCheck("", "60"), "Ben's share of income must be from 0 to 100%");
-    assert.strictEqual(M.mSplitCheck("101", "60"), "Ben's share of income must be from 0 to 100%");
-    assert.strictEqual(M.mSplitCheck("50", "-1"), "Ben's share of expenses must be from 0 to 100%");
-    assert.strictEqual(M.mSplitCheck("50", "half"), "Ben's share of expenses must be from 0 to 100%");
+  ["a split's share must be 0 to 100", () => {
+    for(const ok of ["62.5", "0", "100%", 57.5]) assert.strictEqual(M.mSplitCheck(ok), "", String(ok));
+    for(const bad of ["", "101", "-1", "half", null]) assert.strictEqual(M.mSplitCheck(bad), "Ben's share must be from 0 to 100%", String(bad));
   }],
   ["campaigns follow the hub's calendar months", () => {
     for(const [iso, want] of [["2026-01-01", "Spring 2026"], ["2026-04-30", "Spring 2026"], ["2026-05-01", "Summer 2026"],
@@ -199,6 +195,7 @@ const cases = [
     assert.strictEqual(M.mSplitName(100), "All Ben");
     assert.strictEqual(M.mSplitName(0), "All Alan");
     assert.strictEqual(M.mSplitName(66.667), "Ben 66.67 · Alan 33.33");
+    assert.strictEqual(M.mSplitName(62.5), "Ben 62.5 · Alan 37.5");
   }],
   ["the drawer's checks pass a good entry and name the first thing wrong", () => {
     const ok = {kind:"income", date:"2026-09-16", campaign:"Fall 2026", who:"Ben", party:"Jordan", plan:"flat", amount:"250", benPct:60};

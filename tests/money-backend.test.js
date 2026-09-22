@@ -29,7 +29,7 @@ const expense = over => Object.assign({id:"mtest0002", kind:"expense", date:"202
   who:"Alan", party:"Zoom", category:"Software", amount:"15.99", benPct:60, note:""}, over || {});
 const settle = over => Object.assign({id:"mtest0003", kind:"settle", date:"2026-12-31", campaign:"Fall 2026",
   who:"Ben", to:"Alan", amount:100, note:""}, over || {});
-const split = (from, income, expense, over) => Object.assign({by:"Alan", from, income, expense, was:null}, over || {});
+const split = (from, benPct, over) => Object.assign({by:"Alan", from, benPct, was:null}, over || {});
 const historyActions = t => { const h = t.tab("History"); if(!h) return []; return h.getRange(2, 4, Math.max(h.getLastRow() - 1, 1), 1).getValues().map(r => r[0]).filter(Boolean); };
 
 const cases = [
@@ -139,9 +139,10 @@ const cases = [
     const src = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
     const {mSplitCheck} = new Function(src.match(/\/\*MONEY_MATH_BEGIN\*\/([\s\S]*?)\/\*MONEY_MATH_END\*\//)[1] + "\n;return {mSplitCheck};")();
     const t = setup();
-    for(const [i, x] of [["50", "50"], ["", "50"], ["101", "50"], ["abc", "50"], ["50", ""], ["50", "100.01"], ["0", "100"], ["33.33", "66.67"]]){
-      const script = t.call("split", split("Spring 2027", i, x, {was:t.call("list").splits[0] || null}));
-      assert.strictEqual(mSplitCheck(i, x), script.ok ? "" : script.error, i + " / " + x);
+    for(const v of ["57.5", "", "101", "abc", "100.01", "0", "100", "-1", "33.33"]){
+      const cur = t.call("list").splits[0];
+      const script = t.call("split", split("Spring 2027", v, {was:cur ? cur.benPct : null}));
+      assert.strictEqual(mSplitCheck(v), script.ok ? "" : script.error, v);
     }
   }],
   ["a retried create doesn't double up", () => {
@@ -425,79 +426,76 @@ const cases = [
   }],
   ["a split change is saved on the Splits tab, lists back, and lands on History", () => {
     const t = setup();
-    const r = t.call("split", split("Spring 2027", 50, "50"));
+    const r = t.call("split", split("Spring 2027", "57.5"));
     assert.strictEqual(r.ok, true);
-    assert.deepStrictEqual(r.splits.map(s => [s.from, s.income, s.expense, s.setBy]), [["Spring 2027", 50, 50, "Alan"]]);
+    assert.deepStrictEqual(r.splits.map(s => [s.from, s.benPct, s.setBy]), [["Spring 2027", 57.5, "Alan"]]);
     assert.match(r.splits[0].setAt, /^\d{4}-\d{2}-\d{2}T/);
     assert.deepStrictEqual(t.call("list").splits, r.splits);
     assert.deepStrictEqual(t.call("list").splitProblems, []);
     const sh = t.tab("Splits");
-    assert.deepStrictEqual(sh.getRange(1, 1, 2, 4).getValues(), [["From", "IncomeBenPct", "ExpenseBenPct", "SetBy"], ["Spring 2027", 50, 50, "Alan"]]);
+    assert.deepStrictEqual(sh.getRange(1, 1, 2, 3).getValues(), [["From", "BenPct", "SetBy"], ["Spring 2027", 57.5, "Alan"]]);
     const h = t.tab("History").getRange(2, 1, 1, 6).getValues()[0];
-    assert.deepStrictEqual([h[1], h[2], h[3], h[4], JSON.parse(h[5])], ["Alan", "live", "split", "Spring 2027", {from:"Spring 2027", income:50, expense:50}]);
+    assert.deepStrictEqual([h[1], h[2], h[3], h[4], JSON.parse(h[5])], ["Alan", "live", "split", "Spring 2027", {from:"Spring 2027", benPct:57.5}]);
     assert.strictEqual(t.tab("Ledger").getLastRow(), 0);            // the sheet's first tab, still empty — and it lists as empty
     assert.deepStrictEqual([t.call("list").entries, t.call("list").problems], [[], []]);
   }],
-  ["income and expenses can split differently, to the hundredth", () => {
-    const r = setup().call("split", split("Fall 2026", "66.667", 55));
-    assert.deepStrictEqual([r.splits[0].income, r.splits[0].expense], [66.67, 55]);
+  ["a share is kept to the hundredth", () => {
+    assert.strictEqual(setup().call("split", split("Fall 2026", "62.499")).splits[0].benPct, 62.5);
   }],
   ["splits come back oldest campaign first", () => {
     const t = setup();
-    t.call("split", split("Fall 2027", 70, 70));
-    t.call("split", split("Spring 2027", 50, 50));
-    t.call("split", split("Summer 2026", 55, 60));
-    assert.deepStrictEqual(t.call("list").splits.map(s => s.from), ["Summer 2026", "Spring 2027", "Fall 2027"]);
+    t.call("split", split("Fall 2028", 50));
+    t.call("split", split("Summer 2027", 57.5));
+    t.call("split", split("Fall 2026", 62.5));
+    assert.deepStrictEqual(t.call("list").splits.map(s => s.from), ["Fall 2026", "Summer 2027", "Fall 2028"]);
   }],
-  ["a split change has to be signed, name a campaign, and give two shares from 0 to 100", () => {
+  ["a split change has to be signed, name a campaign, and give a share from 0 to 100", () => {
     const t = setup();
-    assert.match(t.call("split", split("Spring 2027", 50, 50, {by:"Carl"})).error, /who are you/);
-    assert.strictEqual(t.call("split", split("Autumn 2027", 50, 50)).error, 'Campaign must look like "Fall 2026"');
-    assert.strictEqual(t.call("split", split("", 50, 50)).error, 'Campaign must look like "Fall 2026"');
-    assert.strictEqual(t.call("split", split("Spring 2027", 101, 50)).error, "Ben's share of income must be from 0 to 100%");
-    assert.strictEqual(t.call("split", split("Spring 2027", "", 50)).error, "Ben's share of income must be from 0 to 100%");
-    assert.strictEqual(t.call("split", split("Spring 2027", 50, "half")).error, "Ben's share of expenses must be from 0 to 100%");
-    assert.strictEqual(t.call("split", split("Spring 2027", 50, -1)).error, "Ben's share of expenses must be from 0 to 100%");
+    assert.match(t.call("split", split("Spring 2027", 50, {by:"Carl"})).error, /who are you/);
+    assert.strictEqual(t.call("split", split("Autumn 2027", 50)).error, 'Campaign must look like "Fall 2026"');
+    assert.strictEqual(t.call("split", split("", 50)).error, 'Campaign must look like "Fall 2026"');
+    for(const bad of [101, "", "half", -1, "50%", null])
+      assert.strictEqual(t.call("split", split("Spring 2027", bad)).error, "Ben's share must be from 0 to 100%", String(bad));
     assert.strictEqual(t.gas.state.spreadsheets.size, 0);
   }],
   ["changing a split means saying what you saw there; the other person getting there first is a conflict", () => {
     const t = setup();
-    t.call("split", split("Spring 2027", 50, 50));
-    const stale = t.call("split", split("Spring 2027", 55, 55, {by:"Ben"}));
-    assert.deepStrictEqual([stale.ok, stale.conflict, stale.splits[0].income], [false, true, 50]);
-    const wrong = t.call("split", split("Spring 2027", 55, 55, {by:"Ben", was:{income:60, expense:60}}));
+    t.call("split", split("Spring 2027", 57.5));
+    const stale = t.call("split", split("Spring 2027", 55, {by:"Ben"}));
+    assert.deepStrictEqual([stale.ok, stale.conflict, stale.splits[0].benPct], [false, true, 57.5]);
+    const wrong = t.call("split", split("Spring 2027", 55, {by:"Ben", was:60}));
     assert.deepStrictEqual([wrong.ok, wrong.conflict], [false, true]);
-    const r = t.call("split", split("Spring 2027", 55, 45, {by:"Ben", was:{income:50, expense:50}}));
-    assert.deepStrictEqual([r.ok, r.splits.length, r.splits[0].income, r.splits[0].expense, r.splits[0].setBy], [true, 1, 55, 45, "Ben"]);
+    const r = t.call("split", split("Spring 2027", 55, {by:"Ben", was:57.5}));
+    assert.deepStrictEqual([r.ok, r.splits.length, r.splits[0].benPct, r.splits[0].setBy], [true, 1, 55, "Ben"]);
     assert.strictEqual(t.tab("Splits").getLastRow(), 2);           // changed in place, not added again
     assert.deepStrictEqual(historyActions(t), ["split", "split"]);
   }],
   ["a retried split change whose first reply was lost is recognised", () => {
     const t = setup();
-    const a = t.call("split", split("Spring 2027", 50, 50)), b = t.call("split", split("Spring 2027", 50, 50));
+    const a = t.call("split", split("Spring 2027", 57.5)), b = t.call("split", split("Spring 2027", 57.5));
     assert.deepStrictEqual([b.ok, b.splits], [true, a.splits]);
     assert.deepStrictEqual(historyActions(t), ["split"]);
   }],
   ["a split change can be taken out again, and that can be retried", () => {
     const t = setup();
-    t.call("split", split("Spring 2027", 50, 50));
-    t.call("split", split("Fall 2027", 70, 70));
+    t.call("split", split("Spring 2027", 57.5));
+    t.call("split", split("Fall 2028", 50));
     const stale = t.call("split", {by:"Ben", from:"Spring 2027", remove:true, was:null});
     assert.deepStrictEqual([stale.ok, stale.conflict], [false, true]);
-    const r = t.call("split", {by:"Ben", from:"Spring 2027", remove:true, was:{income:50, expense:50}});
-    assert.deepStrictEqual([r.ok, r.splits.map(s => s.from)], [true, ["Fall 2027"]]);
-    assert.deepStrictEqual(t.call("list").splits.map(s => s.from), ["Fall 2027"]);
-    assert.deepStrictEqual(t.call("split", {by:"Ben", from:"Spring 2027", remove:true, was:{income:50, expense:50}}).ok, true);
+    const r = t.call("split", {by:"Ben", from:"Spring 2027", remove:true, was:57.5});
+    assert.deepStrictEqual([r.ok, r.splits.map(s => s.from)], [true, ["Fall 2028"]]);
+    assert.deepStrictEqual(t.call("list").splits.map(s => s.from), ["Fall 2028"]);
+    assert.strictEqual(t.call("split", {by:"Ben", from:"Spring 2027", remove:true, was:57.5}).ok, true);
     assert.deepStrictEqual(historyActions(t), ["split", "split", "unsplit"]);
     const h = t.tab("History").getRange(4, 5, 1, 2).getValues()[0];
     assert.deepStrictEqual([h[0], JSON.parse(h[1])], ["Spring 2027", {from:"Spring 2027", removed:true}]);
-    t.call("split", split("Summer 2027", 60, 60));
-    assert.deepStrictEqual(t.call("list").splits.map(s => s.from), ["Summer 2027", "Fall 2027"]);
+    t.call("split", split("Summer 2027", 57.5));
+    assert.deepStrictEqual(t.call("list").splits.map(s => s.from), ["Summer 2027", "Fall 2028"]);
     assert.deepStrictEqual(t.call("list").splitProblems, []);      // the emptied row in the middle is skipped quietly
   }],
   ["the test book's splits stay on their own tab", () => {
     const t = setup();
-    t.call("split", split("Spring 2027", 50, 50, {book:"test"}));
+    t.call("split", split("Spring 2027", 57.5, {book:"test"}));
     assert.deepStrictEqual(t.call("list").splits, []);
     assert.strictEqual(t.call("list", {book:"test"}).splits[0].from, "Spring 2027");
     assert.strictEqual(t.tab("Test Splits").getLastRow(), 2);
@@ -506,50 +504,50 @@ const cases = [
   ["a split row the hub can't read is reported and left out, and the ledger still reads", () => {
     const t = setup();
     t.call("save", {by:"Ben", entry:income()});
-    t.call("split", split("Spring 2027", 50, 50));
-    t.call("split", split("Fall 2027", 70, 70));
+    t.call("split", split("Spring 2027", 57.5));
+    t.call("split", split("Fall 2028", 50));
     t.tab("Splits").put(2, 2, "lots");
     const list = t.call("list");
     assert.strictEqual(list.ok, true);
     assert.strictEqual(list.entries.length, 1);
-    assert.deepStrictEqual(list.splits.map(s => s.from), ["Fall 2027"]);
-    assert.deepStrictEqual(list.splitProblems, [{row:2, from:"Spring 2027", error:"IncomeBenPct must be a number from 0 to 100"}]);
-    assert.match(t.call("split", split("Spring 2027", 55, 55, {was:{income:50, expense:50}})).error, /^row 2 of the Splits tab needs a look first/);
-    assert.strictEqual(t.call("split", split("Fall 2027", 75, 75, {was:{income:70, expense:70}})).ok, true);    // other campaigns carry on
-    t.tab("Splits").put(2, 1, "Autumn 2027"); t.tab("Splits").put(2, 2, 50);
+    assert.deepStrictEqual(list.splits.map(s => s.from), ["Fall 2028"]);
+    assert.deepStrictEqual(list.splitProblems, [{row:2, from:"Spring 2027", error:"BenPct must be a number from 0 to 100"}]);
+    assert.match(t.call("split", split("Spring 2027", 55, {was:57.5})).error, /^row 2 of the Splits tab needs a look first/);
+    assert.strictEqual(t.call("split", split("Fall 2028", 45, {was:50})).ok, true);    // other campaigns carry on
+    t.tab("Splits").put(2, 1, "Autumn 2027"); t.tab("Splits").put(2, 2, 57.5);
     assert.strictEqual(t.call("list").splitProblems[0].error, 'From must look like "Fall 2026"');
   }],
   ["the same campaign on two split rows is a problem on the later one", () => {
     const t = setup();
-    t.call("split", split("Spring 2027", 50, 50));
+    t.call("split", split("Spring 2027", 57.5));
     const sh = t.tab("Splits");
-    sh.getRange(3, 1, 1, 5).setNumberFormats([["@", "0.00", "0.00", "@", "@"]]);
-    sh.getRange(3, 1, 1, 5).setValues([["Spring 2027", 40, 40, "Ben", ""]]);
+    sh.getRange(3, 1, 1, 4).setNumberFormats([["@", "0.00", "@", "@"]]);
+    sh.getRange(3, 1, 1, 4).setValues([["Spring 2027", 40, "Ben", ""]]);
     const list = t.call("list");
-    assert.deepStrictEqual([list.splits.length, list.splits[0].income], [1, 50]);
+    assert.deepStrictEqual([list.splits.length, list.splits[0].benPct], [1, 57.5]);
     assert.deepStrictEqual(list.splitProblems, [{row:3, from:"Spring 2027", error:"the split from Spring 2027 is also on row 2"}]);
   }],
   ["a changed Splits header leaves the splits out but the ledger reading, and takes no more split changes", () => {
     const t = setup();
     t.call("save", {by:"Ben", entry:income()});
-    t.call("split", split("Spring 2027", 50, 50));
-    t.tab("Splits").put(1, 2, "Income");
+    t.call("split", split("Spring 2027", 57.5));
+    t.tab("Splits").put(1, 2, "Ben %");
     const list = t.call("list");
     assert.deepStrictEqual([list.ok, list.entries.length, list.splits], [true, 1, []]);
     assert.strictEqual(list.splitProblems.length, 1);
-    assert.match(list.splitProblems[0].error, /^the header row was changed \(column 2 should read "IncomeBenPct"\)/);
-    assert.match(t.call("split", split("Fall 2027", 70, 70)).error, /^row 1 of the Splits tab needs a look first: the header row was changed/);
+    assert.match(list.splitProblems[0].error, /^the header row was changed \(column 2 should read "BenPct"\)/);
+    assert.match(t.call("split", split("Fall 2028", 50)).error, /^row 1 of the Splits tab needs a look first: the header row was changed/);
   }],
   ["a split change is refused on a trashed sheet or a busy lock", () => {
     const t = setup();
-    t.call("split", split("Spring 2027", 50, 50));
+    t.call("split", split("Spring 2027", 57.5));
     t.ss().trashed = true;
-    assert.match(t.call("split", split("Fall 2027", 70, 70)).error, /in Drive's trash/);
-    assert.match(setup({lockBusy:true}).call("split", split("Spring 2027", 50, 50)).error, /busy/);
+    assert.match(t.call("split", split("Fall 2028", 50)).error, /in Drive's trash/);
+    assert.match(setup({lockBusy:true}).call("split", split("Spring 2027", 57.5)).error, /busy/);
   }],
   ["a History line that can't be written doesn't turn a saved split into an error", () => {
     const t = setup({failSheet:{History:"Service Spreadsheets timed out"}});
-    const r = t.call("split", split("Spring 2027", 50, 50));
+    const r = t.call("split", split("Spring 2027", 57.5));
     assert.deepStrictEqual([r.ok, r.splits.length], [true, 1]);
     assert.match(r.warning, /^Saved, but the sheet's History tab couldn't record it/);
     assert.ok(t.gas.state.logs.some(l => /split Spring 2027 is saved, but History failed/.test(l)));

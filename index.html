@@ -969,7 +969,7 @@ table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
 #mfViewer img{display:block;max-width:100%;border:1px solid var(--line);border-radius:8px;margin-top:8px}
 #mfViewer iframe{display:block;width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-top:8px}
 .maudit{font-size:11.5px;color:var(--ink-faint)}
-/* its own box rather than .tbl: three short columns fit a phone-wide drawer as they are, so it never turns into cards */
+/* its own box rather than .tbl: two short columns fit a phone-wide drawer as they are, so it never turns into cards */
 .msplitsbox{justify-self:stretch;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto}
 table.msplits{min-width:0;font-size:12.5px}
 table.msplits th,table.msplits td{padding:7px 8px}
@@ -3707,8 +3707,9 @@ window.addEventListener("message", e => {
    on what an entry may be; mCheck() says the same things in the same words so
    the drawer can answer before anything is sent, and a test holds the two
    together. */
-/* Before any change on the Splits tab, the original deal: Ben 60 · Alan 40 on both. */
-const M_FIRST_SPLIT = {from:"", income:60, expense:60};
+/* Before any change on the Splits tab: the contract's year 1–2 split, Ben 62.5 ·
+   Alan 37.5 — the year the Money tab started in. Later years go on the Splits tab. */
+const M_FIRST_SPLIT = {from:"", benPct:62.5};
 const M_CAMPAIGN_RE = /^(Spring|Summer|Fall) \d{4}$/;
 const M_WHO_LABEL = {income:"Received by", expense:"Paid by", settle:"From"};
 
@@ -3754,14 +3755,14 @@ function mCampaignKey(label){
    them is who owes whom: owedToBen > 0 means Alan owes Ben. */
 function mTally(entries){
   const t = {income:0, expense:0, profit:0, share:{Ben:0, Alan:0}, holds:{Ben:0, Alan:0}, owedToBen:0,
-             count:0, settles:[], pcts:{income:[], expense:[]}};      // pcts: every Ben's share in use, by kind
+             count:0, settles:[], pcts:[]};      // pcts: every Ben's share in use
   for(const e of entries || []){
     if(e.status === "void") continue;
     t.count++;
     const c = mCents(e.amount);
     if(e.kind === "settle"){ t.holds[e.who] -= c; t.holds[e.to] += c; t.settles.push(e); continue; }
     const s = mShares(e), income = e.kind === "income";
-    if(!t.pcts[e.kind].includes(Number(e.benPct))) t.pcts[e.kind].push(Number(e.benPct));
+    if(!t.pcts.includes(Number(e.benPct))) t.pcts.push(Number(e.benPct));
     t[e.kind] += c;
     t.share.Ben += income ? s.Ben : -s.Ben;
     t.share.Alan += income ? s.Alan : -s.Alan;
@@ -3821,9 +3822,9 @@ function mSplitName(benPct){
   const b = Math.round(Number(benPct) * 100) / 100;
   return b === 100 ? "All Ben" : b === 0 ? "All Alan" : b === 50 ? "50 · 50" : `Ben ${b} · Alan ${Math.round((100 - b) * 100) / 100}`;
 }
-/* The split a new entry in this campaign starts from: the latest change on
-   the Splits tab at or before it, else the original deal. Changes are listed
-   oldest first. */
+/* The split a new entry in this campaign starts from, income and expenses
+   alike: the latest change on the Splits tab at or before it, else
+   M_FIRST_SPLIT. Changes are listed oldest first. */
 function mSplitFor(splits, campaign){
   const k = mCampaignKey(campaign);
   let at = M_FIRST_SPLIT;
@@ -3835,23 +3836,19 @@ function mSplitCovers(splits, from, campaign){
   const k = mCampaignKey(campaign), next = (splits || []).find(s => mCampaignKey(s.from) > mCampaignKey(from));
   return k >= mCampaignKey(from) && (!next || k < mCampaignKey(next.from));
 }
-/* What the Ben's share / Alan's share stats say under their figures: one
-   share when every entry in view used one, both when income and expenses
-   each used their own, "mixed splits" past that. With nothing logged it's the
-   campaign's split (fallback), or nothing. */
+/* What the Ben's share / Alan's share stats say under their figures: the
+   split when every entry in view used one, "mixed splits" when they didn't.
+   With nothing logged it's the campaign's split (fallback), or nothing. */
 function mShareNote(t, person, fallback){
-  let inc = t.pcts.income, exp = t.pcts.expense;
-  if(!inc.length && !exp.length && fallback){ inc = [fallback.income]; exp = [fallback.expense]; }
-  if(inc.length > 1 || exp.length > 1) return "mixed splits";
-  const pct = b => (person === "Ben" ? Math.round(b * 100) / 100 : Math.round((100 - b) * 100) / 100) + "%";
-  if(!inc.length && !exp.length) return "";
-  if(!inc.length || !exp.length || inc[0] === exp[0]) return pct(inc.length ? inc[0] : exp[0]);
-  return pct(inc[0]) + " of income · " + pct(exp[0]) + " of expenses";
+  const pcts = t.pcts.length ? t.pcts : fallback === null || fallback === undefined ? [] : [Number(fallback)];
+  if(pcts.length > 1) return "mixed splits";
+  if(!pcts.length) return "";
+  return (person === "Ben" ? Math.round(pcts[0] * 100) / 100 : Math.round((100 - pcts[0]) * 100) / 100) + "%";
 }
 /* SNA-Money.gs split_(), in the same words (a typed % sign is fine here: the page takes it off before sending) */
-function mSplitCheck(income, expense){
-  const ok = v => { const n = mNum(String(v === null || v === undefined ? "" : v).replace(/%/g, "")); return n !== null && !isNaN(n) && n >= 0 && n <= 100; };
-  return !ok(income) ? "Ben's share of income must be from 0 to 100%" : !ok(expense) ? "Ben's share of expenses must be from 0 to 100%" : "";
+function mSplitCheck(benPct){
+  const n = mNum(String(benPct === null || benPct === undefined ? "" : benPct).replace(/%/g, ""));
+  return n !== null && !isNaN(n) && n >= 0 && n <= 100 ? "" : "Ben's share must be from 0 to 100%";
 }
 
 function mText(v, max){ return String(v === null || v === undefined ? "" : v).replace(/\s+/g, " ").trim().slice(0, max); }
@@ -3987,17 +3984,8 @@ async function moneyRefused(out){
 }
 
 /* ── the board ── */
-/* the split a new entry in this campaign starts from ({income, expense} as Ben's %) */
-function moneySplit(camp){ return mSplitFor(MONEY.splits, camp); }
-/* for the lede: "every entry splits Ben 60 · Alan 40 unless it says otherwise", or income and expenses each named */
-function moneySplitWords(sp){
-  return sp.income === sp.expense ? `every entry splits <b>${esc(mSplitName(sp.income))}</b> unless it says otherwise`
-    : `income splits <b>${esc(mSplitName(sp.income))}</b> and expenses <b>${esc(mSplitName(sp.expense))}</b>, unless an entry says otherwise`;
-}
-/* the same as plain text: "Ben 60 · Alan 40", or "Ben 55 · Alan 45 on income and 50 · 50 on expenses" */
-function moneySplitPlain(sp){
-  return sp.income === sp.expense ? mSplitName(sp.income) : `${mSplitName(sp.income)} on income and ${mSplitName(sp.expense)} on expenses`;
-}
+/* Ben's share of a new entry in this campaign — income and expenses alike */
+function moneySplit(camp){ return mSplitFor(MONEY.splits, camp).benPct; }
 function moneyCampaigns(){
   const set = new Set([mCampaignOf(todayISO())]);
   for(const e of MONEY.entries || []) set.add(e.campaign);
@@ -4016,7 +4004,8 @@ function renderMoney(){
   let html = `<div class="page-head no-export no-print"><div>
     <div class="eyebrow">Between the two of you</div><div class="big serif">Money</div>
     <div class="lede">What came in, what went out, and who owes whom — settled once a campaign. Income lands with
-      Ben unless you say otherwise, and ${MONEY.entries ? `in ${esc(ledeCamp)} ${moneySplitWords(moneySplit(ledeCamp))}` : "every entry carries its own split"}.
+      Ben unless you say otherwise, and ${MONEY.entries ? `in ${esc(ledeCamp)} every entry splits <b>${esc(mSplitName(moneySplit(ledeCamp)))}</b> unless it says otherwise`
+      : "every entry carries its own split"}.
       It all lives in a private sheet behind the coach key.</div>
     ${MONEY_BOOK === "test" ? `<div class="mtest">Not the published hub · reads and writes the sheet's Test tab, never the real ledger</div>` : ""}
   </div></div>`;
@@ -4230,14 +4219,14 @@ function moneyNewForm(kind, over){
 }
 /* A new entry's split is its campaign's, until someone picks one by hand. */
 function moneyFollowSplit(f){
-  if(f.mode === "new" && f.splitAuto && f.kind !== "settle") Object.assign(f, {benPct:moneySplit(f.campaign)[f.kind], splitCustom:false});
+  if(f.mode === "new" && f.splitAuto && f.kind !== "settle") Object.assign(f, {benPct:moneySplit(f.campaign), splitCustom:false});
 }
 function moneyEditForm(e){
   return {mode:"edit", id:e.id, rev:e.rev, kind:e.kind, date:e.date, campaign:e.campaign, campAuto:false,
     party:e.party || "", repId:e.repId || "", partyOther:false, plan:e.plan || "pct",
     base:e.base == null ? "" : String(e.base), rate:e.rate == null ? "" : String(e.rate),
     amount:e.amount == null ? "" : String(e.amount), autoRate:false, autoAmount:false, who:e.who,
-    benPct:e.kind === "settle" ? null : e.benPct == null ? moneySplit(e.campaign)[e.kind] : e.benPct,
+    benPct:e.kind === "settle" ? null : e.benPct == null ? moneySplit(e.campaign) : e.benPct,
     splitAuto:false, splitCustom:false,                            // its own split is always one of the buttons
     category:e.category || "", catNew:false, note:e.note || "", receipt:null, removeReceipt:false, entry:e};
 }
@@ -4330,14 +4319,14 @@ function paintMoneyForm(){
   }
   if(f.kind !== "settle"){
     /* the campaign's split first, then the entry's own (when saved with another), then the usual ones */
-    const def = moneySplit(f.campaign)[f.kind], kindWord = f.kind === "income" ? "income" : "expense";
+    const def = moneySplit(f.campaign);
     const vals = [def].concat(e && e.benPct != null ? [Number(e.benPct)] : [], [50, 100, 0]).filter((v, i, a) => a.indexOf(v) === i);
-    const opts = vals.map(v => ({v:String(v), l:mSplitName(v), t:v === def ? `The ${f.campaign} ${kindWord} split` : ""}));
+    const opts = vals.map(v => ({v:String(v), l:mSplitName(v), t:v === def ? `The ${f.campaign} split` : ""}));
     body += `<div class="mlab"><span class="mlt">Split</span>${moneySeg("split", opts.concat([{v:"custom", l:"Custom"}]),
       f.splitCustom ? "custom" : String(Number(f.benPct)))}</div>`;
     if(f.splitCustom) body += moneyInput("mfBenPct", "Ben's share", f.benPct, "%", "e.g. 55");
     const mine = mNum(String(f.benPct === null ? "" : f.benPct).replace(/%/g, ""));
-    if(mine !== null && !isNaN(mine) && mine !== def) body += `<div class="sw-hint" style="margin-top:-6px">Not the ${esc(f.campaign)} ${kindWord} split, which is ${esc(mSplitName(def))}.</div>`;
+    if(mine !== null && !isNaN(mine) && mine !== def) body += `<div class="sw-hint" style="margin-top:-6px">Not the ${esc(f.campaign)} split, which is ${esc(mSplitName(def))}.</div>`;
     body += moneyReceiptField(f);
   }
   body += `<label class="mlab"><span class="mlt">Note</span><input class="search" id="mfNote" value="${esc(f.note)}" placeholder="optional" autocomplete="off"></label>`;
@@ -4377,7 +4366,7 @@ function moneyHarvest(){
   if(!f) return;
   const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
   if(f.mode === "splits"){
-    for(const [id, key] of [["mfFrom", "from"], ["mfIncPct", "income"], ["mfExpPct", "expense"]]){ const v = val(id); if(v !== null) f[key] = v; }
+    for(const [id, key] of [["mfFrom", "from"], ["mfSplitPct", "benPct"]]){ const v = val(id); if(v !== null) f[key] = v; }
     return;
   }
   const date = $("#mfDate"); if(date) f.date = date.dataset.iso || "";
@@ -4539,31 +4528,29 @@ async function moneySetStatus(action){
 
 /* ── splits: where new entries start, campaign by campaign ──
    One row per change on the sheet's Splits tab: "from this campaign on, Ben's
-   share of income is X% and of expenses Y%". It only sets where a new entry
+   share is X%", income and expenses alike. It only sets where a new entry
    starts — every entry keeps the split it was saved with, so a change never
    rewrites an entry or a campaign already settled. */
 const MONEY_OLD_SCRIPT = "The SNA Money script on Google is older than this page, so it can't change splits yet. Alan: paste the new " +
   "SNA-Money.gs into the SNA Money project, then Deploy ▸ Manage deployments ▸ edit ▸ New version, and press Refresh here.";
 function moneySplitsForm(){
-  const view = moneyViewCampaign(), from = view === "all" ? mCampaignOf(todayISO()) : view, sp = moneySplit(from);
-  return {mode:"splits", from, income:String(sp.income), expense:String(sp.expense), typed:false};
+  const view = moneyViewCampaign(), from = view === "all" ? mCampaignOf(todayISO()) : view;
+  return {mode:"splits", from, benPct:String(moneySplit(from)), typed:false};
 }
 function moneyPctIn(v){ const n = mNum(String(v === null || v === undefined ? "" : v).replace(/%/g, "")); return n === null || isNaN(n) ? null : Math.round(n * 100) / 100; }
-/* "Alan gets 40% of income and 40% of expenses", as the two boxes read right now */
+/* "Alan gets 37.5%", as the box reads right now */
 function moneyAlanLine(f){
-  const i = moneyPctIn(f.income), x = moneyPctIn(f.expense), ok = v => v !== null && v >= 0 && v <= 100;
-  if(!ok(i) || !ok(x)) return "";
-  const a = v => Math.round((100 - v) * 100) / 100 + "%";
-  return i === x ? `Alan gets ${a(i)} of everything` : `Alan gets ${a(i)} of income and ${a(x)} of expenses`;
+  const b = moneyPctIn(f.benPct);
+  return b === null || b < 0 || b > 100 ? "" : `Alan gets ${Math.round((100 - b) * 100) / 100}%`;
 }
 /* Entries this change would cover that were saved with another split. They keep it; say so before anyone wonders. */
 function moneySplitKeepLine(f){
-  const i = moneyPctIn(f.income), x = moneyPctIn(f.expense);
-  if(i === null || x === null || !M_CAMPAIGN_RE.test(f.from)) return "";
+  const b = moneyPctIn(f.benPct);
+  if(b === null || !M_CAMPAIGN_RE.test(f.from)) return "";
   const differ = (MONEY.entries || []).filter(e => e.status !== "void" && e.kind !== "settle" && mSplitCovers(MONEY.splits, f.from, e.campaign) &&
-    Number(e.benPct) !== (e.kind === "income" ? i : x));
+    Number(e.benPct) !== b);
   if(!differ.length) return "";
-  const camps = [...new Set(differ.map(e => e.campaign))].sort((a, b) => mCampaignKey(a) - mCampaignKey(b));
+  const camps = [...new Set(differ.map(e => e.campaign))].sort((x, y) => mCampaignKey(x) - mCampaignKey(y));
   const where = camps.length === 1 ? camps[0] : camps.slice(0, -1).join(", ") + " and " + camps[camps.length - 1];
   return `${differ.length} entr${differ.length === 1 ? "y" : "ies"} already in ${where} ${differ.length === 1 ? "was" : "were"} saved with another split and ` +
     `${differ.length === 1 ? "keeps it" : "keep theirs"}. This only changes where new entries start — open an entry to change its own.`;
@@ -4572,7 +4559,7 @@ function paintMoneySplits(f, d){
   const dis = MONEY.busy ? " disabled" : "", splits = MONEY.splits || [], old = MONEY.splits === null;
   const nowCamp = mCampaignOf(todayISO()), nowAt = mSplitFor(splits, nowCamp);
   const camps = new Set(splits.map(x => x.from).concat(moneyCampaigns(), [f.from])), now = mCampaignKey(nowCamp);
-  for(let k = now - 3; k <= now + 4; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
+  for(let k = now - 3; k <= now + 6; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
   const fromOpts = [...camps].filter(c => M_CAMPAIGN_RE.test(c)).sort((a, b) => mCampaignKey(a) - mCampaignKey(b))
     .map(c => `<option value="${esc(c)}"${c === f.from ? " selected" : ""}>${esc(c)}${c === nowCamp ? " (now)" : ""}</option>`).join("");
   const nowChip = at => at === nowAt ? ` <span class="chip">now</span>` : "";
@@ -4584,24 +4571,24 @@ function paintMoneySplits(f, d){
       <ul>${MONEY.splitProblems.map(p => `<li>Row ${esc(p.row)}${p.from ? " · " + esc(p.from) : ""} — ${esc(p.error)}</li>`).join("")}</ul>
       ${MONEY.sheetUrl ? `<a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a> — fix it there, then Refresh.` : ""}</div>`;
   body += `<div class="mlab"><span class="mlt">Where new entries start</span><div class="msplitsbox"><table class="grid msplits"><thead><tr>
-      <th>Campaigns</th><th>Income</th><th>Expenses</th></tr></thead><tbody>
+      <th>Campaigns</th><th>Split</th></tr></thead><tbody>
       <tr><td>${splits.length ? "Before " + esc(splits[0].from) : "Every campaign"}${nowChip(M_FIRST_SPLIT)}</td>
-        <td>${esc(mSplitName(M_FIRST_SPLIT.income))}</td><td>${esc(mSplitName(M_FIRST_SPLIT.expense))}</td></tr>
+        <td>${esc(mSplitName(M_FIRST_SPLIT.benPct))}</td></tr>
       ${splits.map(x => `<tr><td>From ${esc(x.from)}${nowChip(x)}<div class="msub">${x.setBy ? `${esc(x.setBy)} · ${fmtStamp(x.setAt)} · ` : ""}<button type="button"
           class="linkish" data-moneyact="unsplit" data-from="${esc(x.from)}" title="Take this change out"${dis}>remove</button></div></td>
-        <td>${esc(mSplitName(x.income))}</td><td>${esc(mSplitName(x.expense))}</td></tr>`).join("")}
+        <td>${esc(mSplitName(x.benPct))}</td></tr>`).join("")}
     </tbody></table></div></div>`;
   body += `<div class="mlt" style="margin-top:6px">Change it</div>
-    <label class="mlab"><span class="mlt">Starting with</span><select id="mfFrom">${fromOpts}</select></label>
-    <div class="mrow2">${moneyInput("mfIncPct", "Ben's share of income", f.income, "%", "e.g. 50")}${moneyInput("mfExpPct", "Ben's share of expenses", f.expense, "%", "e.g. 50")}</div>
+    <div class="mrow2"><label class="mlab"><span class="mlt">Starting with</span><select id="mfFrom">${fromOpts}</select></label>
+      ${moneyInput("mfSplitPct", "Ben's share", f.benPct, "%", "e.g. 57.5")}</div>
     <div class="mcalc" id="mfAlan">${esc(moneyAlanLine(f))}</div>
     <div class="sw-hint" id="mfKeep">${esc(moneySplitKeepLine(f))}</div>`;
   body += `<div class="merr" id="mfErr" role="alert">${esc(MONEY.formErr)}</div>`;
   body += `<div class="ad-row">
       <button class="btn primary" data-moneyact="save"${dis || (old ? " disabled" : "")}>${MONEY.busy ? "Saving…" : "Save"}</button>
       <button class="btn" data-moneyact="close"${dis}>${old ? "Close" : "Cancel"}</button></div>`;
-  body += `<div class="maudit">Every entry keeps the split it was saved with, so a change here never rewrites an entry or a campaign
-    you've settled. Each change is also on the sheet's ${MONEY_SPLITS_TAB} and History tabs.</div>`;
+  body += `<div class="maudit">One split covers income and expenses alike. Every entry keeps the split it was saved with, so a change
+    here never rewrites an entry or a campaign you've settled. Each change is also on the sheet's ${MONEY_SPLITS_TAB} and History tabs.</div>`;
   d.innerHTML = `<div class="ad-head"><div><div class="t">Splits</div>
       <div class="s">${MONEY_BOOK === "test" ? "Test tab — only the published hub changes the real splits" : "Who gets what share of new entries, campaign by campaign"}</div></div>
       <button class="btn sm" data-moneyact="close" title="Close"${dis}>✕</button></div>
@@ -4609,33 +4596,31 @@ function paintMoneySplits(f, d){
   if(MONEY.busy) d.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; el.classList.add("is-busy"); });
   d.classList.add("on"); d.setAttribute("aria-hidden", "false");
 }
-/* the boxes follow the campaign picked until someone types in them */
+/* the box follows the campaign picked until someone types in it */
 function moneySplitsPrefill(f){
-  if(f.typed) return;
-  const sp = moneySplit(f.from);
-  Object.assign(f, {income:String(sp.income), expense:String(sp.expense)});
+  if(!f.typed) f.benPct = String(moneySplit(f.from));
 }
 async function moneySaveSplit(){
   const f = MONEY.form;
   if(!f || f.mode !== "splits" || MONEY.busy) return;
   moneyHarvest();
   if(MONEY.splits === null){ MONEY.formErr = MONEY_OLD_SCRIPT; paintMoneyForm(); return; }
-  const problem = mSplitCheck(f.income, f.expense);
+  const problem = mSplitCheck(f.benPct);
   if(problem){ MONEY.formErr = problem; paintMoneyForm(); return; }
-  const income = moneyPctIn(f.income), expense = moneyPctIn(f.expense), at = moneySplit(f.from);
-  if(at.income === income && at.expense === expense){ MONEY.formErr = `${f.from} already starts from that split — nothing to change.`; paintMoneyForm(); return; }
+  const benPct = moneyPctIn(f.benPct);
+  if(moneySplit(f.from) === benPct){ MONEY.formErr = `${f.from} already starts from ${mSplitName(benPct)} — nothing to change.`; paintMoneyForm(); return; }
   const by = moneySigner();
   if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks, so the change is signed."; paintMoneyForm(); return; }
   const cur = MONEY.splits.find(x => x.from === f.from);
   MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
-  const out = await moneyWrite({action:"split", by, from:f.from, income, expense, was:cur ? {income:cur.income, expense:cur.expense} : null});
+  const out = await moneyWrite({action:"split", by, from:f.from, benPct, was:cur ? cur.benPct : null});
   MONEY.busy = false;
   if(out.ok){
     MONEY.splits = out.splits || MONEY.splits;
     moneyCloseForm();
     if(out.warning) MONEY.warn = out.warning;
     render();
-    toast(out.warning || `New entries from ${f.from} on start at ${moneySplitPlain({income, expense})} ✓`);
+    toast(out.warning || `New entries from ${f.from} on start at ${mSplitName(benPct)} ✓`);
     return;
   }
   if(TAB !== "money") toast("Money: that split didn't save — open the Money tab to see why and try again");
@@ -4643,7 +4628,7 @@ async function moneySaveSplit(){
     MONEY.splits = out.splits; render();
     const theirs = out.splits.find(x => x.from === f.from);
     MONEY.formErr = theirs
-      ? `${theirs.setBy || "The other person"} changed the ${f.from} split first — it's now ${moneySplitPlain(theirs)}. Save again to put yours in its place.`
+      ? `${theirs.setBy || "The other person"} changed the ${f.from} split first — it's now ${mSplitName(theirs.benPct)}. Save again to put yours in its place.`
       : `The ${f.from} split was taken out while you had this open. Save again to set yours.`;
     paintMoneyForm();
     return;
@@ -4656,14 +4641,14 @@ async function moneyRemoveSplit(from){
   const f = MONEY.form, x = (MONEY.splits || []).find(s => s.from === from);
   if(!f || f.mode !== "splits" || !x || MONEY.busy) return;
   moneyHarvest();
-  const back = mSplitFor(MONEY.splits.filter(s => s !== x), from);
-  if(!confirm(`Take out the ${from} change? New entries in the campaigns it covered go back to ${moneySplitPlain(back)}.\n\nEntries already saved keep their own split.`)){
+  const back = mSplitFor(MONEY.splits.filter(s => s !== x), from).benPct;
+  if(!confirm(`Take out the ${from} change? New entries in the campaigns it covered go back to ${mSplitName(back)}.\n\nEntries already saved keep their own split.`)){
     toast("Left as it was"); return;
   }
   const by = moneySigner();
   if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks."; paintMoneyForm(); return; }
   MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
-  const out = await moneyWrite({action:"split", by, from, remove:true, was:{income:x.income, expense:x.expense}});
+  const out = await moneyWrite({action:"split", by, from, remove:true, was:x.benPct});
   MONEY.busy = false;
   if(out.ok){
     MONEY.splits = out.splits || MONEY.splits;
@@ -4834,7 +4819,7 @@ document.addEventListener("change", async e => {
 document.addEventListener("input", e => {
   const f = MONEY.form, id = e.target.id || "";
   if(!f || !/^mf/.test(id)) return;
-  if(id === "mfIncPct" || id === "mfExpPct"){
+  if(id === "mfSplitPct"){
     f.typed = true; moneyHarvest();
     if($("#mfAlan")) $("#mfAlan").textContent = moneyAlanLine(f);
     if($("#mfKeep")) $("#mfKeep").textContent = moneySplitKeepLine(f);
@@ -4852,7 +4837,7 @@ document.addEventListener("keydown", e => {
   /* registered before the date picker's own Escape, so an open calendar closes first and the drawer stays */
   if(e.key === "Escape" && MONEY.form && !MONEY.busy && $("#datePop").classList.contains("hidden")) moneyCloseForm();
   if(e.key === "Enter" && e.target.matches && e.target.matches("tr[data-moneyopen]")){ e.preventDefault(); e.target.click(); }
-  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct|IncPct|ExpPct)$/.test(e.target.id || "")){ e.preventDefault(); moneySubmit(); }
+  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct|SplitPct)$/.test(e.target.id || "")){ e.preventDefault(); moneySubmit(); }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

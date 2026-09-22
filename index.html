@@ -1364,7 +1364,7 @@ let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
              bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"pri",   // Orders of Business filters + sort
-             tier:"all", assignView:"board", assignProg:"all",   // show ticked-off items too — hiding them reads as deletion
+             tier:"all", assignView:"board", assignProg:"all", assignFormer:false,   // show ticked-off items too — hiding them reads as deletion
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"",     // Mentees ▸ Weekly Check-ins
              moneyKind:"all", moneyWho:"all", moneyCat:"", moneyVoid:false };  // Money filters
@@ -2545,13 +2545,13 @@ function assignList(){   // catalog rows for the picked campaign, due-date order
    is where someone is marked former, so once it's loaded it has the final say —
    they vanish the moment they're marked, no Refresh. The feed's own flag covers
    the second before the roster arrives, and anyone it doesn't list. The sheet
-   writes that flag Y/N, the roster true/false: read both. Their work stays. */
+   writes that flag Y/N, the roster true/false: read both. Their work stays, and
+   Show former lists them at the foot of the board, read only, never counted. */
 const isActiveFlag=v=>v!==false&&!/^(n|no|false|0)$/i.test(String(v==null?"":v).trim());
-function assignReps(){
-  const roster=new Map((TEAM.rows||[]).map(t=>[String(t.RepID),t]));
-  return (ASSIGN.rows.reps||[]).filter(r=>{const t=roster.get(String(r.RepID));return isActiveFlag(t?t.Active:r.Active);})
-    .sort((a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name));
-}
+function assignIsActive(r){const t=(TEAM.rows||[]).find(x=>String(x.RepID)===String(r.RepID));return isActiveFlag(t?t.Active:r.Active);}
+const byTierName=(a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name);
+function assignReps(){return (ASSIGN.rows.reps||[]).filter(assignIsActive).sort(byTierName);}
+function assignFormerReps(){return (ASSIGN.rows.reps||[]).filter(r=>!assignIsActive(r)).sort(byTierName);}
 function cellState(rep,a){return assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());}
 function assignCounts(){
   const c={waiting:0,late:0,week:0,approved:0}; if(!ASSIGN.rows)return c;
@@ -2582,6 +2582,7 @@ function renderAssign(){
       ${seg("assignView",[{v:"board",l:"Board"},{v:"catalog",l:"Catalog"}],UI.assignView)}
       <select class="btn sm" data-assigncamp style="padding:5px 8px">${assignCampaigns().map(x=>`<option${x===ASSIGN.campaign?" selected":""}>${esc(x)}</option>`).join("")}</select>
       ${seg("assignProg",[{v:"all",l:"All"},{v:"Dojo",l:"Dojo"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}],UI.assignProg)}
+      ${UI.assignView==="board"?`<button class="btn ${UI.assignFormer?"on":""}" data-assignact="former">Show former</button>`:""}
     </div>
     <div class="tb-actions"><button class="btn" data-assignact="reload" title="Re-pull from the sheet">Refresh</button>${exportButtons("assignBoard","Assignments")}</div>`);
   html+=`<div id="assignBoard" class="export-frame">`;
@@ -2593,22 +2594,30 @@ function renderAssign(){
 }
 function assignBoardHtml(){
   const list=assignList().filter(a=>!isArchived(a)).filter(a=>UI.assignProg==="all"||assignPrograms(a).includes(UI.assignProg));
-  const reps=assignReps().filter(r=>UI.assignProg==="all"||r.Tier===UI.assignProg);
+  const inProg=r=>UI.assignProg==="all"||r.Tier===UI.assignProg;
+  const reps=assignReps().filter(inProg), former=UI.assignFormer?assignFormerReps().filter(inProg):[];
   if(!list.length)return `<div class="empty-note">No assignments for ${esc(ASSIGN.campaign)} yet — switch to Catalog to add one.</div>`;
   let h=`<div class="tbl"><table class="grid aboard"><thead><tr><th>Mentee</th>${list.map(a=>{
       const d=dueISO(a.DueDate);
       return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignPrograms(a).map(p=>p[0]).join(""))} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
-  let lastTier="";
-  reps.forEach(r=>{
-    if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}">The ${esc(r.Tier)}</td></tr>`;}
+  const row=(r,gone)=>{
     let inN=0,appN=0;
-    h+=`<tr><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span></td>`;
+    h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</td>`;
     list.forEach(a=>{
       const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
       h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
     });
     h+=`<td class="tot">${inN}/${appN} in</td></tr>`;
+  };
+  let lastTier="";
+  reps.forEach(r=>{
+    if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}">The ${esc(r.Tier)}</td></tr>`;}
+    row(r,false);
   });
+  if(UI.assignFormer){
+    h+=`<tr class="agrp"><td colspan="${list.length+2}">Former · ${former.length?former.length+" · read only, not counted":"nobody"+(UI.assignProg==="all"?"":" in The "+esc(UI.assignProg))}</td></tr>`;
+    former.forEach(r=>row(r,true));
+  }
   h+=`</tbody></table></div>`;
   h+=`<div class="alegend"><span><i class="sq open"></i> not due yet</span><span><i class="sq late"></i> overdue</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
   return h;
@@ -2681,7 +2690,7 @@ function openCell(repId,aId){
   const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===aId);
   if(!rep||!a)return;
   ASSIGN.open={repId,aId};
-  const s=cellState(rep,a), d=$("#adrawer"), first=esc(rep.Name.split(" ")[0]);
+  const s=cellState(rep,a), d=$("#adrawer"), first=esc(rep.Name.split(" ")[0]), former=!assignIsActive(rep);
   const ovDue=s.override?dueISO(s.override.DueDate):"", isNA=ovDue==="NA", dis=ASSIGN.busy?" disabled":"";
   const thread=s.versions.length?s.versions.map((v,i)=>{
     const last=i===s.versions.length-1;
@@ -2693,7 +2702,8 @@ function openCell(repId,aId){
   }).join("")
   :`<div class="empty-note" style="padding:18px">${s.state==="na"?"Not applicable to "+first:"Not submitted"+(s.due?` · ${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}`:"")}</div>`;
   let action="";
-  if(s.latest&&s.state!=="na")action=`<div class="ad-form"><div class="ad-sub">Your feedback on v${esc(s.latest.Version)}</div>
+  if(former)action=`<div class="ad-row"><span class="sw-hint">${first} is a former mentee, so this is read only — reactivate them on the Mentees roster to send feedback or a reminder.</span></div>`;
+  else if(s.latest&&s.state!=="na")action=`<div class="ad-form"><div class="ad-sub">Your feedback on v${esc(s.latest.Version)}</div>
       <textarea id="adFb" placeholder="What's working, what to change, what to try next…">${esc(s.state==="waiting"?"":(s.latest.Feedback||""))}</textarea>
       <div class="ad-row"><button class="btn primary" data-review="revise"${dis}>Send feedback · ask for a resubmit</button>
         <button class="btn" data-review="approved"${dis}>Approve ✓</button>
@@ -2708,9 +2718,9 @@ function openCell(repId,aId){
       <div class="ad-row"><button class="btn sm primary" data-override="save"${dis}>Save</button>${s.override?`<button class="btn sm" data-override="clear"${dis}>Back to default</button>`:""}</div>
     </div></details>`;
   d.innerHTML=`<div class="ad-head"><div><div class="t">${esc(a.Title)}</div>
-      <div class="s"><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span> <span class="apill ${s.state}">${CELL_TITLE[s.state]}</span>${s.due?`<span>${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}</span>`:""}</div></div>
+      <div class="s"><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span>${former?' <span class="chip">former</span>':""} <span class="apill ${s.state}">${CELL_TITLE[s.state]}</span>${s.due?`<span>${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}</span>`:""}</div></div>
     <button class="btn sm" data-assignact="close" title="Close">✕</button></div>
-    <div class="ad-body">${thread}${action}${more}</div>`;
+    <div class="ad-body">${thread}${action}${former?"":more}</div>`;
   d.classList.add("on"); d.setAttribute("aria-hidden","false");
 }
 function closeCell(){ASSIGN.open=null;const d=$("#adrawer");if(d){d.classList.remove("on");d.setAttribute("aria-hidden","true");}}
@@ -2725,6 +2735,7 @@ document.addEventListener("click",async e=>{
   if(k==="reload"){if(ASSIGN.loading)return;ASSIGN.rows=null;assignLoad(true);}
   if(k==="close")closeCell();
   if(k==="archived"){ASSIGN.showArchived=!ASSIGN.showArchived;render();}
+  if(k==="former"){UI.assignFormer=!UI.assignFormer;render();}
   if(k==="new"){const base=act.dataset.prog||"Dojo";ASSIGN.editing={id:"",programs:["Dojo","Path","Masters"].filter(p=>tierRank(p)>=tierRank(base)),campaign:ASSIGN.campaign,title:"",instructions:"",materialsUrl:"",dueDate:"",active:true};render();const t=$("#afTitle");if(t)t.focus();}
   if(k==="edit"){const a=find(act.dataset.id);if(a){ASSIGN.editing=editingFrom(a);render();}}
   if(k==="cancel"){ASSIGN.editing=null;render();}

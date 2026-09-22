@@ -23,7 +23,7 @@ of sub-tabs under it.
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
 | ↳ Call Attendance | A roll for every group call: one row per mentee, one column per call this campaign. Click a call to take its roll — tick who's **on**, mark anyone **excused** — and press **Roll's in**. Anyone the call was for who wasn't on it (excused included) gets a **make-up** on their dashboard: watch the recording, post takeaways in the GroupMe, then say what they posted, due the **Friday after the call at midnight**. Replays never count as attendance. You read and approve make-ups right on this board. Details in [Call attendance](#call-attendance). |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not due, red overdue, black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved). Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Mentees submit from their dashboard; they get an email when you reply. Mark someone **former** on the roster and they drop off the board and out of its counts straight away; their work stays in the sheet, and **reactivate** brings them back. **Show former** lists them at the foot of the board, faded and never counted, so you can still look up what they turned in — their cells open read only, so nobody emails someone who has left. |
-| **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry splits **Ben 60 · Alan 40** unless you change it on that entry. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. Details in [Money](#money). |
+| **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry starts from its campaign's split — **Ben 60 · Alan 40** until you change it under **Splits**, separately for income and expenses — and any one entry can still be changed on its own. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. Details in [Money](#money). |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
 | ↳ Guest Speakers | The bench, what they'd teach, when we last asked. |
@@ -245,9 +245,39 @@ books live in their own private Google Sheet.
   they're sent.
 - **Settle up** — who paid whom, and how much.
 
-Every income and expense entry carries its own split: **Ben 60 · Alan 40** unless you pick
-50 · 50, all Ben, all Alan or a custom share on that entry. The split is stored on the entry,
-so if the deal ever changes, old campaigns keep the math they were settled on.
+Every income and expense entry carries its own split. A new one starts from its campaign's split
+(below) — the first button under **Split**, lit — and you can pick 50 · 50, all Ben, all Alan or a
+custom share on that entry instead. The split is stored on the entry, so if the deal changes, old
+campaigns keep the math they were settled on. Move a new entry to another campaign and its split
+follows, unless you'd already picked one by hand.
+
+### Changing the split
+
+**Splits** in the toolbar is where the deal lives. Pick the campaign it changes from, type Ben's
+share of **income** and Ben's share of **expenses** (the two can differ — say 50 · 50 on income
+but 60 · 40 on costs), and **Save**. Alan's share is whatever's left, shown as you type.
+
+It works like a price change in a shop: the new price is on everything rung up from the day it
+starts, and receipts already printed don't change. So:
+
+- **A change runs from its campaign until the next change.** Set 50 · 50 from Spring 2027 and
+  every campaign from Spring 2027 on starts there; Fall 2026 and earlier stay 60 · 40. A charge
+  for Fall 2026 that you log next January still starts at 60 · 40, because it's Fall's entry.
+- **Entries already saved keep their split.** A change never rewrites an entry, a total or a
+  campaign you've settled. If you change the campaign you're in, the drawer says how many entries
+  already in it were saved with another split. Open one and pick the new split to change it;
+  the drawer says when an entry's split isn't its campaign's.
+- **Before any change it's Ben 60 · Alan 40 on both**, as it always was. The table at the top of
+  the drawer lists every change and marks the one in force **now**; **remove** takes a change out,
+  and its campaigns go back to the split before it.
+- The **Ben's share** and **Alan's share** stats say the split behind their figures — one number,
+  both when income and expenses differ, or "mixed splits" once entries in view disagree.
+
+Changes live on the sheet's **Splits** tab (one row each: From, IncomeBenPct, ExpenseBenPct,
+SetBy, SetAt) and on its History tab. If the other person changed the same campaign's split
+while you had the drawer open, Save says what theirs is; Save again to put yours in its place.
+A row edited by hand so it no longer reads is listed in red and left out, so its campaigns start
+from the change before it until the row is fixed. It never stops the ledger reading.
 
 Each entry also carries its **campaign** (Spring Jan–Apr · Summer May–Aug · Fall Sep–Dec). A
 new entry goes into the campaign you're looking at, so a back-end charge for Fall that lands in
@@ -297,7 +327,7 @@ campaign until it is.
 | What | Where |
 |---|---|
 | The web app | Apps Script project **SNA Money**, code in [`SNA-Money.gs`](SNA-Money.gs); its `/exec` URL is `MONEY_API` in `index.html` |
-| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **History** and **Test**. Only the published hub (allinalan.github.io) reads and writes **Ledger**; any other copy of the page — your machine, a file, a LAN address — uses **Test**, and says so in a yellow badge. |
+| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **Splits**, **History**, **Test** and **Test Splits**. Only the published hub (allinalan.github.io) reads and writes **Ledger** and **Splits**; any other copy of the page — your machine, a file, a LAN address — uses **Test** and **Test Splits**, and says so in a yellow badge. |
 | Receipts | Drive folder **SNA Money Receipts** (test receipts in its **Test** folder) |
 | The key | Script property `MONEY_KEY` in the SNA Money project — the same value as the coach key. The script records the sheet and folder IDs as script properties itself (`MONEY_SHEET_ID`, `MONEY_FOLDER_ID`, `MONEY_TEST_FOLDER_ID`). |
 
@@ -305,7 +335,9 @@ Changing the coach key? Change `MONEY_KEY` to match, or the Money tab will say t
 doesn't accept the key.
 
 After editing `SNA-Money.gs`, paste it into the project and **Deploy ▸ Manage deployments ▸
-edit ▸ New version**. A new deployment would change the `/exec` URL.
+edit ▸ New version**. A new deployment would change the `/exec` URL. (Version 2 of the script
+added splits. Until it's deployed, the Money tab carries on at Ben 60 · Alan 40 and the Splits
+drawer says the script needs updating.)
 
 ### Trying it out and testing it
 

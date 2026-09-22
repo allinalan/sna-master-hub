@@ -20,7 +20,7 @@
  * Design: docs/superpowers/specs/2026-09-16-money-tab-design.md
  */
 
-var VERSION = 1;
+var VERSION = 2;
 
 /* The first 24 columns of the Ledger and Test tabs, in this order. */
 var HEAD = ['ID', 'Kind', 'Date', 'Campaign', 'Amount', 'Who', 'To', 'BenPct', 'Party', 'RepID', 'Plan', 'Rate',
@@ -37,6 +37,13 @@ var CONTENT = ['kind', 'date', 'campaign', 'amount', 'who', 'to', 'benPct', 'par
                'base', 'category', 'note'];
 var HISTORY_HEAD = ['At', 'By', 'Book', 'Action', 'ID', 'Entry'];
 var TABS = {live: 'Ledger', test: 'Test'};
+/* The split each campaign's new entries start from: one row per change, "from
+   this campaign on, Ben's share of income is X% and of expenses Y%". Before
+   the first row it's the original deal, Ben 60 · Alan 40 on both. It's only
+   where a new entry starts — every entry keeps the split it was saved with. */
+var SPLIT_HEAD = ['From', 'IncomeBenPct', 'ExpenseBenPct', 'SetBy', 'SetAt'];
+var SPLIT_FORMAT = ['@', '0.00', '0.00', '@', '@'];
+var SPLIT_TABS = {live: 'Splits', test: 'Test Splits'};
 var FOLDER_PROP = {live: 'MONEY_FOLDER_ID', test: 'MONEY_TEST_FOLDER_ID'};
 var KINDS = ['income', 'expense', 'settle'];
 var WHO_LABEL = {income: 'Received by', expense: 'Paid by', settle: 'From'};
@@ -72,6 +79,7 @@ function route_(b) {
     case 'save':    return locked_(function () { return save_(b.book, b); });
     case 'void':    return locked_(function () { return setStatus_(b.book, b, 'void'); });
     case 'restore': return locked_(function () { return setStatus_(b.book, b, 'live'); });
+    case 'split':   return locked_(function () { return split_(b.book, b); });
   }
   return {ok: false, error: 'unknown action'};
 }
@@ -85,9 +93,10 @@ function locked_(fn) {
 /* ── actions ────────────────────────────────────────────────────────── */
 function list_(book) {
   var ss = sheet_(false);
-  if (!ss) return {ok: true, entries: [], problems: [], sheetUrl: ''};
-  var t = load_(ss, book);
-  return {ok: true, entries: t.entries, problems: t.problems, sheetUrl: ss.getUrl()};
+  if (!ss) return {ok: true, entries: [], problems: [], splits: [], splitProblems: [], sheetUrl: ''};
+  var t = load_(ss, book), s = splits_(ss, book);
+  return {ok: true, entries: t.entries, problems: t.problems, splits: splitsOut_(s), splitProblems: s.problems,
+          sheetUrl: ss.getUrl()};
 }
 
 /* Create or change one entry. A create carries an ID the page minted, so a
@@ -152,19 +161,65 @@ function setStatus_(book, b, status) {
   return logged_(ss, by, book, status === 'void' ? 'void' : 'restore', next);
 }
 
+/* Set or take out the split that starts at one campaign. The sender says what
+   it saw there (was: {income, expense}, or null for no change there); if the
+   other person changed it first they get a conflict with the schedule as it
+   is now — unless it already reads what was asked for, which is the same
+   lost-reply retry as a save. */
+function split_(book, b) {
+  var by = person_(b.by);
+  if (!by) return {ok: false, error: 'who are you? The change has to be signed Alan or Ben'};
+  var from = String(b.from === null || b.from === undefined ? '' : b.from).trim();
+  if (!CAMPAIGN_RE.test(from)) return {ok: false, error: 'Campaign must look like "Fall 2026"'};
+  var want = null;
+  if (b.remove !== true) {
+    var income = pct_(b.income), expense = pct_(b.expense);
+    if (income === null) return {ok: false, error: 'Ben\'s share of income must be from 0 to 100%'};
+    if (expense === null) return {ok: false, error: 'Ben\'s share of expenses must be from 0 to 100%'};
+    want = {income: income, expense: expense};
+  }
+  var ss = sheet_(true);
+  writable_(ss);
+  var s = splits_(ss, book), stuck = s.problems.filter(function (p) { return p.row === 1 || p.from === from; })[0];
+  if (stuck) return {ok: false, error: 'row ' + stuck.row + ' of the ' + SPLIT_TABS[book] + ' tab needs a look first: ' + stuck.error};
+  var cur = s.byFrom[from] || null;
+  var now = cur ? {income: cur.income, expense: cur.expense} : null;
+  if (sameSplit_(now, want)) return {ok: true, splits: splitsOut_(s)};
+  var was = b.was ? {income: pct_(b.was.income), expense: pct_(b.was.expense)} : null;
+  if (!sameSplit_(now, was)) return {ok: false, conflict: true, splits: splitsOut_(s)};
+
+  var sh = tab_(ss, SPLIT_TABS[book], SPLIT_HEAD), at = new Date().toISOString();
+  var row = cur ? cur.row : sh.getLastRow() + 1;
+  room_(sh, row);
+  var range = sh.getRange(row, 1, 1, SPLIT_HEAD.length);
+  range.setNumberFormats([SPLIT_FORMAT]);
+  range.setValues([want ? [guard_(from), want.income, want.expense, by, at] : ['', '', '', '', '']]);
+  if (want) s.byFrom[from] = {from: from, income: want.income, expense: want.expense, setBy: by, setAt: at, row: row};
+  else delete s.byFrom[from];
+  var warning = recorded_(ss, by, book, want ? 'split' : 'unsplit', from,
+                          want ? {from: from, income: want.income, expense: want.expense} : {from: from, removed: true});
+  var out = {ok: true, splits: splitsOut_(s)};
+  if (warning) out.warning = warning;
+  return out;
+}
+
 /* The row is already written when this runs: commit it, then add the History
    line. A History failure must not read as "nothing was saved" — the entry
    went in; only its History line didn't, and the reply says exactly that. */
 function logged_(ss, by, book, action, e) {
+  var warning = recorded_(ss, by, book, action, e.id, e);
+  return warning ? {ok: true, entry: e, warning: warning} : {ok: true, entry: e};
+}
+function recorded_(ss, by, book, action, id, what) {
   SpreadsheetApp.flush();
   try {
-    history_(ss, by, book, action, e);
+    history_(ss, by, book, action, id, what);
     SpreadsheetApp.flush();
   } catch (err) {
-    console.error('SNA Money: ' + action + ' ' + e.id + ' is saved, but History failed: ' + errText_(err));
-    return {ok: true, entry: e, warning: 'Saved, but the sheet\'s History tab couldn\'t record it (' + errText_(err) + ').'};
+    console.error('SNA Money: ' + action + ' ' + id + ' is saved, but History failed: ' + errText_(err));
+    return 'Saved, but the sheet\'s History tab couldn\'t record it (' + errText_(err) + ').';
   }
-  return {ok: true, entry: e};
+  return '';
 }
 
 /* Hands back one entry's receipt. It looks the file up through the entry and
@@ -319,12 +374,55 @@ function writeRow_(sh, row, e) {
   range.setValues([values]);
 }
 
-function history_(ss, by, book, action, e) {
+function history_(ss, by, book, action, id, what) {
   var sh = tab_(ss, 'History', HISTORY_HEAD), row = sh.getLastRow() + 1;
   room_(sh, row);
   var range = sh.getRange(row, 1, 1, HISTORY_HEAD.length);
   range.setNumberFormat('@');
-  range.setValues([[new Date().toISOString(), by, book, action, e.id, JSON.stringify(e)]]);
+  range.setValues([[new Date().toISOString(), by, book, action, id, JSON.stringify(what)]]);
+}
+
+/* One book's split changes, oldest campaign first. A row that doesn't read is
+   reported with its row number and left out, so the campaigns it covered start
+   from the change before it until someone fixes it; a changed header row
+   leaves out the whole tab. None of it stops the ledger reading. */
+function splits_(ss, book) {
+  var out = {byFrom: {}, problems: []};
+  var sh = ss.getSheetByName(SPLIT_TABS[book]);
+  if (!sh || sh.getLastRow() === 0) return out;
+  var values = sh.getRange(1, 1, sh.getLastRow(), SPLIT_HEAD.length).getValues();
+  for (var i = 0; i < SPLIT_HEAD.length; i++) {
+    if (text_(values[0][i]) !== SPLIT_HEAD[i]) {
+      out.problems.push({row: 1, from: '', error: 'the header row was changed (column ' + (i + 1) + ' should read "' +
+                         SPLIT_HEAD[i] + '"). Its first ' + SPLIT_HEAD.length + ' columns must read: ' + SPLIT_HEAD.join(', ')});
+      return out;
+    }
+  }
+  for (var r = 1; r < values.length; r++) {
+    var cells = values[r];
+    if (cells.every(function (v) { return v === '' || v === null; })) continue;
+    var from = text_(cells[0]), income = pct_(cells[1]), expense = pct_(cells[2]);
+    var why = !CAMPAIGN_RE.test(from) ? 'From must look like "Fall 2026"'
+      : income === null ? 'IncomeBenPct must be a number from 0 to 100'
+      : expense === null ? 'ExpenseBenPct must be a number from 0 to 100'
+      : out.byFrom[from] ? 'the split from ' + from + ' is also on row ' + out.byFrom[from].row : '';
+    if (why) { out.problems.push({row: r + 1, from: from, error: why}); continue; }
+    out.byFrom[from] = {from: from, income: income, expense: expense, setBy: text_(cells[3]), setAt: text_(cells[4]), row: r + 1};
+  }
+  return out;
+}
+function splitsOut_(s) {
+  return Object.keys(s.byFrom).map(function (k) {
+    var x = s.byFrom[k];
+    return {from: x.from, income: x.income, expense: x.expense, setBy: x.setBy, setAt: x.setAt};
+  }).sort(function (a, b) { return campaignKey_(a.from) - campaignKey_(b.from); });
+}
+function sameSplit_(a, b) {
+  return a === null || b === null ? a === b : a.income === b.income && a.expense === b.expense;
+}
+function campaignKey_(label) {
+  var p = String(label).split(' ');
+  return Number(p[1]) * 3 + ({Spring: 0, Summer: 1, Fall: 2}[p[0]] || 0);
 }
 
 /* Sheets runs a string that starts with = as a formula whatever the cell's
@@ -489,6 +587,12 @@ function numIn_(v) {
   var s = String(v).trim().replace(/^\$/, '').replace(/,/g, '');
   if (s === '') return null;
   return /^\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
+}
+
+/* Ben's share of something, 0–100 to the hundredth; null if it isn't one. */
+function pct_(v) {
+  var n = numIn_(v);
+  return n === null || isNaN(n) || n < 0 || n > 100 ? null : Math.round(n * 100) / 100;
 }
 
 function person_(v) {

@@ -21,6 +21,7 @@ of sub-tabs under it.
 | ↳ Skillset | The skills off Alan's skillset sheet, rated **1–10**. Reps rate themselves on their own tab; you read those ratings from **Rep ▸ pick a mentee ▸ Skillset**, and can put your own number beside theirs — **they never see your column**. Anywhere the two are **3 or more apart** is flagged as a blind spot. Reps star five focus skills, ranked, and the top three are the ones that count. Ratings are **versioned, never reset**: a board stays editable for a week, then the next rating opens a new dated one carrying everything forward, so you get the growth and not just the number. The team board at the foot of Performance says who has actually done it, who is moving, and **where the academy is thinnest** — which is where the next campaign's call topics should come from. Coaches can add, rename and retire skills from the board itself. |
 | **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). Each row links out to that mentee's **dashboard** and straight to their **skillset**. **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
+| ↳ Call Attendance | A roll for every group call: one row per mentee, one column per call this campaign. Click a call to take its roll — tick who's **on**, mark anyone **excused** — and press **Roll's in**. Anyone the call was for who wasn't on it (excused included) gets a **make-up** on their dashboard: watch the recording, post takeaways in the GroupMe, then say what they posted, due the **Friday after the call at midnight**. Replays never count as attendance. You read and approve make-ups right on this board. Details in [Call attendance](#call-attendance). |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not due, red overdue, black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved). Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Mentees submit from their dashboard; they get an email when you reply. Mark someone **former** on the roster and they drop off the board and out of its counts straight away; their work stays in the sheet, and **reactivate** brings them back. **Show former** lists them at the foot of the board, faded and never counted, so you can still look up what they turned in — their cells open read only, so nobody emails someone who has left. |
 | **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry splits **Ben 60 · Alan 40** unless you change it on that entry. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. Details in [Money](#money). |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
@@ -349,9 +350,100 @@ same thing per mentee.
 
 Marks live in the shared hub data (`checkins[campaign][RepID][week]`), synced like the
 calendar, so both coaches see the same board. Because you two will often be marking the
-same board on the same call, a check-in mark never triggers the "Both of you edited this"
-prompt: if a save collides, the hub takes the other person's copy, puts your marks back on
+same board on the same call, a check-in mark (or a roll mark on Call Attendance) never
+triggers the "Both of you edited this" prompt: if a save collides, the hub takes the other person's copy, puts your marks back on
 top, and saves again. Any other kind of edit still asks, as before.
+
+## Call attendance
+
+**Mentees ▸ Call Attendance.** Group calls are mandatory, so every call gets a roll, and a
+missed call means watching the replay.
+
+### Taking the roll
+
+Click a call's heading on the board, or **Take the roll →** under the call on the Campaign
+Calendar. A drawer lists everyone the call was for:
+
+- **✓ On** — they were on the call. **– Excused** — the absence isn't held against them, but
+  they **still owe the replay**. Tap a lit button again to clear it.
+- **✓ Everyone on** ticks everybody not marked yet; then un-tick whoever wasn't there.
+- **+ someone the call wasn't for** adds a drop-in (a Dojo member on a Masters call, say).
+- **Guests** is a count of prospects and visitors. Only the number is kept — the shared hub
+  copy is readable by anyone who reads the page source, so names never go in it.
+- **No roll for this call** is for a call nobody took a roll on. It then doesn't count for or
+  against anyone.
+
+Every tap saves and syncs, like the check-in board. While you're marking, unticked names show
+as *not marked yet*. Press **Roll's in** when you're done: from then on, anyone the call
+was for who isn't on it has **missed** it.
+
+**Who a call is for** comes from its topic's tier on the calendar: **T1** is everyone,
+**T2** is The Path and The Masters, **T3** is The Masters. That's the same rule the
+dashboard uses for "Next group call". An untagged topic (a hot seat, say) is for everyone.
+The drawer's **The call was for** switch changes it for that one call. The list is fixed
+when the roll starts, so a mentee who joins later is never counted as missing an earlier
+call.
+
+### Make-ups
+
+**Roll's in** sends a make-up to everyone who owes one: an assignment called
+*Replay · Phoning 101 · Sep 22*. It shows up on the mentee's dashboard with the recording
+link, and asks them to:
+
+1. watch the recording,
+2. post their takeaways in the GroupMe, then
+3. answer on the dashboard: *did you post your takeaways in the GroupMe? What was it?*
+
+It's due the **Friday after the call at midnight**, so a Tuesday call's replay is due that
+Friday. It uses everything the Assignments tab already has:
+
+- their answer emails you both;
+- the reminder texts (the day before it's due, and once when it's late);
+- the same review drawer for feedback and **Approve**.
+
+Paste the **recording link** in the drawer when you put the roll in, or later. Changing it
+later means pressing **Update make-ups**.
+
+On the board, a missed call is a red ✕ and an excused one is black. A small corner badge
+shows how the replay is going: **!** late, **●** takeaways in and waiting on you, **✓** made
+up, **?** not sent yet. Click that square to read their answer and approve it. The row total
+counts calls they were **on** out of the calls that were for them, with excused calls left
+out. Replays never count toward it.
+
+How a make-up reaches only the people who missed: it's one assignment per call, for the
+programs of the people who owe it. Everyone else in those programs is marked **not
+applicable** on it. That needs nothing new from the check-in system's script. Make-ups stay
+off the Assignments board; you read them here.
+
+If the roll changes after the make-ups went out, the drawer and the board offer **Update
+make-ups**. One change happens without anyone pressing anything: when the hub sees someone
+who can see a make-up they don't owe (a mentee who joined after the call, or someone the
+roll now has on it), it marks it not applicable for them. The hub never hands a make-up out
+without a coach pressing the button.
+
+### Where it lives
+
+Rolls are in the shared hub data as `attendance[cid]`: RepIDs and marks only, like the
+check-ins. A colliding save merges roll marks the same way it merges check-in marks. Every
+call on the calendar carries a hidden `cid`, so a roll stays with its call when the call
+moves to another night. Make-ups live in the check-in system's assignments sheet, the same
+as any other assignment.
+
+**Check before relying on the reminder texts:** the hub can't see the check-in system's
+script. Test it with one real call and confirm the reminder texts skip anyone marked **not
+applicable** on a make-up. The dashboard and the hub already skip them.
+
+### Testing it
+
+```bash
+node tests/attend-math.test.js
+```
+
+That covers who a call is for, the due Friday, who owes a replay, and how a roll turns into
+a make-up only the people who missed can see. `node tools/dev-server.js` serves the board at
+`http://localhost:8830/#attend` against an in-memory assignments sheet.
+`curl -X POST localhost:8830/__submit -d '{"repId":"t04","assignmentId":"A1","text":"posted it"}'`
+plays a mentee turning a make-up in.
 
 ## Adding a tab
 

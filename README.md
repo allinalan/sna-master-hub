@@ -226,6 +226,23 @@ every save is versioned, and the sheet's history can roll anything back — but 
 trade for a free, no-login, works-anywhere setup. If you'd rather not take it, leave
 `SYNC.url` empty and use the Data ▸ Copy / Load hand-off instead.
 
+### Testing where the cursor goes
+
+```bash
+node tools/edit-focus-check.js
+```
+
+It clicks and types through the real page in a browser, against its own copy of the dev
+server, and checks where the cursor ends up: Enter, Tab and Escape leave the field (and no
+later refresh puts you back in it), clicking from a changed field into another lands in
+the second one, typing after clicking a `+ note` goes into the note whatever you clicked
+before it, and clicking into a note never moves its text. `--chrome` runs it in the
+installed Google Chrome instead of Playwright's Chromium; `--headed` lets you watch.
+
+It needs Playwright, which this repo doesn't install. It uses the copy in
+`~/projects/road-to-hyrox`, or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
+points at. It doesn't cover Safari: check that one by hand.
+
 ## Money
 
 What came in, what went out, and who owes whom — between Alan and Ben, settled once a

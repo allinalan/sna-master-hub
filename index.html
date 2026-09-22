@@ -249,6 +249,11 @@ table.grid tr.nocall td{color:var(--ink-faint);font-style:italic}
 body.editing [data-edit]{cursor:text;box-shadow:inset 0 -1px 0 var(--line-strong);min-height:1.2em;display:inline-block;min-width:44px}
 body.editing [data-edit]:hover{background:var(--accent-soft)}
 body.editing [data-edit]:focus{background:var(--card-raised);box-shadow:0 0 0 2px var(--accent);outline:none}
+/* A field that stays live with Edit off (an Orders of Business note) gets Edit
+   mode's minimum box while you're in it. Clicking "+ note" blanks it, and with
+   no box it shrank to nothing mid-click: the row slid under the pointer, the
+   caret landed outside the field, and typing went nowhere. */
+[data-edit][data-live]:focus{display:inline-block;min-width:44px;min-height:1.2em}
 body.editing .wk-topic.empty{color:var(--ink-faint)}
 .edit-banner{display:none;background:var(--accent-soft);border:1px solid #E0C2AC;border-radius:10px;padding:11px 15px;
   font-size:12.5px;color:var(--accent-ink);margin:20px 0 0;align-items:center;gap:12px;flex-wrap:wrap}

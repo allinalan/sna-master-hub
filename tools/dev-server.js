@@ -22,7 +22,8 @@
 //   curl -X POST localhost:8830/__fail -d 2  the next 2 money calls get an HTML error page,
 //                                           the way Apps Script's /exec sometimes answers
 //   curl -X POST localhost:8830/__cell -d '{"book":"test","row":2,"col":5,"value":"lots"}'
-//                                           a hand edit in the sheet (row 1 is the header)
+//                                           a hand edit in the sheet (row 1 is the header); add
+//                                           "tab":"Test Splits" to edit a tab other than the ledger
 //   curl -X POST localhost:8830/__submit -d '{"repId":"t02","assignmentId":"A1","text":"posted it"}'
 //                                           a mentee turns something in from their dashboard
 "use strict";
@@ -118,8 +119,8 @@ http.createServer((req, res) => {
       if(url.pathname === "/__cell"){
         try{
           const c = JSON.parse(data), ss = [...gas.state.spreadsheets.values()][0];
-          const sh = ss && ss.getSheetByName(c.book === "live" ? "Ledger" : "Test");
-          if(!sh) throw new Error("that tab doesn't exist yet — save an entry first");
+          const sh = ss && ss.getSheetByName(c.tab || (c.book === "live" ? "Ledger" : "Test"));
+          if(!sh) throw new Error("that tab doesn't exist yet — save something to it first");
           sh.put(Number(c.row), Number(c.col), c.value);
           return send(200, "text/plain", `row ${c.row} col ${c.col} is now ${JSON.stringify(sh.get(Number(c.row), Number(c.col)))}\n`);
         }catch(e){ return send(400, "text/plain", String(e.message) + "\n"); }

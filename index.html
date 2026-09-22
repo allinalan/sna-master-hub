@@ -1052,9 +1052,9 @@ const SEED = {
   checkins: {},
 
   /* ── Call attendance (Mentees ▸ Call Attendance) ───────────────────────
-     attendance[cid] = {tier, expected:[RepID…], marks:{RepID:"on"|"x"}, guests, done, makeup}
+     attendance[cid] = {for, expected:[RepID…], marks:{RepID:"on"|"x"}, guests, done, makeup}
      keyed by the call's cid (every call on the calendar carries one — see
-     ensureCids). `expected` is who the call was for when the roll was taken,
+     ensureCids). `for` is "all" or one program; `expected` is who that was when the roll was taken,
      so someone who joins later is never counted as having missed it. Marks:
      on the call · excused; anyone expected with no mark has missed it once the
      roll is `done`. `makeup` is the AssignmentID of that call's replay. RepIDs
@@ -2905,9 +2905,10 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASSIGN.open)closeCe
    isn't held against them: they still owe the replay. A replay never counts
    as being on the call.
 
-   Who a call is for comes from its topic's tier — T1 everyone, T2 The Path and
-   The Masters, T3 The Masters — the rule the dashboard already uses for "Next
-   group call". The roll can set it for one call (a hot seat, a guest).
+   A call is for its own program: a T1 topic is for The Dojo, T2 for The Path,
+   T3 for The Masters, and an untagged topic (a hot seat, say) for everyone.
+   Someone from another program who joins is a drop-in and never owes a
+   replay. The roll can set it for one call.
 
    The roll lives in DATA.attendance, keyed by the call's cid: RepIDs and marks
    only, like the check-in board. Names come from the private roster.
@@ -2924,9 +2925,14 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASSIGN.open)closeCe
 /* The rules, free of the page so tests/attend-math.test.js can run them under
    node. Leans on the ASSIGN_STATE block (tierRank, tierName, assignPrograms,
    dueISO); the test loads the two together. */
-const AT_FOR = {1:"Everyone", 2:"Path + Masters", 3:"Masters"};
-function atTier(t){ const n = Number(t); return n === 2 || n === 3 ? n : 1; }           // untagged → everyone
-function atExpects(tier, program){ return tierRank(program) >= atTier(tier); }
+/* who a call is for: "all", or one program. Its topic's tier sets it — T1 The
+   Dojo, T2 The Path, T3 The Masters, untagged everyone — so a Masters mentee
+   never owes the replay of a Path call. */
+const AT_FOR = {all:"Everyone", Dojo:"Dojo", Path:"Path", Masters:"Masters"};
+const AT_FOR_CHIP = {all:"t0", Dojo:"t1", Path:"t2", Masters:"t3"};
+function atForOf(tier){ return {1:"Dojo", 2:"Path", 3:"Masters"}[Number(tier)] || "all"; }
+function atExpects(forWhom, program){ return !AT_FOR[forWhom] || forWhom === "all" || tierName(program) === forWhom; }
+const atForName = f => f === "all" || !AT_FOR[f] ? "everyone" : "The " + f;
 /* a replay is due the Friday after the call, at midnight: a Tuesday call's is
    that Friday, a Friday call's the Friday after */
 function atDueFriday(iso){
@@ -3020,20 +3026,20 @@ function atCalls(){
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.j - b.j);
 }
 const atCampOf = iso => weekCampaign(isoOf(weekStartOf(parseDate(iso))));
-function atCallTier(c){ const roll = rollOf(c.cid); return atTier(roll && roll.tier ? roll.tier : tierOf(c.topic)); }
+function atCallFor(c){ const roll = rollOf(c.cid); return roll && AT_FOR[roll.for] ? roll.for : atForOf(tierOf(c.topic)); }
 function atRoster(){ return (TEAM.rows || []).filter(r => r.Active); }
-function atExpectedNow(tier){ return atRoster().filter(r => atExpects(tier, programOf(r))).map(r => String(r.RepID)); }
+function atExpectedNow(forWhom){ return atRoster().filter(r => atExpects(forWhom, programOf(r))).map(r => String(r.RepID)); }
 /* was this call for them? the roll's own list once there is one — so nobody
    who joined later is ever counted as missing it — and the tier rule until then */
 function atIsFor(c, rep){
   const roll = rollOf(c.cid);
-  return roll ? (roll.expected || []).includes(String(rep.RepID)) : atExpects(atCallTier(c), programOf(rep));
+  return roll ? (roll.expected || []).includes(String(rep.RepID)) : atExpects(atCallFor(c), programOf(rep));
 }
 /* the first change to a call's roll fixes who the call was for */
 function atStart(c){
   if(rollOf(c.cid)) return;
-  const t = atCallTier(c);
-  setRoll(c.cid, "expected", atExpectedNow(t)); setRoll(c.cid, "tier", t);
+  const f = atCallFor(c);
+  setRoll(c.cid, "expected", atExpectedNow(f)); setRoll(c.cid, "for", f);
 }
 /* one mentee on one call — what their square says */
 function atState(c, rep, today){
@@ -3125,9 +3131,10 @@ function renderAttend(){
       <div class="lede">A roll for every group call. Click a call to take it: tick who's on, and once the roll is in,
         anyone the call was for who isn't ticked has missed it, and owes the replay. Excused doesn't get anyone out of the
         replay, and a replay never counts as being on the call.</div>
-      <div class="lede how" style="margin-top:6px">Who a call is for comes from its topic's tier: T1 is everyone, T2 is
-        The Path and The Masters, T3 is The Masters. A make-up lands on the dashboard of each person who owes one, due the
-        Friday after the call at midnight: watch the recording, post takeaways in the GroupMe, then say what they posted.</div>
+      <div class="lede how" style="margin-top:6px">Each call is for its own program, from its topic's tier: T1 is The Dojo,
+        T2 The Path, T3 The Masters, and an untagged topic is for everyone. Anyone else on it is a drop-in and never owes
+        the replay. A make-up lands on the dashboard of each person who owes one, due the Friday after the call at
+        midnight: watch the recording, post takeaways in the GroupMe, then say what they posted.</div>
     </div>
   </div>`;
 
@@ -3211,14 +3218,14 @@ function renderAttend(){
   else if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
   else{
     const head = c => {
-      const roll = rollOf(c.cid), t = atCallTier(c), past = c.date <= today, cur = isoOf(weekStartOf(parseDate(c.date))) === curWeek;
+      const roll = rollOf(c.cid), f = atCallFor(c), past = c.date <= today, cur = isoOf(weekStartOf(parseDate(c.date))) === curWeek;
       const n = roll && !roll.skip ? atCount(roll) : null;
       const tally = roll && roll.skip ? `<span class="take" style="color:var(--ink-faint)">no roll</span>`
         : n && (roll.done || n.on || n.excused) ? `<span class="tally">${n.on}/${n.expected}${n.drop ? `<small>+${n.drop}</small>` : ""}</span>`
         : past ? `<span class="take no-export no-print">take roll →</span>` : "";
       const icon = c.type === "hotseat" ? "🔥 " : c.type === "guest" ? "🎤 " : "";
-      const inner = `<span class="wn">${esc(atDayMD(c.date))}</span><span class="ct">${icon}${esc(c.topic)}</span><span class="tl"><span class="tierchip t${t}">${AT_FOR[t]}</span>${tally}</span>`;
-      const title = `${WEEKDAYS[parseDate(c.date).getDay()]} ${fmtDate(c.date)} · ${c.topic} · for ${AT_FOR[t]}${roll && roll.done ? " · roll in" : past ? " · click to take the roll" : ""}`;
+      const inner = `<span class="wn">${esc(atDayMD(c.date))}</span><span class="ct">${icon}${esc(c.topic)}</span><span class="tl"><span class="tierchip ${AT_FOR_CHIP[f]}">${AT_FOR[f]}</span>${tally}</span>`;
+      const title = `${WEEKDAYS[parseDate(c.date).getDay()]} ${fmtDate(c.date)} · ${c.topic} · for ${atForName(f)}${roll && roll.done ? " · roll in" : past ? " · click to take the roll" : ""}`;
       return `<th class="call${past ? "" : " fut"}${cur ? " cur" : ""}" title="${esc(title)}">${past ? `<button class="rollhd" data-rollopen="${esc(c.cid)}">${inner}</button>` : inner}</th>`;
     };
     const GLYPH = {on:["yes", "✓", "on the call"], drop:["drop", "✓", "dropped in — the call wasn't for them"], x:["off", "–", "excused — still owes the replay"],
@@ -3292,8 +3299,8 @@ function paintRoll(){
   if(f){ f.focus(); try{ f.setSelectionRange(f.value.length, f.value.length); }catch(e){} }
 }
 function rollHtml(c){
-  const roll = rollOf(c.cid), t = atCallTier(c), today = todayISO(), dis = AT.busy ? " disabled" : "";
-  const marks = (roll && roll.marks) || {}, expIds = roll ? (roll.expected || []) : atExpectedNow(t);
+  const roll = rollOf(c.cid), f = atCallFor(c), today = todayISO(), dis = AT.busy ? " disabled" : "";
+  const marks = (roll && roll.marks) || {}, expIds = roll ? (roll.expected || []) : atExpectedNow(f);
   const n = roll ? atCount(roll) : {expected:expIds.length, on:0, excused:0, unmarked:expIds.length, drop:0, guests:0};
   const byId = new Map((TEAM.rows || []).map(r => [String(r.RepID), r]));
   const person = id => byId.get(id) || {RepID:id, Name:id};
@@ -3318,8 +3325,8 @@ function rollHtml(c){
     return h + rollFoot();
   }
 
-  h += `<div class="rc-exp"><span class="flab">The call was for</span><div class="seg">${[1, 2, 3].map(v =>
-    `<button class="${t === v ? "on" : ""}" data-rolltier="${v}"${dis}>${AT_FOR[v]}</button>`).join("")}</div></div>`;
+  h += `<div class="rc-exp"><span class="flab">The call was for</span><div class="seg">${Object.keys(AT_FOR).map(v =>
+    `<button class="${f === v ? "on" : ""}" data-rollfor="${v}"${dis}>${AT_FOR[v]}</button>`).join("")}</div></div>`;
   h += `<div class="rc-tally"><span class="chip roll">${n.on} of ${n.expected} on the call</span>${
     n.drop ? `<span class="chip roll">+${n.drop} dropped in</span>` : ""}${
     n.excused ? `<span class="chip">${n.excused} excused</span>` : ""}${
@@ -3337,9 +3344,9 @@ function rollHtml(c){
         : `<button class="here on" disabled>✓ On</button><button data-rollmark="${esc(id)}|" title="Take them off this call"${dis}>×</button>`}</div></div>`;
   };
   const expRows = expIds.map(person).filter(match).sort(byName);
-  h += `<div class="rc-sec">For ${esc(AT_FOR[t])} · ${expIds.length}</div>`;
+  h += `<div class="rc-sec">For ${esc(atForName(f))} · ${expIds.length}</div>`;
   h += expRows.length ? expRows.map(r => row(r, true)).join("")
-       : `<div class="empty-note" style="padding:12px">${q ? "No name matches." : "Nobody on the roster is in " + (t === 3 ? "The Masters" : "those programs") + "."}</div>`;
+       : `<div class="empty-note" style="padding:12px">${q ? "No name matches." : "Nobody on the roster is in " + esc(atForName(f)) + "."}</div>`;
 
   const dropIds = Object.keys(marks).filter(id => marks[id] === "on" && !expIds.includes(id));
   const others = atRoster().filter(r => !expIds.includes(String(r.RepID)) && marks[String(r.RepID)] !== "on").sort(byName);
@@ -3378,9 +3385,11 @@ function rollMakeupHtml(c, roll){
   const status = AT.busy ? `<div class="rc-msg busy">${esc(AT.note || "Working…")}</div>`
                : AT.err ? `<div class="rc-msg err">${esc(AT.err)}</div>`
                : AT.note ? `<div class="rc-msg">${esc(AT.note)}</div>` : "";
-  const link = `<div class="ad-row"><input id="rollUrl" type="url" placeholder="Recording link — https://… (now or later)" value="${esc(url)}"${dis}></div>`;
+  /* once a make-up is out, the link gets its own Save — typing doesn't repaint the drawer */
+  const link = `<div class="ad-row"><input id="rollUrl" type="url" placeholder="Recording link — https://… (now or later)" value="${esc(url)}"${dis}>${
+    roll && roll.done && a && atLive(a) ? `<button class="btn sm" data-roll="sync"${dis} title="Put this link on the make-up">Save link</button>` : ""}</div>`;
   if(!roll || !roll.done){
-    const k = roll ? atCount(roll).unmarked + atCount(roll).excused : atExpectedNow(atCallTier(c)).length;
+    const k = roll ? atCount(roll).unmarked + atCount(roll).excused : atExpectedNow(atCallFor(c)).length;
     return `<div class="rc-mu"><div>When everyone's marked, put the roll in. Anyone the call was for who isn't on it — excused
         included — gets a make-up on their dashboard, due ${esc(dueTxt)}.
         <small>They watch the recording, post takeaways in the GroupMe, then answer: did you post them, and what was it?</small></div>
@@ -3552,7 +3561,7 @@ document.addEventListener("click", e => {
   if(!AT.open || !e.target.closest("#adrawer")) return;
   const c = atCalls().find(x => x.cid === AT.open);
   if(!c) return;
-  const mk = e.target.closest("[data-rollmark]"), tr = e.target.closest("[data-rolltier]"), gs = e.target.closest("[data-rollguests]"), act = e.target.closest("[data-roll]");
+  const mk = e.target.closest("[data-rollmark]"), fr = e.target.closest("[data-rollfor]"), gs = e.target.closest("[data-rollguests]"), act = e.target.closest("[data-roll]");
   if(mk){
     const [rep, v] = mk.dataset.rollmark.split("|");
     atStart(c);
@@ -3560,11 +3569,11 @@ document.addEventListener("click", e => {
     setRoll(c.cid, "mark", cur === v ? "" : v, rep);
     render(); return;
   }
-  if(tr){
-    const v = Number(tr.dataset.rolltier);
-    if(v === atCallTier(c)) return;
+  if(fr){
+    const v = fr.dataset.rollfor;
+    if(v === atCallFor(c)) return;
     atStart(c);
-    setRoll(c.cid, "tier", v); setRoll(c.cid, "expected", atExpectedNow(v));
+    setRoll(c.cid, "for", v); setRoll(c.cid, "expected", atExpectedNow(v));
     render(); return;
   }
   if(gs){
@@ -3583,8 +3592,8 @@ document.addEventListener("click", e => {
   }
   if(k === "skip"){ setRoll(c.cid, "skip", true); render(); return; }
   if(k === "unskip"){
-    const t = atCallTier(c);
-    setRoll(c.cid, "skip", ""); setRoll(c.cid, "expected", atExpectedNow(t)); setRoll(c.cid, "tier", t);
+    const f = atCallFor(c);
+    setRoll(c.cid, "skip", ""); setRoll(c.cid, "expected", atExpectedNow(f)); setRoll(c.cid, "for", f);
     render(); return;
   }
   if(k === "undo"){ setRoll(c.cid, "done", ""); AT.note = ""; AT.err = ""; render(); return; }

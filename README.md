@@ -377,12 +377,13 @@ Every tap saves and syncs, like the check-in board. While you're marking, untick
 as *not marked yet*. Press **Roll's in** when you're done: from then on, anyone the call
 was for who isn't on it has **missed** it.
 
-**Who a call is for** comes from its topic's tier on the calendar: **T1** is everyone,
-**T2** is The Path and The Masters, **T3** is The Masters. That's the same rule the
-dashboard uses for "Next group call". An untagged topic (a hot seat, say) is for everyone.
-The drawer's **The call was for** switch changes it for that one call. The list is fixed
-when the roll starts, so a mentee who joins later is never counted as missing an earlier
-call.
+**Each call is for its own program**, set by its topic's tier on the calendar: **T1** is
+The Dojo, **T2** The Path, **T3** The Masters. So a Masters mentee never owes the replay of
+a Path call. An untagged topic (a hot seat, say) is for everyone. Anyone from another
+program who joins is a drop-in: they count as on the call, and never owe a replay. The
+drawer's **The call was for** switch (Everyone · Dojo · Path · Masters) changes it for that
+one call. The list is fixed when the roll starts, so a mentee who joins later is never
+counted as missing an earlier call.
 
 ### Make-ups
 
@@ -401,8 +402,9 @@ Friday. It uses everything the Assignments tab already has:
 - the reminder texts (the day before it's due, and once when it's late);
 - the same review drawer for feedback and **Approve**.
 
-Paste the **recording link** in the drawer when you put the roll in, or later. Changing it
-later means pressing **Update make-ups**.
+Paste the **recording link** in the drawer when you put the roll in, or later with
+**Save link**. Until there's a link, the make-up tells them it'll show up as soon as it's
+posted.
 
 On the board, a missed call is a red ✕ and an excused one is black. A small corner badge
 shows how the replay is going: **!** late, **●** takeaways in and waiting on you, **✓** made

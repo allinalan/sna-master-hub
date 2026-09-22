@@ -15,7 +15,7 @@ const pick = name => {
   return m[1];
 };
 const M = new Function(pick("ASSIGN_STATE") + "\n" + pick("ATTEND_MATH") +
-  "\n;return {atTier, atExpects, atDueFriday, atCount, atOwes, atPlan, assignState};")();
+  "\n;return {atForOf, atExpects, atDueFriday, atCount, atOwes, atPlan, assignState};")();
 
 const rep = (RepID, Tier, Active = true) => ({RepID, Name:RepID, Tier, Active});
 const REPS = [rep("d1", "Dojo"), rep("d2", "Dojo"), rep("p1", "Path"), rep("p2", "Path"), rep("m1", "Masters"), rep("gone", "Dojo", false)];
@@ -36,12 +36,14 @@ const applyOps = (overrides, id, ops) => {
 const seen = (a, overrides, r) => M.assignState({id:r.RepID, tier:r.Tier}, a, overrides, [], "2026-09-23").state;
 
 const cases = [
-  ["a call is for its tier and everyone above it; untagged is everyone", () => {
-    assert.deepStrictEqual(["Dojo", "Path", "Masters"].map(p => M.atExpects(1, p)), [true, true, true]);
-    assert.deepStrictEqual(["Dojo", "Path", "Masters"].map(p => M.atExpects(2, p)), [false, true, true]);
-    assert.deepStrictEqual(["Dojo", "Path", "Masters"].map(p => M.atExpects(3, p)), [false, false, true]);
-    assert.deepStrictEqual(["Dojo", "Path", "Masters"].map(p => M.atExpects(0, p)), [true, true, true]);
-    assert.strictEqual(M.atTier(undefined), 1);
+  ["a call is for its own program; an untagged topic is for everyone", () => {
+    assert.deepStrictEqual([1, 2, 3, 0, undefined].map(M.atForOf), ["Dojo", "Path", "Masters", "all", "all"]);
+    const who = f => ["Dojo", "Path", "Masters"].map(p => M.atExpects(f, p));
+    assert.deepStrictEqual(who("Dojo"), [true, false, false]);
+    assert.deepStrictEqual(who("Path"), [false, true, false]);          // Masters never owe a Path call's replay
+    assert.deepStrictEqual(who("Masters"), [false, false, true]);
+    assert.deepStrictEqual(who("all"), [true, true, true]);
+    assert.deepStrictEqual(who("nonsense"), [true, true, true]);
   }],
   ["a replay is due the Friday after the call", () => {
     assert.strictEqual(M.atDueFriday("2026-09-22"), "2026-09-25");      // Tuesday → that Friday

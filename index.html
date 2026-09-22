@@ -5887,13 +5887,17 @@ function paintTabs(){
    It only lives until focus lands (focusin clears it). Left set, the next
    render — Enter finishing the field, or a sync pull — put the cursor back in
    the field you'd just finished, text all selected. A click inside the field
-   you're already in, or on one that isn't editable, moves no focus: skip it. */
-let PENDING_FOCUS = null;
+   you're already in, or on one that isn't editable, moves no focus: skip it.
+   It also notes how many characters into the field the click fell, so the
+   cursor goes back to that spot. The browser's own caret for the click lands
+   in the destroyed field. Measured now, while the field is still where you
+   clicked it: after the re-render the page's entrance animation has it 10px lower. */
+let PENDING_FOCUS = null;                        // {path, offset} — offset null: the click missed the text
 let JUST_TOGGLED = null, FLASH_TIMER = null;
 document.addEventListener("mousedown", e => {
   const el = e.target.closest && e.target.closest("[data-edit]");
   const moving = el && el !== document.activeElement && (EDITING || el.hasAttribute("data-live"));
-  PENDING_FOCUS = moving ? el.dataset.edit : null;
+  PENDING_FOCUS = moving ? {path: el.dataset.edit, offset: textOffsetAt(el, e.clientX, e.clientY)} : null;
 });
 
 /* replay the staggered page entrance — only on real tab switches, never on
@@ -5920,8 +5924,8 @@ function render(){
     const q = $("#q");
     if(q){ q.focus(); try{ q.setSelectionRange(caret, caret); }catch(e){} }
   } else if(PENDING_FOCUS){
-    const target = PENDING_FOCUS; PENDING_FOCUS = null;
-    focusPath(target);
+    const {path, offset} = PENDING_FOCUS; PENDING_FOCUS = null;
+    focusPath(path, {offset});
   }
 }
 function editBanner(){
@@ -5932,13 +5936,41 @@ function editBanner(){
   </div>`;
 }
 
-/* put the cursor in a field we just created */
-function focusPath(path){
+/* put the cursor in a field. A field we just created comes up all selected, so
+   typing replaces its stand-in text. With `click` (from PENDING_FOCUS) it's a
+   plain caret at the character you clicked instead. Selecting all there meant
+   your first keystroke wiped the field you'd clicked into (fixed 2026-09-22). */
+function focusPath(path, click){
   const el = document.querySelector(`[data-edit="${CSS.escape(path)}"]`);
   if(!el) return;
-  el.focus();
+  el.focus();                                    // focusin may blank a placeholder, so place the caret after this
   const r = document.createRange(); r.selectNodeContents(el);
+  if(click){
+    const spot = click.offset === null ? null : textSpot(el, click.offset);
+    if(spot) r.setStart(spot.node, spot.offset);
+    r.collapse(!!spot);                          // at the clicked character, or else the end (a blanked placeholder: inside it)
+  }
   const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+/* how many characters into el the point (x, y) falls; null when it isn't on el's text */
+function textOffsetAt(el, x, y){
+  let node = null, off = 0;
+  if(document.caretPositionFromPoint){           // Firefox, Chrome 128+
+    const p = document.caretPositionFromPoint(x, y);
+    if(p){ node = p.offsetNode; off = p.offset; }
+  } else if(document.caretRangeFromPoint){       // Safari, older Chrome
+    const p = document.caretRangeFromPoint(x, y);
+    if(p){ node = p.startContainer; off = p.startOffset; }
+  }
+  if(!node || !el.contains(node)) return null;
+  const r = document.createRange(); r.setStart(el, 0); r.setEnd(node, off);
+  return r.toString().length;
+}
+/* the text node and offset n characters into el; null past its end */
+function textSpot(el, n){
+  const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for(let t; (t = w.nextNode()); n -= t.length) if(n <= t.length) return {node: t, offset: n};
+  return null;
 }
 
 /* ── dot-path get/set into DATA ───────────────────────────────────────── */

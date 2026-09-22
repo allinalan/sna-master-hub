@@ -21,6 +21,9 @@
 //   cursor back in it. Clicking from a changed field A into field B still lands in B.
 //   Clicking a "+ note" placeholder with Edit off puts the caret in the note, whatever
 //   was clicked before it, and focusing a note never moves its text.
+// And since: clicking from a changed field A into B puts a plain caret at the character
+//   you clicked, not B's whole text selected (your first keystroke used to wipe B); a
+//   field just made by "+ item" still comes up all selected.
 "use strict";
 const net = require("net");
 const os = require("os");
@@ -130,9 +133,29 @@ async function find(page, what, n){
   return got;
 }
 
+/* How many characters into field p a click at (x, y) falls, measured before the click, on
+   the field you can see. Safari has no caretPositionFromPoint; the page falls back to
+   caretRangeFromPoint, and so does this. */
+const charAt = (page, p, {x, y}) => page.evaluate(([p, x, y]) => {
+  const el = document.querySelector(`[data-edit="${CSS.escape(p)}"]`);
+  const c = document.caretPositionFromPoint ? document.caretPositionFromPoint(x, y) : null;
+  const rr = c ? null : document.caretRangeFromPoint(x, y);
+  const node = c ? c.offsetNode : rr && rr.startContainer, off = c ? c.offset : rr && rr.startOffset;
+  if(!node || !el.contains(node)) return null;
+  const r = document.createRange(); r.setStart(el, 0); r.setEnd(node, off); return r.toString().length;
+}, [p, x, y]);
+/* the selection, as characters into the focused field */
+const caretIn = page => page.evaluate(() => {
+  const s = getSelection(), el = document.activeElement;
+  if(!s.rangeCount || !el.contains(s.anchorNode)) return {selected: s.toString(), at: null};
+  const r = document.createRange(); r.setStart(el, 0); r.setEnd(s.anchorNode, s.anchorOffset);
+  return {selected: s.toString(), at: r.toString().length};
+});
+
 let browser, BASE;
-async function onPage(hash, {edit = false, width = 1280} = {}, fn){
+async function onPage(hash, {edit = false, width = 1280, noCaretPosition = false} = {}, fn){
   const ctx = await browser.newContext({viewport: {width, height: 800}});
+  if(noCaretPosition) await ctx.addInitScript(() => { delete Document.prototype.caretPositionFromPoint; });
   try{
     const page = await ctx.newPage();
     page.setDefaultTimeout(5000);
@@ -215,30 +238,56 @@ async function finishingAField(){
 }
 
 async function clickingFromFieldToField(){
-  console.log("\nClicking from a changed field A to field B — the cursor must land in B");
+  console.log("\nClicking from a changed field A to field B — the cursor must land in B, where you clicked");
+  const topics = page => find(page, "topics", 2);
   const cases = [
-    ["calendar topic → topic", "#calendar", true, page => find(page, "topics", 2)],
-    ["orders note → note (Edit off)", "#business", false, page => find(page, "notes", 2)],
-    ["orders note → + note (Edit off)", "#business", false,
+    ["calendar topic → topic", "#calendar", {edit: true}, topics],
+    ["calendar topic → topic, right edge", "#calendar", {edit: true}, topics, "right"],
+    ["calendar topic → topic, caretRangeFromPoint only", "#calendar", {edit: true, noCaretPosition: true}, topics],
+    ["orders note → note (Edit off)", "#business", {}, page => find(page, "notes", 2)],
+    ["orders note → + note (Edit off)", "#business", {},
       async page => [(await find(page, "notes", 1))[0], (await find(page, "noteSlot", 1))[0]]],
   ];
-  for(const [name, hash, edit, fields] of cases){
-    await onPage(hash, {edit}, async page => {
+  for(const [name, hash, opts, fields, spot] of cases){
+    await onPage(hash, opts, async page => {
       const [A, B] = await fields(page);
       await countRenders(page);
       await page.locator(sel(B)).scrollIntoViewIfNeeded();
       await page.click(sel(A)); await caretToEnd(page); await page.keyboard.type(" a1");
       await beatTheSaveTimer(page);
-      await page.click(sel(B));
+      await page.locator(sel(B)).scrollIntoViewIfNeeded();         // clicking A can scroll B off screen
+      const b = await page.locator(sel(B)).boundingBox();
+      const at = {x: Math.round(spot === "right" ? b.x + b.width - 2 : b.x + b.width / 2),   // whole pixels,
+                  y: Math.round(b.y + b.height / 2)};                                      // like a mousedown's clientX
+      const was = await page.evaluate(p => { const el = document.querySelector(`[data-edit="${CSS.escape(p)}"]`);
+                                             return {text: el.textContent, ph: el.dataset.ph || null}; }, B);
+      const placeholder = was.ph !== null && was.text.trim() === was.ph;
+      const want = placeholder ? 0 : await charAt(page, B, at);
+      if(want === null) throw new Missing(`the click point in ${B} isn't on its text`);
+      await page.mouse.click(at.x, at.y);
       const st = await page.evaluate(() => ({focused: document.activeElement.dataset.edit || null,
                                               renders: window.__renders, pending: PENDING_FOCUS}));
       check(`${name}: one render, cursor in B`, st.renders === 1 && st.focused === B && st.pending === null, {...st, B});
+      const caret = await caretIn(page);
+      check(`${name}: a caret where you clicked, nothing selected`, caret.selected === "" && caret.at === want, {...caret, want});
       await page.keyboard.type("Z"); await page.keyboard.press("Enter");
+      const expect = placeholder ? "Z" : was.text.slice(0, want) + "Z" + was.text.slice(want);
       const end = {A: await textOf(page, A), B: await textOf(page, B), focused: await focused(page)};
-      check(`${name}: A kept, typing went into B, Enter leaves B`,
-            /a1$/.test(end.A) && end.B.includes("Z") && end.focused === null, end);
+      check(`${name}: A kept, Z went in at the click and the rest of B kept, Enter leaves B`,
+            /a1$/.test(end.A) && end.B === expect && end.focused === null, {...end, expect});
     });
   }
+
+  await onPage("#bank", {edit: true}, async page => {              // a field you just made is the exception
+    const add = page.locator('[data-add^="topicBank."]').first();
+    if(!await add.count()) throw new Missing('needs a Topic Bank "+ item" button');
+    const list = await add.getAttribute("data-add");
+    await add.click();
+    const p = await page.evaluate(l => l + "." + (getPath(l).length - 1), list);
+    const st = {focused: await focused(page), ...(await caretIn(page)), text: await textOf(page, p)};
+    check('Topic Bank "+ item": the new item comes up all selected, so typing replaces "New item"',
+          st.focused === p && st.selected === "New item" && st.text === "New item", st);
+  });
 }
 
 async function clickingAPlaceholder(){

@@ -63,17 +63,18 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | Add, rename, or delete a category | `+ category` in the toolbar; click a category's name to rename; `×` in its header |
 | Add or delete a backlog list | `+ list` next to Backlog |
 | Add or delete an archived call / guest speaker | `+ call` / `+ speaker` in the toolbar, `×` at the end of the row |
-| Rename or delete an order of business | Click its title to rename, `×` on the row. (Adding one doesn't need Edit — see below.) A new section is typed into the section chip's picker; a section empties itself out of existence when its last item leaves |
+| Delete an order of business | `×` on the row. (Adding and renaming one don't need Edit — see below.) A new section is typed into the section chip's picker; a section empties itself out of existence when its last item leaves |
 
 Emptying an optional field (track, note, 2nd call, detail) removes it rather than
 leaving a blank chip behind.
 
 ### Orders of Business works without Edit mode
 
-Adding a task, ticking a box, assigning an owner, setting a due date, writing a note, and
-giving an item a section, a topic, an urgency and an importance are the whole point of that
-tab, so they all work with Edit **off**. Edit mode there is only for renaming and deleting
-(a ticked-off item's `×` shows without it). Click a due date to pick one off the calendar,
+Adding a task, rewording its title, ticking a box, assigning an owner, setting a due date,
+writing a note, and giving an item a section, a topic, an urgency and an importance are the
+whole point of that tab, so they all work with Edit **off**. Edit mode there is only for
+deleting (a ticked-off item's `×` shows without it). Click a title to fix a typo — Enter or
+clicking away saves it. Click a due date to pick one off the calendar,
 same as anywhere else in the hub. Every row has a note line — it reads as a faint `+ note`
 until you click into it.
 

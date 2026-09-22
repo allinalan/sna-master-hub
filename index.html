@@ -310,6 +310,9 @@ body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-fa
   max-width:34%;overflow:hidden;text-overflow:ellipsis}
 .biz .biz-add .btn.sm{margin:0;flex:none}
 .biz-t [data-ph]{color:var(--ink-faint);font-style:italic}
+/* the title and note take a click with Edit off, so they look like it when you're in one */
+.biz [data-live]{cursor:text}
+.biz [data-live]:focus{background:var(--card-raised);box-shadow:0 0 0 2px var(--accent);outline:none}
 /* topic · urgency · importance sit under the title as small chips. Unset ones
    are faint until the row is hovered (or Edit is on) so a long list doesn't
    read as sixty placeholders; they never print or export. */
@@ -5218,8 +5221,8 @@ function renderSpeakers(){
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TAB 5 — NEXT ORDERS OF BUSINESS
-   A working list, not a document: add, tick, assign and date without flipping
-   into Edit mode. Edit mode is only needed to rename or delete things.
+   A working list, not a document: add, rename, tick, assign and date without
+   flipping into Edit mode. Edit mode is only needed to delete things.
    ═══════════════════════════════════════════════════════════════════════════ */
 function dueState(item){
   if(item.done) return "done";
@@ -5381,9 +5384,10 @@ function renderBusiness(){
       <div class="eyebrow">Between the two of you</div>
       <div class="big serif">Next Orders of Business</div>
       <div class="lede">Everything you two still owe each other, one list, sharpest first.
-        Add a task in the box at the top of the list, tick it, put a name on it (Alan, Ben,
-        or both), give it a date, a note, a section, a topic, an urgency and an importance —
-        no need to turn on Edit for any of that. Edit mode is only for renaming or deleting.
+        Add a task in the box at the top of the list, click its title to reword it, tick it,
+        put a name on it (Alan, Ben, or both), give it a date, a note, a section, a topic, an
+        urgency and an importance — no need to turn on Edit for any of that. Edit mode is only
+        for deleting.
         On both scales <b>1 is the top</b> and 5 the bottom.</div>
     </div>
   </div>`;
@@ -5452,7 +5456,7 @@ function renderBusiness(){
     html += `<div class="biz-row ${i.done?"is-done":""}${flash}">
       <button class="tick ${i.done?"on":""}" data-check="${p}" title="${i.done?"Mark as still open":"Mark done"}" aria-pressed="${i.done}">${i.done?"✓":""}</button>
       <div class="biz-main">
-        <div class="biz-t">${ed(p+".t", i.t, "", "untitled")}</div>
+        <div class="biz-t">${edLive(p+".t", i.t, "", "untitled")}</div>
         <div class="biz-note${note ? "" : " empty no-export no-print"}">${edLive(p+".note", note, "", "+ note")}</div>
         <div class="biz-meta">${bizChip("sec", p, i, g)}${bizChip("topic", p, i)}${bizChip("urg", p, i)}${bizChip("imp", p, i)}</div>
       </div>
@@ -5764,8 +5768,19 @@ function applyEdit(){
 }
 document.addEventListener("focusin", e => {
   const el = e.target.closest && e.target.closest("[data-edit]");
+  /* the click landed without a re-render in between, so there's nothing to put
+     back — left set, the next save (Enter on this very field) would drop the
+     cursor straight back into it */
+  if(el && PENDING_FOCUS === el.dataset.edit) PENDING_FOCUS = null;
   if(!el || !(EDITING || el.hasAttribute("data-live"))) return;
-  if(el.dataset.ph && el.textContent.trim() === el.dataset.ph) el.textContent = "";
+  if(el.dataset.ph && el.textContent.trim() === el.dataset.ph){
+    /* wiping the placeholder takes the caret's text node with it, and if a
+       field was just saved (Enter, then click an empty "+ note") the caret
+       isn't re-placed — the typing went nowhere. Put it in the field. */
+    el.textContent = "";
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(true);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  }
 });
 /* Optional fields disappear when emptied, rather than leaving a blank chip behind. */
 const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","secondTime","detail","proposed","alt",

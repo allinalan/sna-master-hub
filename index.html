@@ -301,7 +301,23 @@ body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-fa
 .due.soon{color:var(--warn)}
 .due.later{color:var(--ink-soft)}
 .biz .btn.sm{margin:10px 16px}
+/* the "add a task" line at the top of the list. Always there — adding a task
+   is everyday work, so it doesn't wait for Edit mode. The dashed box sits in
+   the tick column so what you type lines up with the titles below it. */
+.biz-add{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);background:var(--paper-deep)}
+.biz-add:focus-within{background:var(--card-raised);box-shadow:inset 3px 0 0 var(--accent)}
+.biz-add .plus{width:21px;height:21px;margin-right:9px;flex:none;display:grid;place-items:center;border:1.5px dashed var(--line-strong);
+  border-radius:7px;color:var(--ink-faint);font-size:14px;line-height:1}
+.biz-add input{flex:1;min-width:0;border:none;background:transparent;font-family:var(--sans);font-size:13.5px;color:var(--ink);padding:5px 0}
+.biz-add input::placeholder{color:var(--ink-faint)}
+.biz-add input:focus{outline:none}
+.biz-add .to{font-family:var(--monof);font-size:10.5px;letter-spacing:.03em;color:var(--ink-faint);white-space:nowrap;
+  max-width:34%;overflow:hidden;text-overflow:ellipsis}
+.biz .biz-add .btn.sm{margin:0;flex:none}
 .biz-t [data-ph]{color:var(--ink-faint);font-style:italic}
+/* the title and note take a click with Edit off, so they look like it when you're in one */
+.biz [data-live]{cursor:text}
+.biz [data-live]:focus{background:var(--card-raised);box-shadow:0 0 0 2px var(--accent);outline:none}
 /* topic · urgency · importance sit under the title as small chips. Unset ones
    are faint until the row is hovered (or Edit is on) so a long list doesn't
    read as sixty placeholders; they never print or export. */
@@ -408,6 +424,8 @@ footer a{color:var(--ink-soft)}
   .season-head .range{display:none}
   .week{margin:0;padding:13px 2px;border-radius:0}
   .biz-row{grid-template-columns:26px minmax(0,1fr) auto 20px;row-gap:6px}
+  .biz-add .plus{margin-right:5px}                 /* the tick column is 26px here */
+  .biz-add .to{display:none}                        /* the toast still names the section */
   .biz-main{grid-column:2 / 4}
   .chip.who{grid-column:2;grid-row:2;justify-self:start}
   .due{grid-column:3;grid-row:2;justify-self:start;text-align:left}
@@ -1466,6 +1484,7 @@ let TAB = (location.hash || "#calendar").slice(1);
 const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:false,
              q:"", archCampaign:"all", bizView:"all",
              bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"pri",   // Orders of Business filters + sort
+             bizDraft:"",                                        // what's typed in its "add a task" box — outlives a re-render
              tier:"all", assignView:"board", assignProg:"all", assignFormer:false,   // show ticked-off items too — hiding them reads as deletion
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"",     // Mentees ▸ Weekly Check-ins
@@ -5439,8 +5458,8 @@ function renderSpeakers(){
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TAB 5 — NEXT ORDERS OF BUSINESS
-   A working list, not a document: tick, assign and date without flipping into
-   Edit mode. Edit mode is only needed to add or delete things.
+   A working list, not a document: add, rename, tick, assign and date without
+   flipping into Edit mode. Edit mode is only needed to delete things.
    ═══════════════════════════════════════════════════════════════════════════ */
 function dueState(item){
   if(item.done) return "done";
@@ -5460,8 +5479,8 @@ const BIZ_LEVELS = {
   imp:{label:"Importance", short:"Imp", names:["Critical", "High", "Medium", "Low", "Minor"]}
 };
 function lvl(v){ const n = Number(v); return n >= 1 && n <= 5 ? Math.round(n) : 0; }   // 0 = unrated
-/* A blank order of business. "+ item" pushes one of these — an object, never a
-   bare string, or the row has nowhere to keep what you type. */
+/* A blank order of business. The "add a task" box pushes one of these — an
+   object, never a bare string, or the row has nowhere to keep what you type. */
 function newBizItem(){ return {t:"New item", note:"", who:"", due:"", done:false, topic:"", urg:"", imp:""}; }
 /* every topic anyone has put on an item, so the picker and the filter offer
    the same list, spelled the way it already is */
@@ -5480,8 +5499,8 @@ function bizClearFilters(){
   UI.bizUrg = []; UI.bizImp = []; UI.q = "";
 }
 /* does this item pass the tab's filters? One function, shared by the render
-   and by "+ item" (which drops the filters if the fresh row would be hidden —
-   a task you can't see is a task that "didn't save"). */
+   and by the "add a task" box (which drops the filters if the fresh row would
+   be hidden — a task you can't see is a task that "didn't save"). */
 function bizShows(i, g){
   if(UI.bizView === "open" && i.done) return false;
   if(UI.bizView === "done" && !i.done) return false;
@@ -5512,6 +5531,29 @@ function bizShows(i, g){
   const q = UI.q.toLowerCase().trim();
   if(q && !JSON.stringify(i).toLowerCase().includes(q)) return false;
   return true;
+}
+/* A new task lands in the section you're filtered to, else the first one; the
+   section chip on its row moves it anywhere else. */
+function bizAddSection(){ return UI.bizSec || Object.keys(DATA.business)[0] || "Action Items"; }
+/* the "add a task" box: type, press Enter, and it's on the list — no Edit mode.
+   The cursor stays in the box so the next one can go straight in. */
+function bizQuickAdd(){
+  const box = $("#bizAdd");
+  const t = String(box ? box.value : UI.bizDraft).replace(/\s+/g, " ").trim();
+  if(!t){ toast("Type the task first"); if(box) box.focus(); return; }
+  const sec = bizAddSection();
+  if(!Array.isArray(DATA.business[sec])) DATA.business[sec] = [];   // a board with no sections yet
+  const item = newBizItem(); item.t = t;
+  DATA.business[sec].push(item);
+  let msg = "Added to " + sec;
+  if(!bizShows(item, sec)){ bizClearFilters(); msg += " \u2014 filters cleared so it shows"; }
+  UI.bizDraft = "";
+  JUST_TOGGLED = "business." + sec + "." + (DATA.business[sec].length - 1);   // flash the new row
+  save(); render();
+  const again = $("#bizAdd"); if(again) again.focus();
+  clearTimeout(FLASH_TIMER);
+  FLASH_TIMER = setTimeout(() => { JUST_TOGGLED = null; render(); }, 2600);
+  toast(msg);
 }
 /* the three small chips under an item. Each opens the picker (bizPop) — live,
    no Edit mode needed, same as the owner and the due date beside it. */
@@ -5579,10 +5621,11 @@ function renderBusiness(){
       <div class="eyebrow">Between the two of you</div>
       <div class="big serif">Next Orders of Business</div>
       <div class="lede">Everything you two still owe each other, one list, sharpest first.
-        Tick it, put a name on it (Alan, Ben, or both), give it a date, a note, a section, a
-        topic, an urgency and an importance — no need to turn on Edit for any of that. Edit
-        mode is only for adding or deleting. On both scales <b>1 is the top</b> and 5 the
-        bottom.</div>
+        Add a task in the box at the top of the list, click its title to reword it, tick it,
+        put a name on it (Alan, Ben, or both), give it a date, a note, a section, a topic, an
+        urgency and an importance — no need to turn on Edit for any of that. Edit mode is only
+        for deleting.
+        On both scales <b>1 is the top</b> and 5 the bottom.</div>
     </div>
   </div>`;
 
@@ -5633,7 +5676,15 @@ function renderBusiness(){
      the board is one flat list: each row wears its section as a chip, the
      Section dropdown narrows to one, and the Section sort groups them. */
   const order = all.filter(x => bizShows(x.i, x.g)).sort(cmp);
-  html += `<div class="biz">`;
+  const addSec = bizAddSection();
+  html += `<div class="biz">
+    <div class="biz-add no-export no-print">
+      <span class="plus" aria-hidden="true">+</span>
+      <input id="bizAdd" type="text" value="${esc(UI.bizDraft)}" placeholder="Add a task and press Enter\u2026"
+        autocomplete="off" enterkeyhint="done" aria-label="Add a task to ${esc(addSec)}">
+      <span class="to" title="New tasks land here \u2014 move one with the section chip on its row, or pick a section in the filter above">\u2192 ${esc(addSec)}</span>
+      <button class="btn sm primary" data-bizadd="1">Add</button>
+    </div>`;
   for(const {i, idx, g} of order){
     const p = "business." + g + "." + idx;
     const st = dueState(i);
@@ -5642,7 +5693,7 @@ function renderBusiness(){
     html += `<div class="biz-row ${i.done?"is-done":""}${flash}">
       <button class="tick ${i.done?"on":""}" data-check="${p}" title="${i.done?"Mark as still open":"Mark done"}" aria-pressed="${i.done}">${i.done?"✓":""}</button>
       <div class="biz-main">
-        <div class="biz-t">${ed(p+".t", i.t, "", "untitled")}</div>
+        <div class="biz-t">${edLive(p+".t", i.t, "", "untitled")}</div>
         <div class="biz-note${note ? "" : " empty no-export no-print"}">${edLive(p+".note", note, "", "+ note")}</div>
         <div class="biz-meta">${bizChip("sec", p, i, g)}${bizChip("topic", p, i)}${bizChip("urg", p, i)}${bizChip("imp", p, i)}</div>
       </div>
@@ -5653,11 +5704,6 @@ function renderBusiness(){
     </div>`;
   }
   if(!order.length) html += `<div class="empty-note">Nothing matches${filtered ? " — clear a filter above, or hit <b>Clear filters</b>" : ""}.</div>`;
-  /* "+ item" lands in the section you're looking at, else the first one; the
-     chip on the new row moves it anywhere else, and a new section is typed
-     right there in the picker. */
-  const addSec = UI.bizSec || Object.keys(groups)[0] || "Action Items";
-  html += addBtn("business." + addSec, "item").replace("<button ", `<button title="Adds to ${esc(addSec)} — change it on the row" `);
   html += `</div></div>`;
   return html;
 }
@@ -5909,8 +5955,11 @@ function pageIn(){
 }
 
 function render(){
-  const focused = document.activeElement && document.activeElement.id === "q";
-  const caret = focused ? document.activeElement.selectionStart : null;
+  /* the search box and the "add a task" box are rebuilt by every render (a
+     sync, a flash fading out) — put the cursor back where it was */
+  const act = document.activeElement;
+  const focused = act && (act.id === "q" || act.id === "bizAdd") ? act.id : null;
+  const caret = focused ? act.selectionStart : null;
   paintTabs();
   if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance
   if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
@@ -5921,7 +5970,7 @@ function render(){
   applyEdit();
   if(TAB === "checkins") ciScrollHint();
   if(focused){
-    const q = $("#q");
+    const q = $("#" + focused);
     if(q){ q.focus(); try{ q.setSelectionRange(caret, caret); }catch(e){} }
   } else if(PENDING_FOCUS){
     const {path, offset} = PENDING_FOCUS; PENDING_FOCUS = null;
@@ -5995,7 +6044,14 @@ document.addEventListener("focusin", e => {
   PENDING_FOCUS = null;                          // the click's cursor has landed — nothing left to put back
   const el = e.target.closest && e.target.closest("[data-edit]");
   if(!el || !(EDITING || el.hasAttribute("data-live"))) return;
-  if(el.dataset.ph && el.textContent.trim() === el.dataset.ph) el.textContent = "";
+  if(el.dataset.ph && el.textContent.trim() === el.dataset.ph){
+    /* wiping the placeholder takes the caret's text node with it, and if a
+       field was just saved (Enter, then click an empty "+ note") the caret
+       isn't re-placed — the typing went nowhere. Put it in the field. */
+    el.textContent = "";
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(true);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  }
 });
 /* Optional fields disappear when emptied, rather than leaving a blank chip behind. */
 const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","secondTime","detail","proposed","alt",
@@ -6494,6 +6550,8 @@ document.addEventListener("click", e => {
   if(e.target.closest("[data-bpclose]") || !pop.contains(e.target)) closeBizPicker();
 });
 document.addEventListener("keydown", e => {
+  if(e.target.id === "bizAdd" && e.key === "Enter" && !e.isComposing){ e.preventDefault(); bizQuickAdd(); return; }
+  if(e.target.id === "bizAdd" && e.key === "Escape"){ UI.bizDraft = e.target.value = ""; return; }
   if(e.key === "Enter" && e.target.id === "bpNew"){
     e.preventDefault();
     const v = e.target.value.trim();
@@ -6604,23 +6662,13 @@ document.addEventListener("click", e => {
   }
 
   /* ── structural edits, all path-driven ── */
-  if(t.dataset.add){                                   // append to a list
+  if(t.dataset.add){                                   // append to a list (topic bank, backlog — bare strings)
     const path = t.dataset.add;
-    /* Topic-bank and backlog entries are bare strings, but an order of business
-       is an object (t / note / who / due / …). Pushing the string "New item"
-       into a section (the bug, fixed 2026-09-11) drew a row with nowhere to
-       keep what you typed, so the task looked like it never saved. */
-    const isBiz = path.startsWith("business.");
-    const item = isBiz ? newBizItem() : "New item";
-    if(isBiz && !getPath(path)) DATA.business[path.slice("business.".length)] = [];   // a board with no sections yet
-    addTo(path, item);
-    if(isBiz && !bizShows(item, path.slice("business.".length))){
-      bizClearFilters();                               // a new item you can't see is a new item that "didn't save"
-      toast("Filters cleared so the new item shows");
-    }
+    addTo(path, "New item");
     save(); EDITING = true; render();
-    focusPath(path + "." + (getPath(path).length - 1) + (isBiz ? ".t" : "")); return;
+    focusPath(path + "." + (getPath(path).length - 1)); return;
   }
+  if(t.dataset.bizadd){ bizQuickAdd(); return; }       // Orders of Business: the "add a task" box's button
   if(t.dataset.bizclear){ bizClearFilters(); render(); return; }
   if(t.dataset.addrow){                                // append a table row
     const blanks = {speakers:{name:"New speaker", topic:"", lastAsked:""},
@@ -6668,6 +6716,7 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("input", e => {
   if(e.target.id === "q"){ UI.q = e.target.value; clearTimeout(window._qt); window._qt = setTimeout(render, 160); }
+  if(e.target.id === "bizAdd") UI.bizDraft = e.target.value;   // no render — the box keeps its own text
   if(e.target.id === "ppq"){                     // live-filter the picker, no re-render
     const v = e.target.value.toLowerCase();
     document.querySelectorAll("#pickPop .pp-item").forEach(b =>

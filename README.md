@@ -16,7 +16,7 @@ of sub-tabs under it.
 | Tab | What it's for |
 |---|---|
 | **Campaign Calendar** | Every call night, one year at a time — topic, track, who's hosting, second call, notes. Filter by campaign or by host. |
-| **Orders of Business** | Everything you two still owe each other, one flat list. Tick it off, put a name on it (Alan, Ben, or both), give it a note, a due date, a section, a topic, an urgency and an importance. Overdue goes red, due-within-a-fortnight goes amber. Filter by any of those, and sort by **Priority** (urgency and importance added together, so 1+1 is first), urgency, importance, due date or section. Sections aren't headers any more — each row wears its section as a chip; click it to move the item, or type a new section name right there. |
+| **Orders of Business** | Everything you two still owe each other, one flat list. Add a task from the box at the top of the list, tick it off, put a name on it (Alan, Ben, or both), give it a note, a due date, a section, a topic, an urgency and an importance. Overdue goes red, due-within-a-fortnight goes amber. Filter by any of those, and sort by **Priority** (urgency and importance added together, so 1+1 is first), urgency, importance, due date or section. Sections aren't headers any more — each row wears its section as a chip; click it to move the item, or type a new section name right there. |
 | **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab and every rep's private `?rep=` link — so they can never drift out of sync. A bare visit to the old standalone URL redirects here. Every mentee now has **two boards** in there — **Performance** and **Skillset** — on their own tabs. |
 | ↳ Skillset | The skills off Alan's skillset sheet, rated **1–10**. Reps rate themselves on their own tab; you read those ratings from **Rep ▸ pick a mentee ▸ Skillset**, and can put your own number beside theirs — **they never see your column**. Anywhere the two are **3 or more apart** is flagged as a blind spot. Reps star five focus skills, ranked, and the top three are the ones that count. Ratings are **versioned, never reset**: a board stays editable for a week, then the next rating opens a new dated one carrying everything forward, so you get the growth and not just the number. The team board at the foot of Performance says who has actually done it, who is moving, and **where the academy is thinnest** — which is where the next campaign's call topics should come from. Coaches can add, rename and retire skills from the board itself. |
 | **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). Each row links out to that mentee's **dashboard** and straight to their **skillset**. **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
@@ -63,18 +63,26 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | Add, rename, or delete a category | `+ category` in the toolbar; click a category's name to rename; `×` in its header |
 | Add or delete a backlog list | `+ list` next to Backlog |
 | Add or delete an archived call / guest speaker | `+ call` / `+ speaker` in the toolbar, `×` at the end of the row |
-| Add or delete an order of business | `+ item` at the foot of the list (it lands in the section you're filtered to, else the first), `×` on the row. A new section is typed into the section chip's picker; a section empties itself out of existence when its last item leaves |
+| Delete an order of business | `×` on the row. (Adding and renaming one don't need Edit — see below.) A new section is typed into the section chip's picker; a section empties itself out of existence when its last item leaves |
 
 Emptying an optional field (track, note, 2nd call, detail) removes it rather than
 leaving a blank chip behind.
 
 ### Orders of Business works without Edit mode
 
-Ticking a box, assigning an owner, setting a due date, writing a note, and giving an item
-a section, a topic, an urgency and an importance are the whole point of that tab, so they
-all stay clickable with Edit **off**. Edit mode there is only for adding and deleting.
-Click a due date to pick one off the calendar, same as anywhere else in the hub. Every
-row has a note line — it reads as a faint `+ note` until you click into it.
+Adding a task, rewording its title, ticking a box, assigning an owner, setting a due date,
+writing a note, and giving an item a section, a topic, an urgency and an importance are the
+whole point of that tab, so they all work with Edit **off**. Edit mode there is only for
+deleting (a ticked-off item's `×` shows without it). Click a title to fix a typo — Enter or
+clicking away saves it. Click a due date to pick one off the calendar,
+same as anywhere else in the hub. Every row has a note line — it reads as a faint `+ note`
+until you click into it.
+
+To add a task, type it in the **Add a task** box at the top of the list and press Enter
+(or hit **Add**). The cursor stays in the box, so you can put in several in a row; Escape
+empties it. A new task lands in the section you're filtered to, else the first one — the
+box shows which — and the section chip on its row moves it anywhere else. If a filter
+would hide the new task, the filters clear so you can see it.
 
 ### Urgency and importance are 1 to 5, and 1 is the top
 

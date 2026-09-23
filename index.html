@@ -6051,10 +6051,14 @@ function applyEdit(){
   $("#editBtn").classList.toggle("on", EDITING);
   $("#editBtn").textContent = EDITING ? "Done" : "Edit";
 }
+/* What the field held when you clicked in. The typing timer below saves over
+   DATA mid-edit, so by blur getPath() may already read the new text. */
+let EDIT_START = null;                             // {el, before}
 document.addEventListener("focusin", e => {
   PENDING_FOCUS = null;                          // the click's cursor has landed — nothing left to put back
   const el = e.target.closest && e.target.closest("[data-edit]");
   if(!el || !(EDITING || el.hasAttribute("data-live"))) return;
+  EDIT_START = {el, before: getPath(el.dataset.edit)};
   if(el.dataset.ph && el.textContent.trim() === el.dataset.ph){
     /* wiping the placeholder takes the caret's text node with it, and if a
        field was just saved (Enter, then click an empty "+ note") the caret
@@ -6101,7 +6105,14 @@ document.addEventListener("focusout", e => {
     removeAt(path);                                // emptied an optional field — drop it entirely
   } else {
     const before = String(getPath(path) ?? "");
-    if(before === val){
+    /* a topic renamed in the bank keeps its tier — the tier map is keyed by text.
+       The old key is the text from when you clicked in, not `before`: after a
+       pause the timer has already saved the new name, so `before` equals `val`.
+       Typed back to where it started = nothing to move (and nothing to delete). */
+    const was = String((EDIT_START && EDIT_START.el === el ? EDIT_START.before : before) ?? "").trim();
+    const retier = path.startsWith("topicBank.") && was && was !== val
+                   && DATA.topicTiers && DATA.topicTiers[was] !== undefined;
+    if(before === val && !retier){
       /* THE CLICK-REFRESH FIX (2026-08-26): a focusout with nothing changed
          used to save + re-render the whole page, so every stray click in Edit
          mode looked like a refresh. Now: restore the placeholder if we blanked
@@ -6110,10 +6121,9 @@ document.addEventListener("focusout", e => {
       return;
     }
     setPath(path, val);
-    /* a topic renamed in the bank keeps its tier — the tier map is keyed by text */
-    if(path.startsWith("topicBank.") && before && DATA.topicTiers && DATA.topicTiers[before] !== undefined){
-      DATA.topicTiers[val] = DATA.topicTiers[before];
-      delete DATA.topicTiers[before];
+    if(retier){
+      DATA.topicTiers[val] = DATA.topicTiers[was];
+      delete DATA.topicTiers[was];
     }
   }
   save();

@@ -27,6 +27,9 @@
 // And: a render doesn't replay the page entrance. It used to, so every save faded the
 //   board in again and put the fields 10px below where you'd clicked. A tab switch still
 //   plays it, and a render in the middle of it carries on rather than starting over.
+// And: renaming a Topic Bank topic keeps its tier, however long you pause before you
+//   finish. A pause past the 500 ms save-as-you-type used to leave the tier on the old
+//   name. Typing back to the old name, or clicking in and out, leaves the tier alone.
 "use strict";
 const net = require("net");
 const os = require("os");
@@ -129,6 +132,8 @@ const pick = {
     .slice(0, 1).map(e => e.dataset.edit),
   openWeek: () => [...document.querySelectorAll('[data-edit^="calendar."][data-ph^="+ open"]')]
     .filter(e => e.getBoundingClientRect().width).slice(0, 1).map(e => e.dataset.edit),
+  bankTopics: () => [...document.querySelectorAll('[data-edit^="topicBank."]:not([data-ph])')]
+    .filter(e => e.textContent.trim()).slice(0, 1).map(e => e.dataset.edit),
 };
 async function find(page, what, n){
   const got = await page.evaluate(pick[what]);
@@ -392,6 +397,62 @@ async function rendersDontReplayTheEntrance(){
   });
 }
 
+async function renamingKeepsTheTier(){
+  console.log("\nRenaming a Topic Bank topic — its tier goes with it");
+  /* give topic p tier t, and return its text */
+  const tiered = (page, p, t) => page.evaluate(([p, t]) => {
+    const text = getPath(p); setTier(text, t); save(); render(); return text;
+  }, [p, t]);
+  /* the topic's text, its tier by that text, what's left on the old text, and its row after a render */
+  const tierState = (page, p, old) => page.evaluate(([p, old]) => {
+    render();
+    const el = document.querySelector(`[data-edit="${CSS.escape(p)}"]`);
+    const text = getPath(p), tiers = DATA.topicTiers || {};
+    return {text, tier: tierOf(text), keys: Object.keys(tiers), onOld: text === old ? null : tiers[old] ?? null,
+            row: el && el.closest("li") ? el.closest("li").className : null};
+  }, [p, old]);
+
+  for(const [name, pause] of [["a quick rename", 0], ["a rename with a pause past the 500 ms save", 700]]){
+    await onPage("#bank", {edit: true}, async page => {
+      const [T] = await find(page, "bankTopics", 1);
+      const old = await tiered(page, T, 2);
+      await page.click(sel(T)); await caretToEnd(page); await page.keyboard.type(" R");
+      if(pause) await page.waitForTimeout(pause);
+      await page.keyboard.press("Enter");
+      const st = await tierState(page, T, old);
+      check(`bank: ${name} keeps the topic's tier`,
+            st.text === old + " R" && st.tier === 2 && st.onOld === null && /\btier-t2\b/.test(st.row), st);
+      if(pause){
+        await page.reload(); await page.waitForSelector("[data-edit]");
+        const after = await page.evaluate(([now, old]) => ({tier: tierOf(now), onOld: DATA.topicTiers[old] ?? null}),
+                                          [old + " R", old]);
+        check("bank: …and still after a reload", after.tier === 2 && after.onOld === null, after);
+      }
+    });
+  }
+
+  await onPage("#bank", {edit: true}, async page => {
+    const [T] = await find(page, "bankTopics", 1);
+    const old = await tiered(page, T, 3);
+    await page.click(sel(T)); await caretToEnd(page); await page.keyboard.type(" X");
+    await page.waitForTimeout(700);                               // " X" is saved
+    await page.keyboard.press("Backspace"); await page.keyboard.press("Backspace");
+    await page.keyboard.press("Enter");
+    const st = await tierState(page, T, old);
+    check("bank: typed back to the old name after a save, the tier stays put",
+          st.text === old && st.tier === 3 && !st.keys.includes(old + " X"), st);
+  });
+
+  await onPage("#bank", {edit: true}, async page => {
+    const [T] = await find(page, "bankTopics", 1);
+    const old = await tiered(page, T, 1);
+    await countRenders(page);
+    await page.click(sel(T)); await page.click("h1");
+    const st = {renders: await page.evaluate(() => window.__renders), tier: await page.evaluate(t => tierOf(t), old)};
+    check("bank: clicking in and out of a topic keeps its tier, no render", st.renders === 0 && st.tier === 1, st);
+  });
+}
+
 (async () => {
   const {pw, from} = loadPlaywright();
   const server = process.env.BASE ? null : await startServer();
@@ -413,6 +474,7 @@ async function rendersDontReplayTheEntrance(){
     await clickingAPlaceholder();
     await focusingMovesNothing();
     await rendersDontReplayTheEntrance();
+    await renamingKeepsTheTier();
     const failed = results.filter(ok => !ok).length;
     console.log(`\n${results.length - failed}/${results.length} passed`);
     code = failed ? 1 : 0;

@@ -245,7 +245,9 @@ server, and checks where the cursor ends up: Enter, Tab and Escape leave the fie
 later refresh puts you back in it), clicking from a changed field into another lands in
 the second one with the cursor where you clicked (not its whole text selected, ready to be
 typed over), typing after clicking a `+ note` goes into the note whatever you clicked
-before it, and clicking into a note never moves its text. `--chrome` runs it in the
+before it, and clicking into a note never moves its text. It also checks that a Topic Bank
+topic you rename keeps its tier, even if you paused long enough for the typing to save
+before you finished. `--chrome` runs it in the
 installed Google Chrome instead of Playwright's Chromium; `--headed` lets you watch.
 
 It needs Playwright, which this repo doesn't install. It uses the copy in

@@ -1997,9 +1997,10 @@ async function teamCall(body){
 async function teamLoad(){
   if(TEAM.loading || !TEAM.key) return;
   TEAM.loading = true; TEAM.err = ""; render();
+  swLoad();   // the switches don't need the roster — ask for both at once (they used to wait for it, +2 s)
   try{
     const out = await teamCall({action: "coachRoster"});
-    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; swLoad(); }
+    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; }
     else if(out.error === "bad key"){
       TEAM.key = ""; localStorage.removeItem("sna_coach_key");
       TEAM.err = "That key wasn't right — ask Alan for the current one.";
@@ -3174,9 +3175,11 @@ function renderAttend(){
     </div>
   </div>`;
 
+  /* the replay column needs the assignments sheet as well as the roster: ask for
+     it before the roster gate, so the two load together instead of one after the other */
+  if(TEAM.key && !ASSIGN.rows && !ASSIGN.loading && !ASSIGN.err) setTimeout(() => assignLoad(), 0);
   const gate = teamGateHtml(html);
   if(gate) return gate;
-  if(!ASSIGN.rows && !ASSIGN.loading && !ASSIGN.err) setTimeout(() => assignLoad(), 0);
   if(AT.pending){ const cid = AT.pending; AT.pending = null; setTimeout(() => openRoll(cid), 0); }
   if(ASSIGN.rows && AT.tidied !== ASSIGN.loadedAt && !AT.busy){ AT.tidied = ASSIGN.loadedAt; setTimeout(atTidy, 0); }
 
@@ -3953,6 +3956,7 @@ async function moneyLoad(force){
   if(MONEY.loading || !TEAM.key || !MONEY_API) return;
   if(!force && MONEY.entries && Date.now() - MONEY.triedAt < 60000) return;
   MONEY.loading = true; MONEY.triedAt = Date.now(); render();
+  if(!TEAM.rows && !TEAM.loading) teamLoad();   // the payer picker lists the roster — fetch it alongside the ledger, not after it
   /* /exec intermittently serves an error page instead of JSON (~1 in 5 on
      2026-08-24), so ride that out before bothering anyone. A save that starts
      or lands while a list is on its way makes that list older than the page —

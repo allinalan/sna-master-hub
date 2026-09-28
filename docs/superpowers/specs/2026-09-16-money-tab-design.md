@@ -410,3 +410,44 @@ entries used, or "mixed splits".
 labels, the check. `money-backend.test.js`: save/list/History, ordering, validation, conflicts
 and retries, remove, the test book, unreadable and duplicate rows, a changed header, trash and
 lock, a failed History line, and `mSplitCheck` against the script.
+
+## The buyout (2026-09-28)
+
+Alan: the contract has a buyout option after year 3 — the partner with the smaller share can buy
+the rest of the bigger share at a multiple of that slice of the trailing twelve months' net
+income, within two weeks of a campaign starting or ending. "Build the buyout card." The terms
+themselves stay in the private sheet (Alan's choice): this repo and page are public, so neither
+names the slice or the multiple, and the tests use made-up ones.
+
+**Storage.** One row under a header on the sheet's `Buyout` tab (`Test Buyout` for the test book):
+
+| Column | Type | Meaning |
+|---|---|---|
+| SlicePct | number, 2 dp | The slice of the split that's bought, > 0 and ≤ 100. |
+| Multiple | number, 2 dp | The multiple of that slice of net income it costs, > 0 and ≤ 100. |
+| OpensWith | text | Optional: the campaign the option opens with (`Fall 2028` …). |
+| SetBy / SetAt | text | `Alan`/`Ben` and the ISO time of the last change. |
+
+**API** (`VERSION` 3). `list` also returns `buyout` (the terms, or `null` when none are set) and
+`buyoutProblem` (why the tab couldn't be read: a changed header or a row 2 that doesn't read — the
+terms are then left out, and the ledger still reads). `buyout {book, by, terms, was}` sets them
+under the lock: `was` is what the sender saw (or `null`); already-so is ok without writing, a
+mismatch is `{ok:false, conflict:true, buyout}`, a problem on the tab refuses the write. History
+Action `buyout`, ID `terms`. The words the script refuses in are `mBuyoutCheck`'s, held together
+by a test.
+
+**Math** (`mBuyout`, in cents). The turn is the end of a campaign `at`; the twelve months are the
+three campaigns ending with it, by campaign tag. Net income = income − expenses of their live
+entries (settle-ups aren't either). Slice = round(net × SlicePct / 100); price = round(slice ×
+Multiple), so the lines shown multiply out. The seller is whoever's share at `at` is over half; an
+even split has nothing to buy. The window is two weeks either side of the turn (end − 14 days to
+the next start + 14). The default turn is the one whose window today is in, else the end of the
+current campaign (then "so far"). A problem row in any of the three campaigns, or one whose
+campaign can't be read, blocks the price. A turn before OpensWith says so.
+
+**Page.** A **Buyout** button opens the drawer: the turn picker (window dates on each option), the
+card (headline "Alan would pay Ben $X", per-campaign net income, twelve-month total, the slice, the
+price, the shares before and after with the Splits change to make, campaigns with nothing logged,
+the option's opening), then the terms form. Typing new terms re-prices the card live, marked as
+unsaved. The payment isn't a ledger entry. On a version 2 script the drawer shows net income and
+says the script needs updating.

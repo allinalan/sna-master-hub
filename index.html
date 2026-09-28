@@ -2703,12 +2703,16 @@ const byTierName=(a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(
 function assignReps(){return (ASSIGN.rows.reps||[]).filter(assignIsActive).sort(byTierName);}
 function assignFormerReps(){return (ASSIGN.rows.reps||[]).filter(r=>!assignIsActive(r)).sort(byTierName);}
 function cellState(rep,a){return assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());}
+/* Only the Dojo is required to turn assignments in, so only the Dojo counts toward
+   Waiting on you and Overdue. Path and Masters cells still show on the board, and
+   still count toward Submitted this week and Approved. */
+const ASSIGN_REQUIRED="Dojo";
 function assignCounts(){
   const c={waiting:0,late:0,week:0,approved:0}; if(!ASSIGN.rows)return c;
   const weekAgo=new Date(Date.now()-7*86400000).toISOString();
   const live=assignList().filter(a=>!isArchived(a));
-  assignReps().forEach(r=>live.forEach(a=>{const s=cellState(r,a);
-    if(s.state==="waiting")c.waiting++; if(s.state==="late")c.late++; if(s.state==="approved")c.approved++;
+  assignReps().forEach(r=>live.forEach(a=>{const s=cellState(r,a),req=tierName(r.Tier)===ASSIGN_REQUIRED;
+    if(req&&s.state==="waiting")c.waiting++; if(req&&s.state==="late")c.late++; if(s.state==="approved")c.approved++;
     s.versions.forEach(v=>{if(String(v.SubmittedAt||"")>=weekAgo)c.week++;});}));
   return c;
 }
@@ -2736,8 +2740,8 @@ function renderAssign(){
     </div>
     <div class="tb-actions"><button class="btn" data-assignact="reload" title="Re-pull from the sheet">Refresh</button>${exportButtons("assignBoard","Assignments")}</div>`);
   html+=`<div id="assignBoard" class="export-frame">`;
-  html+=printHead("Assignments · "+ASSIGN.campaign,`${c.waiting} waiting on a coach · printed ${fmtFull(todayISO())}`);
-  html+=`<div class="stats">${statBox("Waiting on you",c.waiting,c.waiting?"open a cell to review":"inbox clear",c.waiting>0)}${statBox("Overdue",c.late,"not turned in, past due",c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
+  html+=printHead("Assignments · "+ASSIGN.campaign,`${c.waiting} from the ${ASSIGN_REQUIRED} waiting on a coach · printed ${fmtFull(todayISO())}`);
+  html+=`<div class="stats">${statBox("Waiting on you",c.waiting,`${ASSIGN_REQUIRED} only · `+(c.waiting?"open a cell to review":"inbox clear"),c.waiting>0)}${statBox("Overdue",c.late,`${ASSIGN_REQUIRED} only · not turned in, past due`,c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
   html+=UI.assignView==="board"?assignBoardHtml():assignCatalogHtml();
   html+=`</div>`;
   return html;
@@ -4892,8 +4896,7 @@ const SECTIONS = [
   {id:"perf", label:"Performance", count:()=>"live"},
   {id:"team", label:"Mentees",
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""},
-  {id:"assign", label:"Assignments",
-   count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : ""},
+  {id:"assign", label:"Assignments"},
   {id:"business", label:"Orders of Business",
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"},
   {id:"money", label:"Money", count:moneyNavCount}
@@ -4936,7 +4939,6 @@ const TABS = [
    count:atNavCount, render:renderAttend},
 
   {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
-   count:()=>ASSIGN.rows ? assignCounts().waiting + " waiting" : "",
    render:renderAssign},
 
   {id:"money", label:"Money", sub:"", section:"money", printable:true,

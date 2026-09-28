@@ -13,7 +13,7 @@ const block = src.match(/\/\*MONEY_MATH_BEGIN\*\/([\s\S]*?)\/\*MONEY_MATH_END\*\
 if(!block){ console.error("FAIL: no MONEY_MATH block in index.html"); process.exit(1); }
 const M = new Function(block[1] + "\n;return {mNum, mCents, mPctCents, mFmt, mShares, mCampaignOf, mCampaignEnd, mCampaignKey, " +
   "mTally, mStatus, mUnsettled, mLastPlan, mPerson, mSplitLabel, mSplitName, mSplitFor, mSplitCovers, mShareNote, mSplitCheck, " +
-  "mCheck, mEntryLine, mNewId, M_FIRST_SPLIT};")();
+  "mCheck, mEntryLine, mNewId, M_FIRST_SPLIT, mCampaignAt, mAddDays, mBuyoutWindow, mBuyoutAt, mBuyout, mBuyoutCheck};")();
 
 let seq = 0;
 const nextId = () => "mt" + String(++seq).padStart(6, "0");
@@ -92,8 +92,8 @@ const cases = [
     assert.strictEqual(note([inc({benPct:62.5}), exp({benPct:62.5})], "Alan"), "37.5%");
     assert.strictEqual(note([exp({benPct:66.67})], "Alan"), "33.33%");
     assert.strictEqual(note([inc({benPct:62.5}), exp({benPct:60})], "Ben"), "mixed splits");
-    assert.strictEqual(note([], "Ben", 57.5), "57.5%");                    // nothing logged: the campaign's own split
-    assert.strictEqual(note([], "Alan", 57.5), "42.5%");
+    assert.strictEqual(note([], "Ben", 58), "58%");                    // nothing logged: the campaign's own split
+    assert.strictEqual(note([], "Alan", 58), "42%");
     assert.strictEqual(note([], "Ben"), "");
     assert.strictEqual(note([stl()], "Ben", 62.5), "62.5%");
   }],
@@ -103,16 +103,16 @@ const cases = [
     assert.strictEqual(M.mSplitFor(null, "Fall 2026"), M.M_FIRST_SPLIT);
   }],
   ["a campaign starts from the latest change at or before it", () => {
-    const splits = [{from:"Summer 2027", benPct:57.5}, {from:"Summer 2028", benPct:50}];
+    const splits = [{from:"Summer 2027", benPct:58}, {from:"Summer 2028", benPct:50}];
     assert.strictEqual(M.mSplitFor(splits, "Fall 2026"), M.M_FIRST_SPLIT);
     assert.strictEqual(M.mSplitFor(splits, "Spring 2027"), M.M_FIRST_SPLIT);
-    assert.strictEqual(M.mSplitFor(splits, "Summer 2027").benPct, 57.5);
-    assert.strictEqual(M.mSplitFor(splits, "Spring 2028").benPct, 57.5);
+    assert.strictEqual(M.mSplitFor(splits, "Summer 2027").benPct, 58);
+    assert.strictEqual(M.mSplitFor(splits, "Spring 2028").benPct, 58);
     assert.strictEqual(M.mSplitFor(splits, "Summer 2028").benPct, 50);
     assert.strictEqual(M.mSplitFor(splits, "Spring 2031").benPct, 50);
   }],
   ["a change covers its own campaign up to the next change", () => {
-    const splits = [{from:"Summer 2027", benPct:57.5}, {from:"Summer 2028", benPct:50}];
+    const splits = [{from:"Summer 2027", benPct:58}, {from:"Summer 2028", benPct:50}];
     const covers = (from, c) => M.mSplitCovers(splits, from, c);
     assert.deepStrictEqual(["Spring 2027", "Summer 2027", "Spring 2028", "Summer 2028"].map(c => covers("Summer 2027", c)), [false, true, true, false]);
     assert.deepStrictEqual(["Spring 2028", "Summer 2028", "Fall 2031"].map(c => covers("Summer 2028", c)), [false, true, true]);
@@ -120,7 +120,7 @@ const cases = [
     assert.strictEqual(M.mSplitCovers([], "Fall 2026", "Fall 2040"), true);
   }],
   ["a split's share must be 0 to 100", () => {
-    for(const ok of ["62.5", "0", "100%", 57.5]) assert.strictEqual(M.mSplitCheck(ok), "", String(ok));
+    for(const ok of ["62.5", "0", "100%", 58]) assert.strictEqual(M.mSplitCheck(ok), "", String(ok));
     for(const bad of ["", "101", "-1", "half", null]) assert.strictEqual(M.mSplitCheck(bad), "Ben's share must be from 0 to 100%", String(bad));
   }],
   ["campaigns follow the hub's calendar months", () => {
@@ -211,6 +211,71 @@ const cases = [
     assert.strictEqual(M.mEntryLine(exp({amount:15.99, date:"2026-09-17", status:"void"})), "2026-09-17 · Zoom, Alan paid · $15.99 · 60/40 · void");
     assert.strictEqual(M.mEntryLine(stl({amount:4180, date:"2027-01-03"})), "2027-01-03 · Ben → Alan · $4,180.00");
     assert.strictEqual(M.mEntryLine(exp({amount:600, date:"2026-09-10", note:"annual   plan"})), "2026-09-10 · Zoom, Alan paid · $600.00 · 60/40 · “annual plan”");
+  }],
+  ["campaign keys turn back into campaigns, across years", () => {
+    for(const c of ["Spring 2026", "Summer 2026", "Fall 2026", "Spring 2027"]) assert.strictEqual(M.mCampaignAt(M.mCampaignKey(c)), c);
+    assert.strictEqual(M.mCampaignAt(M.mCampaignKey("Spring 2027") - 1), "Fall 2026");
+    assert.strictEqual(M.mCampaignAt(M.mCampaignKey("Fall 2026") + 1), "Spring 2027");
+  }],
+  ["days add across months, years and leap days", () => {
+    assert.strictEqual(M.mAddDays("2026-12-31", 15), "2027-01-15");
+    assert.strictEqual(M.mAddDays("2026-12-31", -14), "2026-12-17");
+    assert.strictEqual(M.mAddDays("2028-02-28", 1), "2028-02-29");
+  }],
+  ["the buyout window is two weeks either side of a campaign's turn", () => {
+    assert.deepStrictEqual(M.mBuyoutWindow("Fall 2026"), {from:"2026-12-17", to:"2027-01-15"});
+    assert.deepStrictEqual(M.mBuyoutWindow("Spring 2027"), {from:"2027-04-16", to:"2027-05-15"});
+    assert.deepStrictEqual(M.mBuyoutWindow("Summer 2027"), {from:"2027-08-17", to:"2027-09-15"});
+  }],
+  ["a buyout today prices at the turn whose window we're in, else the end of this campaign", () => {
+    for(const [today, want] of [["2026-09-28", "Fall 2026"], ["2026-12-20", "Fall 2026"], ["2027-01-10", "Fall 2026"],
+                                ["2027-01-15", "Fall 2026"], ["2027-01-16", "Spring 2027"], ["2026-09-15", "Summer 2026"], ["2026-09-16", "Fall 2026"]])
+      assert.strictEqual(M.mBuyoutAt(today), want, today);
+  }],
+  ["the buyout prices the three campaigns ending at the turn: net income, the slice, then the multiple", () => {
+    const entries = [
+      inc({campaign:"Spring 2026", date:"2026-02-01", amount:10000}), exp({campaign:"Spring 2026", date:"2026-02-02", amount:1000}),
+      inc({campaign:"Summer 2026", date:"2026-06-01", amount:5000.55}),
+      inc({campaign:"Fall 2026", amount:4000}), exp({campaign:"Fall 2026", amount:333.33}),
+      inc({campaign:"Fall 2026", amount:99999, status:"void"}),                   // void: nothing
+      stl({campaign:"Fall 2026", amount:777}),                                    // a settle-up isn't income or an expense
+      inc({campaign:"Fall 2026", amount:0.01}),                                   // a cent, so the slice has to round
+      inc({campaign:"Spring 2027", date:"2027-01-05", amount:50000}),            // after the turn: not in it
+      inc({campaign:"Fall 2025", date:"2025-10-01", amount:50000}),              // before the twelve months: not in it
+    ];
+    const b = M.mBuyout(entries, [], "Fall 2026", {slicePct:10, multiple:3, opensWith:""}, 58, "2027-01-05");
+    assert.deepStrictEqual(b.camps, ["Spring 2026", "Summer 2026", "Fall 2026"]);
+    assert.deepStrictEqual(b.per.map(p => [p.profit, p.logged]), [[900000, 2], [500055, 1], [366668, 3]]);
+    assert.deepStrictEqual([b.income, b.expense, b.profit], [1900056, 133333, 1766723]);
+    assert.strictEqual(b.slice, 176672);                                           // 10% of $17,667.23, to the cent
+    assert.strictEqual(b.price, 530016);                                           // × 3 of the slice as shown
+    assert.deepStrictEqual([b.seller, b.buyer, b.complete, b.blocked], ["Ben", "Alan", true, false]);
+    assert.deepStrictEqual([b.before, b.after], [{Ben:58, Alan:42}, {Ben:48, Alan:52}]);
+    assert.deepStrictEqual(b.window, {from:"2026-12-17", to:"2027-01-15"});
+  }],
+  ["a buyout before its campaign ends is so far; problem rows block it; an even split has nothing to buy", () => {
+    const entries = [inc({amount:1000})];
+    assert.strictEqual(M.mBuyout(entries, [], "Fall 2026", {slicePct:10, multiple:3}, 58, "2026-10-01").complete, false);
+    assert.strictEqual(M.mBuyout(entries, [{row:4, campaign:"Summer 2026", error:"x"}], "Fall 2026", null, 58, "2027-01-05").blocked, true);
+    assert.strictEqual(M.mBuyout(entries, [{row:4, campaign:"", error:"x"}], "Fall 2026", null, 58, "2027-01-05").blocked, true);
+    assert.strictEqual(M.mBuyout(entries, [{row:4, campaign:"Fall 2025", error:"x"}], "Fall 2026", null, 58, "2027-01-05").blocked, false);
+    const even = M.mBuyout(entries, [], "Fall 2026", {slicePct:10, multiple:3}, 50, "2027-01-05");
+    assert.deepStrictEqual([even.seller, even.after], ["", null]);
+    const none = M.mBuyout(entries, [], "Fall 2026", null, 58, "2027-01-05");
+    assert.deepStrictEqual([none.profit, none.slice, none.price], [100000, null, null]);
+  }],
+  ["a buyout turn before the option opens says so", () => {
+    const t = {slicePct:10, multiple:3, opensWith:"Fall 2028"};
+    assert.strictEqual(M.mBuyout([], [], "Spring 2028", t, 58, "2028-05-01").beforeOpen, true);
+    assert.strictEqual(M.mBuyout([], [], "Summer 2028", t, 58, "2028-09-01").beforeOpen, false);    // its turn opens Fall 2028
+    assert.strictEqual(M.mBuyout([], [], "Spring 2028", {slicePct:10, multiple:3, opensWith:""}, 58, "2028-05-01").beforeOpen, false);
+  }],
+  ["the buyout terms are checked in the script's words, and a typed %, × or x is fine", () => {
+    assert.strictEqual(M.mBuyoutCheck({slicePct:"10%", multiple:"3x", opensWith:""}), "");
+    assert.strictEqual(M.mBuyoutCheck({slicePct:"10", multiple:"3 ×", opensWith:"Fall 2028"}), "");
+    assert.strictEqual(M.mBuyoutCheck({slicePct:"", multiple:"3"}), "The slice must be more than 0% and no more than 100%");
+    assert.strictEqual(M.mBuyoutCheck({slicePct:"10", multiple:"0"}), "The multiple must be more than 0 and no more than 100");
+    assert.strictEqual(M.mBuyoutCheck({slicePct:"10", multiple:"3", opensWith:"Fall"}), 'Opens with must be a campaign like "Fall 2028", or left empty');
   }],
   ["new IDs are the shape the script accepts, and never repeat", () => {
     const ids = new Set(Array.from({length:500}, () => M.mNewId()));

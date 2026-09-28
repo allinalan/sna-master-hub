@@ -20,7 +20,7 @@
  * Design: docs/superpowers/specs/2026-09-16-money-tab-design.md
  */
 
-var VERSION = 2;
+var VERSION = 3;
 
 /* The first 24 columns of the Ledger and Test tabs, in this order. */
 var HEAD = ['ID', 'Kind', 'Date', 'Campaign', 'Amount', 'Who', 'To', 'BenPct', 'Party', 'RepID', 'Plan', 'Rate',
@@ -45,6 +45,13 @@ var TABS = {live: 'Ledger', test: 'Test'};
 var SPLIT_HEAD = ['From', 'BenPct', 'SetBy', 'SetAt'];
 var SPLIT_FORMAT = ['@', '0.00', '@', '@'];
 var SPLIT_TABS = {live: 'Splits', test: 'Test Splits'};
+/* The contract's buyout terms, one row under the header: the slice of the
+   split that can be bought, the multiple of that slice of the trailing twelve
+   months' net income it costs, and (if known) the campaign the option opens
+   with. They live here, not in the hub's public page. */
+var BUYOUT_HEAD = ['SlicePct', 'Multiple', 'OpensWith', 'SetBy', 'SetAt'];
+var BUYOUT_FORMAT = ['0.00', '0.00', '@', '@', '@'];
+var BUYOUT_TABS = {live: 'Buyout', test: 'Test Buyout'};
 var FOLDER_PROP = {live: 'MONEY_FOLDER_ID', test: 'MONEY_TEST_FOLDER_ID'};
 var KINDS = ['income', 'expense', 'settle'];
 var WHO_LABEL = {income: 'Received by', expense: 'Paid by', settle: 'From'};
@@ -81,6 +88,7 @@ function route_(b) {
     case 'void':    return locked_(function () { return setStatus_(b.book, b, 'void'); });
     case 'restore': return locked_(function () { return setStatus_(b.book, b, 'live'); });
     case 'split':   return locked_(function () { return split_(b.book, b); });
+    case 'buyout':  return locked_(function () { return setBuyout_(b.book, b); });
   }
   return {ok: false, error: 'unknown action'};
 }
@@ -94,10 +102,10 @@ function locked_(fn) {
 /* ── actions ────────────────────────────────────────────────────────── */
 function list_(book) {
   var ss = sheet_(false);
-  if (!ss) return {ok: true, entries: [], problems: [], splits: [], splitProblems: [], sheetUrl: ''};
-  var t = load_(ss, book), s = splits_(ss, book);
+  if (!ss) return {ok: true, entries: [], problems: [], splits: [], splitProblems: [], buyout: null, buyoutProblem: '', sheetUrl: ''};
+  var t = load_(ss, book), s = splits_(ss, book), by = buyout_(ss, book);
   return {ok: true, entries: t.entries, problems: t.problems, splits: splitsOut_(s), splitProblems: s.problems,
-          sheetUrl: ss.getUrl()};
+          buyout: by.terms, buyoutProblem: by.problem, sheetUrl: ss.getUrl()};
 }
 
 /* Create or change one entry. A create carries an ID the page minted, so a
@@ -197,6 +205,36 @@ function split_(book, b) {
   var warning = recorded_(ss, by, book, want === null ? 'unsplit' : 'split', from,
                           want === null ? {from: from, removed: true} : {from: from, benPct: want});
   var out = {ok: true, splits: splitsOut_(s)};
+  if (warning) out.warning = warning;
+  return out;
+}
+
+/* Set the buyout terms. The sender says what it saw (was: the terms, or null
+   for none yet); if the other person changed them first they get a conflict
+   with the terms as they are now — unless they already read what was asked
+   for, which is the same lost-reply retry as a save. */
+function setBuyout_(book, b) {
+  var by = person_(b.by);
+  if (!by) return {ok: false, error: 'who are you? The change has to be signed Alan or Ben'};
+  var c = buyoutTerms_(b.terms || {}, BUYOUT_SAYS);
+  if (c.error) return {ok: false, error: c.error};
+  var want = c.terms;
+  var ss = sheet_(true);
+  writable_(ss);
+  var cur = buyout_(ss, book);
+  if (cur.problem) return {ok: false, error: 'the ' + BUYOUT_TABS[book] + ' tab needs a look first: ' + cur.problem};
+  if (sameTerms_(cur.terms, want)) return {ok: true, buyout: cur.terms};
+  var was = b.was ? buyoutTerms_(b.was, BUYOUT_SAYS).terms || {} : null;
+  if (!sameTerms_(cur.terms, was)) return {ok: false, conflict: true, buyout: cur.terms};
+
+  var sh = tab_(ss, BUYOUT_TABS[book], BUYOUT_HEAD), at = new Date().toISOString();
+  room_(sh, 2);
+  var range = sh.getRange(2, 1, 1, BUYOUT_HEAD.length);
+  range.setNumberFormats([BUYOUT_FORMAT]);
+  range.setValues([[want.slicePct, want.multiple, want.opensWith, by, at]]);
+  var stored = {slicePct: want.slicePct, multiple: want.multiple, opensWith: want.opensWith, setBy: by, setAt: at};
+  var warning = recorded_(ss, by, book, 'buyout', 'terms', want);
+  var out = {ok: true, buyout: stored};
   if (warning) out.warning = warning;
   return out;
 }
@@ -408,6 +446,47 @@ function splits_(ss, book) {
   }
   return out;
 }
+/* The buyout terms as the Buyout tab holds them: null when none are set, and
+   a problem (the terms left out) when row 2 or the header doesn't read. */
+function buyout_(ss, book) {
+  var sh = ss.getSheetByName(BUYOUT_TABS[book]);
+  if (!sh || sh.getLastRow() === 0) return {terms: null, problem: ''};
+  var values = sh.getRange(1, 1, Math.max(2, sh.getLastRow()), BUYOUT_HEAD.length).getValues();
+  for (var i = 0; i < BUYOUT_HEAD.length; i++) {
+    if (text_(values[0][i]) !== BUYOUT_HEAD[i]) {
+      return {terms: null, problem: 'the header row was changed (column ' + (i + 1) + ' should read "' + BUYOUT_HEAD[i] +
+              '"). Its first ' + BUYOUT_HEAD.length + ' columns must read: ' + BUYOUT_HEAD.join(', ')};
+    }
+  }
+  var row = values[1];
+  if (row.every(function (v) { return v === '' || v === null; })) return {terms: null, problem: ''};
+  var c = buyoutTerms_({slicePct: row[0], multiple: row[1], opensWith: text_(row[2])}, BUYOUT_READS);
+  if (c.error) return {terms: null, problem: 'row 2: ' + c.error};
+  c.terms.setBy = text_(row[3]);
+  c.terms.setAt = text_(row[4]);
+  return {terms: c.terms, problem: ''};
+}
+/* One set of terms, from the hub (says it in the drawer's words) or from the
+   sheet (names the column). index.html's mBuyoutCheck() says the hub's words. */
+var BUYOUT_SAYS = {slice: 'The slice must be more than 0% and no more than 100%',
+                   multiple: 'The multiple must be more than 0 and no more than 100',
+                   opens: 'Opens with must be a campaign like "Fall 2028", or left empty'};
+var BUYOUT_READS = {slice: 'SlicePct must be a number more than 0 and no more than 100',
+                    multiple: 'Multiple must be a number more than 0 and no more than 100',
+                    opens: 'OpensWith must look like "Fall 2028", or be empty'};
+function buyoutTerms_(raw, says) {
+  var slice = numIn_(raw.slicePct), mult = numIn_(raw.multiple);
+  var opens = String(raw.opensWith === null || raw.opensWith === undefined ? '' : raw.opensWith).trim();
+  if (slice === null || isNaN(slice) || slice <= 0 || slice > 100) return {error: says.slice};
+  if (mult === null || isNaN(mult) || mult <= 0 || mult > 100) return {error: says.multiple};
+  if (opens && !CAMPAIGN_RE.test(opens)) return {error: says.opens};
+  return {terms: {slicePct: Math.round(slice * 100) / 100, multiple: Math.round(mult * 100) / 100, opensWith: opens}};
+}
+function sameTerms_(a, b) {
+  return a === null || b === null ? a === b
+    : a.slicePct === b.slicePct && a.multiple === b.multiple && a.opensWith === b.opensWith;
+}
+
 function splitsOut_(s) {
   return Object.keys(s.byFrom).map(function (k) {
     var x = s.byFrom[k];

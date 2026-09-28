@@ -23,7 +23,7 @@ of sub-tabs under it.
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
 | ↳ Call Attendance | A roll for every group call: one row per mentee, one column per call this campaign. Click a call to take its roll — tick who's **on**, mark anyone **excused** — and press **Roll's in**. Anyone the call was for who wasn't on it (excused included) gets a **make-up** on their dashboard: watch the recording, post takeaways in the GroupMe, then say what they posted, due the **Friday after the call at midnight**. Replays never count as attendance. You read and approve make-ups right on this board. Details in [Call attendance](#call-attendance). |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not due, red overdue, black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved). Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Only the Dojo is required to turn assignments in, so **Waiting on you** and **Overdue** count the Dojo only; Path and Masters cells still show on the board and still count toward Submitted this week and Approved. The tab itself carries no count. Mentees submit from their dashboard; they get an email when you reply. Mark someone **former** on the roster and they drop off the board and out of its counts straight away; their work stays in the sheet, and **reactivate** brings them back. **Show former** lists them at the foot of the board, faded and never counted, so you can still look up what they turned in — their cells open read only, so nobody emails someone who has left. |
-| **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry starts from its campaign's split — **Ben 62.5 · Alan 37.5** (year 1–2 of the contract) until a later year's split goes in under **Splits** — and any one entry can still be changed on its own. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. Details in [Money](#money). |
+| **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry starts from its campaign's split — **Ben 62.5 · Alan 37.5** (year 1–2 of the contract) until a later year's split goes in under **Splits** — and any one entry can still be changed on its own. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. **Buyout** prices the contract's buyout from the last twelve months, with its terms kept on the private sheet. Details in [Money](#money). |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
 | ↳ Guest Speakers | The bench, what they'd teach, when we last asked. |
@@ -323,6 +323,33 @@ said yes. If it didn't go through, the drawer stays open and says why in red. If
 never came back, it says the entry *may* be in — pressing Save again can't add it twice, and
 closing the drawer reloads the list so you can see whether it landed.
 
+### The buyout
+
+**Buyout** in the toolbar prices the contract's buyout option from the ledger: what the partner
+with the smaller share would pay to buy the rest of the bigger share, at a campaign's turn.
+
+- **The terms live on the sheet, not here.** Type the slice bought and the multiple from the
+  contract, and optionally the campaign the option opens with, then **Save terms**. They go on the
+  sheet's **Buyout** tab (SlicePct, Multiple, OpensWith, SetBy, SetAt) and its History tab; this
+  page's code is public, so it never holds them.
+- **The price** is the slice of the trailing twelve months' net income, times the multiple.
+  Net income is income − expenses over the three campaigns ending at the turn — twelve months —
+  counted by campaign, so a late charge counts where it belongs. Say the terms were 10% at 3× and
+  the twelve months made $2,900: the slice is $290 and the price $870. The card shows each
+  campaign's net income, the slice and the price, so the math can be checked line by line.
+- **When.** The buyout happens within two weeks of a campaign ending or the next starting — the
+  card shows that window. It prices the turn whose window you're in, or else the end of the
+  campaign you're in, marked **so far** while that campaign is still running. Pick another turn to
+  see what it would have been.
+- **Who pays whom** comes from the split in force at the turn: whoever holds more than half sells.
+  The card shows both shares before and after, and says what to set Splits to afterwards.
+- While you type new terms the card prices with them and says they aren't saved. If the other
+  person changed the terms while you had the drawer open, Save says what theirs are; Save again
+  to put yours in their place. A campaign with nothing logged is called out (the ledger started in
+  Fall 2026, so the twelve months are short until Summer 2027 ends).
+- The buyout payment itself isn't a ledger entry: it's between you two, not the program's income
+  or an expense.
+
 ### Settling a campaign
 
 Pick the campaign. The stats show its income, expenses, profit and each of your shares, and
@@ -361,7 +388,7 @@ campaign until it is.
 | What | Where |
 |---|---|
 | The web app | Apps Script project **SNA Money**, code in [`SNA-Money.gs`](SNA-Money.gs); its `/exec` URL is `MONEY_API` in `index.html` |
-| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **Splits**, **History**, **Test** and **Test Splits**. Only the published hub (allinalan.github.io) reads and writes **Ledger** and **Splits**; any other copy of the page — your machine, a file, a LAN address — uses **Test** and **Test Splits**, and says so in a yellow badge. |
+| The ledger | Google Sheet **SNA Money** in Alan's Drive — tabs **Ledger**, **Splits**, **Buyout**, **History**, **Test**, **Test Splits** and **Test Buyout**. Only the published hub (allinalan.github.io) reads and writes **Ledger**, **Splits** and **Buyout**; any other copy of the page — your machine, a file, a LAN address — uses the **Test** ones, and says so in a yellow badge. |
 | Receipts | Drive folder **SNA Money Receipts** (test receipts in its **Test** folder) |
 | The key | Script property `MONEY_KEY` in the SNA Money project — the same value as the coach key. The script records the sheet and folder IDs as script properties itself (`MONEY_SHEET_ID`, `MONEY_FOLDER_ID`, `MONEY_TEST_FOLDER_ID`). |
 
@@ -370,8 +397,9 @@ doesn't accept the key.
 
 After editing `SNA-Money.gs`, paste it into the project and **Deploy ▸ Manage deployments ▸
 edit ▸ New version**. A new deployment would change the `/exec` URL. (Version 2 of the script
-added splits. Until it's deployed, every campaign starts at Ben 62.5 · Alan 37.5 and the Splits
-drawer says the script needs updating.)
+added splits, version 3 the buyout terms. Until the version a drawer needs is deployed, it says
+the script needs updating: Splits starts every campaign at Ben 62.5 · Alan 37.5, and Buyout shows
+the twelve months' net income but can't save terms.)
 
 ### Trying it out and testing it
 

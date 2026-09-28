@@ -44,7 +44,9 @@ On any tab:
 ## Editing
 
 Hit **Edit** in the header, then click any field and type. It saves as you type — you
-don't have to press anything. Enter or clicking away finishes the field.
+don't have to press anything. Enter or clicking away finishes the field. Escape backs out:
+the field goes back to what it said when you clicked in, even if some of your typing had
+already saved.
 
 Edit mode also turns on the structural controls, so the hub never needs a code change:
 
@@ -247,7 +249,8 @@ the second one with the cursor where you clicked (not its whole text selected, r
 typed over), typing after clicking a `+ note` goes into the note whatever you clicked
 before it, and clicking into a note never moves its text. It also checks that a Topic Bank
 topic you rename keeps its tier, even if you paused long enough for the typing to save
-before you finished. `--chrome` runs it in the
+before you finished, and that Escape puts a field back the way it was, saved copy and
+all. `--chrome` runs it in the
 installed Google Chrome instead of Playwright's Chromium; `--headed` lets you watch.
 
 It needs Playwright, which this repo doesn't install. It uses the copy in

@@ -30,6 +30,9 @@
 // And: renaming a Topic Bank topic keeps its tier, however long you pause before you
 //   finish. A pause past the 500 ms save-as-you-type used to leave the tier on the old
 //   name. Typing back to the old name, or clicking in and out, leaves the tier alone.
+// And: Escape puts a field back to what it held when you clicked in, even after the
+//   save-as-you-type has saved some of it, and a renamed topic keeps its old name and tier.
+//   It used to only re-render, so what you'd typed was saved anyway.
 "use strict";
 const net = require("net");
 const os = require("os");
@@ -453,6 +456,81 @@ async function renamingKeepsTheTier(){
   });
 }
 
+async function escapingPutsItBack(){
+  console.log("\nEscape — the field goes back to what it held when you clicked in, saved copy too");
+  /* the field's text on screen, what DATA holds, and what this browser has saved, after a render */
+  const state = (page, p) => page.evaluate(p => {
+    const stored = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    const get = (o, path) => path.split(".").reduce((n, k) => n == null ? n : n[k], o);
+    render();
+    const el = document.querySelector(`[data-edit="${CSS.escape(p)}"]`);
+    return {shown: el ? el.textContent : null, data: getPath(p) ?? null, stored: stored ? get(stored, p) ?? null : null,
+            focused: document.activeElement && document.activeElement.dataset.edit || null};
+  }, p);
+
+  for(const [name, pause] of [["straight away", 0], ["after a pause past the 500 ms save", 700]]){
+    await onPage("#calendar", {edit: true}, async page => {
+      const [A] = await find(page, "topics", 1);
+      const old = await textOf(page, A);
+      await page.click(sel(A)); await caretToEnd(page); await page.keyboard.type(" E");
+      if(pause) await page.waitForTimeout(pause);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(700);                              // a timer left running would have saved by now
+      const st = await state(page, A);
+      check(`calendar: change a topic, Escape ${name} puts it back and leaves it`,
+            st.shown === old && st.data === old && st.focused === null && (!pause || st.stored === old), {...st, old});
+    });
+  }
+
+  await onPage("#business", {}, async page => {                    // a title, Edit off
+    const T = await page.evaluate(() => document.querySelector('[data-edit^="business."][data-edit$=".t"]').dataset.edit);
+    const old = await textOf(page, T);
+    await page.click(sel(T)); await page.keyboard.press("ControlOrMeta+a"); await page.keyboard.type("oops");
+    await page.waitForTimeout(700);
+    await page.keyboard.press("Escape");
+    const st = await state(page, T);
+    check("orders, Edit off: retype a title, pause, Escape puts the old title back",
+          st.shown === old && st.data === old && st.stored === old && st.focused === null, {...st, old});
+  });
+
+  await onPage("#business", {}, async page => {
+    const [P] = await find(page, "noteSlot", 1);
+    const ph = await page.evaluate(p => document.querySelector(`[data-edit="${CSS.escape(p)}"]`).dataset.ph, P);
+    await page.click(sel(P)); await page.keyboard.type("hello");
+    await page.waitForTimeout(700);
+    await page.keyboard.press("Escape");
+    const st = await state(page, P);
+    check("orders, Edit off: write in a + note, pause, Escape leaves no note behind",
+          st.shown === ph && !st.data && !st.stored && st.focused === null, {...st, ph});
+  });
+
+  await onPage("#bank", {edit: true}, async page => {
+    const [T] = await find(page, "bankTopics", 1);
+    const old = await page.evaluate(p => { const t = getPath(p); setTier(t, 2); save(); render(); return t; }, T);
+    await page.click(sel(T)); await caretToEnd(page); await page.keyboard.type(" R");
+    await page.waitForTimeout(700);
+    await page.keyboard.press("Escape");
+    const st = {...(await state(page, T)), tier: await page.evaluate(t => tierOf(t), old),
+                stray: await page.evaluate(t => (DATA.topicTiers || {})[t] ?? null, old + " R")};
+    check("bank: rename a tiered topic, pause, Escape keeps the old name and its tier",
+          st.data === old && st.stored === old && st.tier === 2 && st.stray === null, {...st, old});
+  });
+
+  await onPage("#bank", {edit: true}, async page => {               // a category name only renames on blur
+    const K = await page.evaluate(() => {
+      const el = document.querySelector('[data-edit^="__key.topicBank."]'); return el && el.dataset.edit;
+    });
+    if(!K) throw new Missing("needs a Topic Bank category name");
+    const old = K.slice("__key.topicBank.".length);
+    await page.click(sel(K)); await caretToEnd(page); await page.keyboard.type(" C");
+    await page.keyboard.press("Escape");
+    const st = await page.evaluate(k => ({keys: Object.keys(DATA.topicBank), focused: document.activeElement.dataset.edit || null,
+                                          shown: (document.querySelector(`[data-edit="${CSS.escape(k)}"]`) || {}).textContent}), K);
+    check("bank: retype a category name, Escape leaves the name as it was",
+          st.keys.includes(old) && !st.keys.includes(old + " C") && st.shown === old && st.focused === null, {...st, old});
+  });
+}
+
 (async () => {
   const {pw, from} = loadPlaywright();
   const server = process.env.BASE ? null : await startServer();
@@ -475,6 +553,7 @@ async function renamingKeepsTheTier(){
     await focusingMovesNothing();
     await rendersDontReplayTheEntrance();
     await renamingKeepsTheTier();
+    await escapingPutsItBack();
     const failed = results.filter(ok => !ok).length;
     console.log(`\n${results.length - failed}/${results.length} passed`);
     code = failed ? 1 : 0;

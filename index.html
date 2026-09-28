@@ -6137,8 +6137,28 @@ document.addEventListener("keydown", e => {
   const live = el2 => el2 && (EDITING || el2.hasAttribute("data-live"));
   const el = e.target.closest && e.target.closest("[data-edit]");
   if(live(el) && e.key === "Enter"){ e.preventDefault(); el.blur(); }
-  if(live(el) && e.key === "Escape"){ e.preventDefault(); render(); }
+  if(live(el) && e.key === "Escape" && !e.isComposing){ e.preventDefault(); cancelField(el); }
 });
+/* Escape: put the field back to what it held when you clicked in, then leave it
+   the way Enter does. It used to only re-render, and the typing timer had
+   already saved what you typed, or saved it straight after (fixed 2026-09-28).
+   The text goes back too, so the blur finds nothing changed and does nothing. */
+function cancelField(el){
+  clearTimeout(INPUT_TIMER);
+  const path = el.dataset.edit;
+  if(path.startsWith("__key.")){                   // a list rename only lands on blur — nothing saved yet
+    const rest = path.slice(6);
+    el.textContent = rest.slice(rest.indexOf(".") + 1);
+  } else if(EDIT_START && EDIT_START.el === el){
+    const was = EDIT_START.before;
+    if(getPath(path) !== was){                     // the timer saved some of it: take that back
+      if(was === undefined) removeAt(path); else setPath(path, was);
+      save();
+    }
+    el.textContent = String(was ?? "");
+  }
+  el.blur();
+}
 
 /* ── topic picker: plan a week straight from the bank ─────────────────────
    One floating panel, opened from a week row's "▾ pick from bank". Lives

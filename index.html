@@ -1001,6 +1001,10 @@ table.msplits td:first-child{white-space:normal}
 table.msplits .msub{font-size:11px;color:var(--ink-faint);margin-top:2px}
 table.msplits .linkish{font-size:11px}
 table.msplits .chip{font-size:9px;padding:1px 7px;margin-left:4px}
+table.mbuy td.num{text-align:right;font-family:var(--monof);white-space:nowrap}
+table.mbuy tr.mtot td{border-top:1.5px solid var(--line-strong);font-weight:600}
+table.mbuy .msub{font-weight:400}
+.mcard .mc-sub+.mc-sub{margin-top:6px}
 @media (max-width:640px){
   .mform .mrow2{grid-template-columns:1fr}
   table.msplits td{white-space:normal}
@@ -3876,6 +3880,53 @@ function mShareNote(t, person, fallback){
   if(!pcts.length) return "";
   return (person === "Ben" ? Math.round(pcts[0] * 100) / 100 : Math.round((100 - pcts[0]) * 100) / 100) + "%";
 }
+/* ── the buyout ──
+   The contract lets the partner with the smaller share buy the rest of the
+   bigger one's at a campaign's turn, for a multiple of that slice of the
+   trailing twelve months' net income. The slice and the multiple live on the
+   sheet's Buyout tab, never in this page (its code is public). Net income is
+   profit — income − expenses — over the three campaigns ending at the turn,
+   counted by campaign like everything else here. */
+function mCampaignAt(key){ return ["Spring", "Summer", "Fall"][((key % 3) + 3) % 3] + " " + Math.floor(key / 3); }
+function mAddDays(iso, n){ const [y, m, d] = String(iso).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
+/* A buyout happens within two weeks of a campaign ending or the next starting: two weeks either side of the turn. */
+function mBuyoutWindow(campaign){ const end = mCampaignEnd(campaign); return {from:mAddDays(end, -14), to:mAddDays(end, 15)}; }
+/* the turn a buyout would happen at today: the one whose window we're in, else the end of this campaign */
+function mBuyoutAt(today){
+  const cur = mCampaignOf(today), prev = mCampaignAt(mCampaignKey(cur) - 1);
+  return today <= mBuyoutWindow(prev).to ? prev : cur;
+}
+/* The buyout at the end of `at`, in cents: the twelve months' net income, the
+   slice of it, and the price (the slice × the multiple, so the lines shown
+   multiply out). Whoever holds more than half sells; benPct is Ben's share at
+   `at`. terms may be null (not set): the figures stop at net income. */
+function mBuyout(entries, problems, at, terms, benPct, today){
+  const k = mCampaignKey(at), camps = [k - 2, k - 1, k].map(mCampaignAt);
+  const mine = (entries || []).filter(e => camps.includes(e.campaign)), t = mTally(mine);
+  const b = {at, camps, income:t.income, expense:t.expense, profit:t.profit, window:mBuyoutWindow(at), complete:today > mCampaignEnd(at),
+    per:camps.map(c => ({campaign:c, profit:mTally(mine.filter(e => e.campaign === c)).profit,
+                         logged:mine.filter(e => e.campaign === c && e.status !== "void" && e.kind !== "settle").length})),
+    blocked:(problems || []).some(p => !M_CAMPAIGN_RE.test(p.campaign || "") || camps.includes(p.campaign)),
+    before:{Ben:Number(benPct), Alan:Math.round((100 - Number(benPct)) * 100) / 100}, seller:"", buyer:"",
+    slice:null, price:null, after:null, beforeOpen:false};
+  if(b.before.Ben !== 50){ b.seller = b.before.Ben > 50 ? "Ben" : "Alan"; b.buyer = b.seller === "Ben" ? "Alan" : "Ben"; }
+  if(!terms) return b;
+  const pct = Number(terms.slicePct), r = v => Math.round(v * 100) / 100;
+  b.slice = Math.round(Number((t.profit * pct / 100).toFixed(4)));
+  b.price = Math.round(Number((b.slice * Number(terms.multiple)).toFixed(4)));
+  if(b.seller) b.after = {[b.seller]:r(b.before[b.seller] - pct), [b.buyer]:r(b.before[b.buyer] + pct)};
+  b.beforeOpen = !!terms.opensWith && k + 1 < mCampaignKey(terms.opensWith);
+  return b;
+}
+/* SNA-Money.gs buyoutTerms_(), in the same words (a typed %, × or x on the end is fine here: the page takes it off before sending) */
+function mTermNum(v){ return mNum(String(v === null || v === undefined ? "" : v).replace(/\s*[%×xX]\s*$/, "")); }
+function mBuyoutCheck(tm){
+  const s = mTermNum(tm.slicePct), m = mTermNum(tm.multiple), o = String(tm.opensWith === null || tm.opensWith === undefined ? "" : tm.opensWith).trim();
+  if(s === null || isNaN(s) || s <= 0 || s > 100) return "The slice must be more than 0% and no more than 100%";
+  if(m === null || isNaN(m) || m <= 0 || m > 100) return "The multiple must be more than 0 and no more than 100";
+  if(o && !M_CAMPAIGN_RE.test(o)) return 'Opens with must be a campaign like "Fall 2028", or left empty';
+  return "";
+}
 /* SNA-Money.gs split_(), in the same words (a typed % sign is fine here: the page takes it off before sending) */
 function mSplitCheck(benPct){
   const n = mNum(String(benPct === null || benPct === undefined ? "" : benPct).replace(/%/g, ""));
@@ -3943,6 +3994,8 @@ const MONEY_BOOK = location.hostname === "allinalan.github.io" ? "live" : "test"
 const MONEY = {entries:null, problems:[], sheetUrl:"", loading:false, err:"", loadedAt:0, triedAt:0,
                splits:null,        // the Splits tab's changes, oldest first; null until a list brings them (an older SNA-Money.gs never does)
                splitProblems:[],   // Splits rows the script couldn't read
+               buyout:undefined,   // the buyout terms: null when none are set; undefined when the script is too old to say
+               buyoutProblem:"",   // why the Buyout tab couldn't be read
                epoch:0,            // bumped as every write starts and ends — a list that crossed one is older than the page
                warn:"",            // saved, but something after the save didn't go through; stays until dismissed
                campaign:"", form:null, busy:false, formErr:"", receiptUrl:""};
@@ -3979,7 +4032,8 @@ async function moneyLoad(force){
   }
   if(out && out.ok && !MONEY.busy){
     Object.assign(MONEY, {entries:out.entries || [], problems:out.problems || [], sheetUrl:out.sheetUrl || "", loadedAt:Date.now(), err:"",
-                          splits:Array.isArray(out.splits) ? out.splits : null, splitProblems:out.splitProblems || []});
+                          splits:Array.isArray(out.splits) ? out.splits : null, splitProblems:out.splitProblems || [],
+                          buyout:"buyout" in out ? out.buyout : undefined, buyoutProblem:out.buyoutProblem || ""});
   } else if(out && out.ok){
     MONEY.triedAt = 0;                             // a save is still on its way; the next render reads again once it lands
   } else if(out){
@@ -4074,6 +4128,7 @@ function renderMoney(){
       <button class="btn" data-moneyact="new" data-kind="expense">+ Expense</button>
       <button class="btn" data-moneyact="settle" data-camp="${esc(isAll ? mCampaignOf(today) : camp)}">Settle up</button>
       <button class="btn" data-moneyact="splits" title="The split new entries start from, campaign by campaign">Splits</button>
+      <button class="btn" data-moneyact="buyout" title="What the contract's buyout would cost at a campaign's turn">Buyout</button>
       <button class="btn" data-moneyact="reload" title="Pull the latest from the sheet"${MONEY.loading ? " disabled" : ""}>${MONEY.loading ? "Refreshing…" : "Refresh"}</button>
       ${exportButtons("moneyBoard", "Money · " + (isAll ? "All campaigns" : camp))}
     </div>`);
@@ -4225,7 +4280,7 @@ function moneySeg(key, opts, cur){
 function moneyInput(id, label, val, affix, ph){
   return `<label class="mlab"><span class="mlt">${esc(label)}</span><span class="mmoney">${affix === "$" ? "<i>$</i>" : ""}` +
     `<input class="search" id="${id}" inputmode="decimal" autocomplete="off" value="${esc(val)}" placeholder="${esc(ph || "0.00")}">` +
-    `${affix === "%" ? "<i>%</i>" : ""}</span></label>`;
+    `${affix && affix !== "$" ? `<i>${esc(affix)}</i>` : ""}</span></label>`;
 }
 function moneyRoster(){
   return (TEAM.rows || []).filter(r => r.Active && String(r.Name || "").trim())
@@ -4315,6 +4370,7 @@ function paintMoneyForm(){
   const f = MONEY.form, d = $("#adrawer");
   if(!f || !d || TAB !== "money") return;            // a save that finishes on another tab never takes over its drawer
   if(f.mode === "splits") return paintMoneySplits(f, d);
+  if(f.mode === "buyout") return paintMoneyBuyout(f, d);
   const e = f.entry, dis = MONEY.busy ? " disabled" : "";
   const camps = new Set(moneyCampaigns()), now = mCampaignKey(mCampaignOf(todayISO()));
   for(let k = now - 3; k <= now + 1; k++) camps.add(["Spring", "Summer", "Fall"][k % 3] + " " + Math.floor(k / 3));
@@ -4397,8 +4453,10 @@ function moneyHarvest(){
   const f = MONEY.form;
   if(!f) return;
   const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
-  if(f.mode === "splits"){
-    for(const [id, key] of [["mfFrom", "from"], ["mfSplitPct", "benPct"]]){ const v = val(id); if(v !== null) f[key] = v; }
+  if(f.mode === "splits" || f.mode === "buyout"){
+    for(const [id, key] of [["mfFrom", "from"], ["mfSplitPct", "benPct"], ["mfBuyAt", "at"], ["mfSlice", "slicePct"], ["mfMult", "multiple"], ["mfOpens", "opensWith"]]){
+      const v = val(id); if(v !== null) f[key] = v;
+    }
     return;
   }
   const date = $("#mfDate"); if(date) f.date = date.dataset.iso || "";
@@ -4563,7 +4621,7 @@ async function moneySetStatus(action){
    share is X%", income and expenses alike. It only sets where a new entry
    starts — every entry keeps the split it was saved with, so a change never
    rewrites an entry or a campaign already settled. */
-const MONEY_OLD_SCRIPT = "The SNA Money script on Google is older than this page, so it can't change splits yet. Alan: paste the new " +
+const MONEY_OLD_SCRIPT = "The SNA Money script on Google is older than this page, so it can't do this yet. Alan: paste the new " +
   "SNA-Money.gs into the SNA Money project, then Deploy ▸ Manage deployments ▸ edit ▸ New version, and press Refresh here.";
 function moneySplitsForm(){
   const view = moneyViewCampaign(), from = view === "all" ? mCampaignOf(todayISO()) : view;
@@ -4612,7 +4670,7 @@ function paintMoneySplits(f, d){
     </tbody></table></div></div>`;
   body += `<div class="mlt" style="margin-top:6px">Change it</div>
     <div class="mrow2"><label class="mlab"><span class="mlt">Starting with</span><select id="mfFrom">${fromOpts}</select></label>
-      ${moneyInput("mfSplitPct", "Ben's share", f.benPct, "%", "e.g. 57.5")}</div>
+      ${moneyInput("mfSplitPct", "Ben's share", f.benPct, "%", "e.g. 55")}</div>
     <div class="mcalc" id="mfAlan">${esc(moneyAlanLine(f))}</div>
     <div class="sw-hint" id="mfKeep">${esc(moneySplitKeepLine(f))}</div>`;
   body += `<div class="merr" id="mfErr" role="alert">${esc(MONEY.formErr)}</div>`;
@@ -4700,7 +4758,142 @@ async function moneyRemoveSplit(from){
   MONEY.formErr = moneyWhy(out, "Nothing was changed", "Press Remove again");
   paintMoneyForm();
 }
-function moneySubmit(){ return MONEY.form && MONEY.form.mode === "splits" ? moneySaveSplit() : moneySave(); }
+/* ── the buyout: what it would cost at a campaign's turn ──
+   The card prices it from the ledger; the terms (slice, multiple, the
+   campaign the option opens with) come from the sheet's Buyout tab. While
+   someone types new terms the card prices with those, and says so. */
+function moneyBuyoutForm(){
+  const b = MONEY.buyout || null;
+  return {mode:"buyout", at:mBuyoutAt(todayISO()), slicePct:b ? String(b.slicePct) : "", multiple:b ? String(b.multiple) : "",
+          opensWith:b ? b.opensWith : "", typed:false};
+}
+function moneyTermsOf(f){
+  const n = v => Math.round(mTermNum(v) * 100) / 100;
+  return {slicePct:n(f.slicePct), multiple:n(f.multiple), opensWith:String(f.opensWith || "").trim()};
+}
+function moneySameTerms(a, b){ return !!a && !!b && a.slicePct === b.slicePct && a.multiple === b.multiple && a.opensWith === b.opensWith; }
+/* the terms the card prices with: what's typed when it reads and differs from the sheet, else the sheet's */
+function moneyBuyoutTerms(f){
+  const raw = {slicePct:f.slicePct, multiple:f.multiple, opensWith:f.opensWith};
+  if(f.typed && !mBuyoutCheck(raw)){ const t = moneyTermsOf(f); if(!moneySameTerms(t, MONEY.buyout)) return Object.assign(t, {typed:true}); }
+  return MONEY.buyout || null;
+}
+function moneyBuyoutCardHtml(f){
+  const terms = moneyBuyoutTerms(f), today = todayISO();
+  const b = mBuyout(MONEY.entries || [], MONEY.problems, f.at, terms, moneySplit(f.at), today);
+  const fig = c => (b.blocked ? "—" : mFmt(c)), pct = v => Math.round(v * 100) / 100 + "%";
+  const next = mCampaignAt(mCampaignKey(f.at) + 1);
+  let head, sub, tone = "";
+  if(b.blocked){ head = "Can't price it yet"; sub = "Rows in the sheet for these campaigns can't be read — they're listed on the board."; tone = "bad"; }
+  else if(!b.seller){ head = "The split is already even"; sub = `At ${esc(f.at)} it's ${esc(mSplitName(50))} — there's nothing left to buy.`; }
+  else if(!terms){ head = `Twelve months' net income: <span class="mc-amt">${esc(mFmt(b.profit))}</span>`; sub = "Put in the buyout terms from the contract below to see the price."; }
+  else if(b.profit <= 0){ head = "No profit in the trailing twelve months"; sub = "By the formula there's nothing to pay. Talk it through."; tone = "warn"; }
+  else {
+    head = `${b.complete ? "" : "So far: "}<b>${esc(b.buyer)}</b> would pay <b>${esc(b.seller)}</b> <span class="mc-amt">${esc(mFmt(b.price))}</span>`;
+    sub = b.complete ? `For the turn from ${esc(f.at)} to ${esc(next)}.` : `${esc(f.at)} is still running, so this moves as entries land.`;
+    tone = "good";
+  }
+  let rows = b.per.map(p => `<tr><td>${esc(p.campaign)}${p.campaign === f.at && !b.complete ? " <span class=\"msub\">so far</span>" : ""}</td>
+    <td class="num">${p.logged ? esc(fig(p.profit)) : `<span class="msub">nothing logged</span>`}</td></tr>`).join("");
+  rows += `<tr class="mtot"><td>Net income, twelve months<div class="msub">income ${esc(fig(b.income))} − expenses ${esc(fig(b.expense))}</div></td>
+    <td class="num">${esc(fig(b.profit))}</td></tr>`;
+  if(terms && b.seller){
+    rows += `<tr><td>The ${esc(pct(terms.slicePct))} slice</td><td class="num">${esc(fig(b.slice))}</td></tr>
+      <tr class="mtot"><td>× ${esc(String(terms.multiple))}</td><td class="num">${esc(fig(b.price))}</td></tr>`;
+  }
+  const notes = [];
+  const empty = b.per.filter(p => !p.logged).map(p => p.campaign);
+  if(empty.length && !b.blocked) notes.push(`Nothing's logged for ${esc(empty.join(" or "))}, so any money from then isn't in this figure.`);
+  if(terms && b.after) notes.push(`Afterwards: Ben ${esc(pct(b.before.Ben))} → ${esc(pct(b.after.Ben))} · Alan ${esc(pct(b.before.Alan))} → ${esc(pct(b.after.Alan))}.
+    Once it's done, set Splits to ${esc(mSplitName(b.after.Ben))} from ${esc(next)}.`);
+  if(terms && terms.opensWith) notes.push(b.beforeOpen ? `This turn comes before the option opens with ${esc(terms.opensWith)}.` : `The option opens with ${esc(terms.opensWith)}.`);
+  if(terms && terms.typed) notes.push(`<b>Priced with the terms as typed</b> — Save terms to keep them.`);
+  return `<div class="mcard ${tone}"><div class="mc-main"><div class="mc-head">${head}</div><div class="mc-sub">${sub}</div>
+      <div class="msplitsbox" style="margin-top:12px"><table class="grid msplits mbuy"><tbody>${rows}</tbody></table></div>
+      ${notes.map(n => `<div class="mc-sub">${n}</div>`).join("")}</div></div>`;
+}
+function paintMoneyBuyout(f, d){
+  const dis = MONEY.busy ? " disabled" : "", old = MONEY.buyout === undefined, today = todayISO();
+  const nowK = mCampaignKey(mCampaignOf(today)), keys = new Set([mCampaignKey(f.at)]);
+  for(let k = nowK - 3; k <= nowK; k++) keys.add(k);
+  for(const c of moneyCampaigns()) if(mCampaignKey(c) <= nowK) keys.add(mCampaignKey(c));
+  const atOpts = [...keys].sort((a, b) => b - a).map(mCampaignAt).map(c => { const w = mBuyoutWindow(c);
+    return `<option value="${esc(c)}"${c === f.at ? " selected" : ""}>${esc(c)} ends · ${esc(fmtDate(w.from))} – ${esc(fmtDate(w.to))}</option>`; }).join("");
+  const opens = new Set([""]);
+  for(let k = nowK; k <= nowK + 12; k++) opens.add(mCampaignAt(k));
+  if(f.opensWith) opens.add(f.opensWith);
+  const opensOpts = [...opens].sort((a, b) => (a ? mCampaignKey(a) : -1) - (b ? mCampaignKey(b) : -1))
+    .map(c => `<option value="${esc(c)}"${c === (f.opensWith || "") ? " selected" : ""}>${c ? esc(c) : "— not set —"}</option>`).join("");
+  const w = mBuyoutWindow(f.at), saved = MONEY.buyout;
+
+  let body = "";
+  if(old) body += `<div class="mproblems">${esc(MONEY_OLD_SCRIPT)}</div>`;
+  if(MONEY.buyoutProblem) body += `<div class="mproblems"><b>The sheet's ${MONEY_BOOK === "test" ? "Test Buyout" : "Buyout"} tab can't be read:</b>
+      ${esc(MONEY.buyoutProblem)}. The price can't be worked out until it's fixed.
+      ${MONEY.sheetUrl ? `<a href="${esc(MONEY.sheetUrl)}" target="_blank" rel="noopener">Open the sheet ↗</a> — fix it there, then Refresh.` : ""}</div>`;
+  body += `<label class="mlab"><span class="mlt">Buyout at the turn after</span><select id="mfBuyAt">${atOpts}</select></label>
+    <div class="sw-hint" style="margin-top:-6px">The window: ${esc(fmtFull(w.from))} – ${esc(fmtFull(w.to))}, two weeks either side of ${esc(f.at)}
+      ending and ${esc(mCampaignAt(mCampaignKey(f.at) + 1))} starting.</div>
+    <div id="mfBuyCard">${moneyBuyoutCardHtml(f)}</div>`;
+  body += `<div class="mlt" style="margin-top:6px">The terms, from the contract</div>
+    <div class="mrow2">${moneyInput("mfSlice", "Slice bought", f.slicePct, "%", "e.g. 10")}${moneyInput("mfMult", "Multiple of its net income", f.multiple, "×", "e.g. 3")}</div>
+    <label class="mlab"><span class="mlt">The option opens with</span><select id="mfOpens">${opensOpts}</select></label>`;
+  body += `<div class="merr" id="mfErr" role="alert">${esc(MONEY.formErr)}</div>`;
+  body += `<div class="ad-row">
+      <button class="btn primary" data-moneyact="save"${dis || (old ? " disabled" : "")}>${MONEY.busy ? "Saving…" : "Save terms"}</button>
+      <button class="btn" data-moneyact="close"${dis}>Close</button></div>`;
+  body += `<div class="maudit">${saved && saved.setBy ? `Terms set by ${esc(saved.setBy)} · ${fmtStamp(saved.setAt)}. ` : ""}They live on the sheet's
+    ${MONEY_BOOK === "test" ? "Test Buyout" : "Buyout"} tab, not in this page — its code is public. Net income is income − expenses over the three
+    campaigns ending at the turn, counted by campaign, so a late charge counts where it belongs. The buyout payment itself isn't a
+    ledger entry: it's between the two of you, not the program's income or an expense.</div>`;
+  d.innerHTML = `<div class="ad-head"><div><div class="t">Buyout</div>
+      <div class="s">${MONEY_BOOK === "test" ? "Test tab — only the published hub changes the real terms" : "What the contract's buyout would cost, from the ledger"}</div></div>
+      <button class="btn sm" data-moneyact="close" title="Close"${dis}>✕</button></div>
+    <div class="ad-body mform" id="mform">${body}</div>`;
+  if(MONEY.busy) d.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; el.classList.add("is-busy"); });
+  d.classList.add("on"); d.setAttribute("aria-hidden", "false");
+}
+async function moneySaveBuyout(){
+  const f = MONEY.form;
+  if(!f || f.mode !== "buyout" || MONEY.busy) return;
+  moneyHarvest();
+  if(MONEY.buyout === undefined){ MONEY.formErr = MONEY_OLD_SCRIPT; paintMoneyForm(); return; }
+  const problem = mBuyoutCheck({slicePct:f.slicePct, multiple:f.multiple, opensWith:f.opensWith});
+  if(problem){ MONEY.formErr = problem; paintMoneyForm(); return; }
+  const want = moneyTermsOf(f), cur = MONEY.buyout;
+  if(moneySameTerms(want, cur)){ MONEY.formErr = "Those are the terms already — nothing to change."; paintMoneyForm(); return; }
+  const by = moneySigner();
+  if(!by){ MONEY.formErr = "The hub doesn't know who you are — type Alan or Ben when it asks, so the change is signed."; paintMoneyForm(); return; }
+  MONEY.busy = true; MONEY.formErr = ""; paintMoneyForm();
+  const out = await moneyWrite({action:"buyout", by, terms:want, was:cur ? {slicePct:cur.slicePct, multiple:cur.multiple, opensWith:cur.opensWith} : null});
+  MONEY.busy = false;
+  const words = t => `${t.slicePct}% at ${t.multiple}×${t.opensWith ? ", opening with " + t.opensWith : ""}`;
+  if(out.ok){
+    MONEY.buyout = out.buyout;
+    if(out.warning) MONEY.warn = out.warning;
+    if(MONEY.form === f) Object.assign(f, {slicePct:String(out.buyout.slicePct), multiple:String(out.buyout.multiple), opensWith:out.buyout.opensWith, typed:false});
+    MONEY.formErr = "";
+    render(); paintMoneyForm();
+    toast(out.warning || "Buyout terms saved ✓");
+    return;
+  }
+  if(TAB !== "money") toast("Money: the buyout terms didn't save — open the Money tab to see why and try again");
+  if(out.conflict && "buyout" in out){
+    MONEY.buyout = out.buyout; render();
+    MONEY.formErr = out.buyout
+      ? `${out.buyout.setBy || "The other person"} changed the terms first — they're now ${words(out.buyout)}. Save again to put yours in their place.`
+      : "The terms were cleared while you had this open. Save again to set yours.";
+    paintMoneyForm();
+    return;
+  }
+  if(out.error === "network") f.uncertain = true;
+  MONEY.formErr = moneyWhy(out, "Nothing was changed", "Press Save terms again");
+  paintMoneyForm();
+}
+function moneySubmit(){
+  const mode = MONEY.form && MONEY.form.mode;
+  return mode === "splits" ? moneySaveSplit() : mode === "buyout" ? moneySaveBuyout() : moneySave();
+}
 
 /* ── receipts ── */
 const MONEY_MAX_RECEIPT = 5 * 1024 * 1024;
@@ -4796,6 +4989,7 @@ document.addEventListener("click", async e => {
   e.preventDefault();
   if(k === "new"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneyNewForm(act.dataset.kind); paintMoneyForm(); } return; }
   if(k === "splits"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneySplitsForm(); paintMoneyForm(); } return; }
+  if(k === "buyout"){ if(!MONEY.busy){ MONEY.formErr = ""; MONEY.form = moneyBuyoutForm(); paintMoneyForm(); } return; }
   if(k === "settle"){
     if(MONEY.busy) return;
     if(mStatus(MONEY.entries || [], MONEY.problems, act.dataset.camp, todayISO()).state === "blocked"){
@@ -4827,6 +5021,8 @@ document.addEventListener("change", async e => {
   const f = MONEY.form, t = e.target;
   if(!f || !/^mf/.test(t.id || "")) return;
   if(t.id === "mfFrom"){ moneyHarvest(); moneySplitsPrefill(f); MONEY.formErr = ""; paintMoneyForm(); return; }
+  if(t.id === "mfBuyAt"){ moneyHarvest(); paintMoneyForm(); return; }
+  if(t.id === "mfOpens"){ moneyHarvest(); f.typed = true; if($("#mfBuyCard")) $("#mfBuyCard").innerHTML = moneyBuyoutCardHtml(f); return; }
   if(t.id === "mfDate"){ moneyHarvest(); if(f.campAuto && f.date) f.campaign = mCampaignOf(f.date); moneyFollowSplit(f); paintMoneyForm(); return; }
   if(t.id === "mfCamp"){ moneyHarvest(); f.campAuto = false; moneyFollowSplit(f); paintMoneyForm(); return; }
   if(t.id === "mfParty"){
@@ -4851,6 +5047,11 @@ document.addEventListener("change", async e => {
 document.addEventListener("input", e => {
   const f = MONEY.form, id = e.target.id || "";
   if(!f || !/^mf/.test(id)) return;
+  if(id === "mfSlice" || id === "mfMult"){
+    f.typed = true; moneyHarvest();
+    if($("#mfBuyCard")) $("#mfBuyCard").innerHTML = moneyBuyoutCardHtml(f);
+    return;
+  }
   if(id === "mfSplitPct"){
     f.typed = true; moneyHarvest();
     if($("#mfAlan")) $("#mfAlan").textContent = moneyAlanLine(f);
@@ -4869,7 +5070,7 @@ document.addEventListener("keydown", e => {
   /* registered before the date picker's own Escape, so an open calendar closes first and the drawer stays */
   if(e.key === "Escape" && MONEY.form && !MONEY.busy && $("#datePop").classList.contains("hidden")) moneyCloseForm();
   if(e.key === "Enter" && e.target.matches && e.target.matches("tr[data-moneyopen]")){ e.preventDefault(); e.target.click(); }
-  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct|SplitPct)$/.test(e.target.id || "")){ e.preventDefault(); moneySubmit(); }
+  if(e.key === "Enter" && MONEY.form && /^mf(Base|Rate|Amount|Note|What|PartyOther|CatNew|BenPct|SplitPct|Slice|Mult)$/.test(e.target.id || "")){ e.preventDefault(); moneySubmit(); }
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

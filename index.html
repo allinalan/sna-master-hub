@@ -2702,7 +2702,16 @@ function assignIsActive(r){const t=(TEAM.rows||[]).find(x=>String(x.RepID)===Str
 const byTierName=(a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name);
 function assignReps(){return (ASSIGN.rows.reps||[]).filter(assignIsActive).sort(byTierName);}
 function assignFormerReps(){return (ASSIGN.rows.reps||[]).filter(r=>!assignIsActive(r)).sort(byTierName);}
-function cellState(rep,a){return assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());}
+/* The Path isn't required to turn assignments in, so a Path square past its due date
+   stays yellow instead of going red. This is the board only: the shared rule above is
+   untouched, so a Path mentee's own dashboard still says overdue, which matches the
+   mini's "3 days late" reminder text they get. */
+const ASSIGN_NO_OVERDUE=["Path"];
+function cellState(rep,a){
+  const s=assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());
+  if(s.state==="late"&&ASSIGN_NO_OVERDUE.includes(tierName(rep.Tier))){s.state="open";s.pastDue=true;}
+  return s;
+}
 /* Only the Dojo is required to turn assignments in, so only the Dojo counts toward
    Waiting on you and Overdue. Path and Masters cells still show on the board, and
    still count toward Submitted this week and Approved. */
@@ -2759,7 +2768,7 @@ function assignBoardHtml(){
     h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</td>`;
     list.forEach(a=>{
       const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
-      h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
+      h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":s.pastDue?" · was due ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
     });
     h+=`<td class="tot">${inN}/${appN} in</td></tr>`;
   };
@@ -2773,7 +2782,7 @@ function assignBoardHtml(){
     former.forEach(r=>row(r,true));
   }
   h+=`</tbody></table></div>`;
-  h+=`<div class="alegend"><span><i class="sq open"></i> not due yet</span><span><i class="sq late"></i> overdue</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
+  h+=`<div class="alegend"><span><i class="sq open"></i> not turned in yet</span><span><i class="sq late"></i> overdue (never on the Path)</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
   return h;
 }
 function assignBaseOf(progs){return progs.slice().sort((x,y)=>tierRank(x)-tierRank(y))[0]||"Path";}
@@ -2854,7 +2863,7 @@ function openCell(repId,aId){
       (v.FileURL?`<div><a href="${esc(v.FileURL)}" target="_blank" rel="noopener">📎 ${esc(v.FileName||"file")}</a></div>`:"")+
       ((v.Feedback||String(v.Status||"").toLowerCase()==="approved")?`<div class="ad-fb"><div class="vh">${esc(v.ReviewedBy||"Coach")} · ${fmtStamp(v.ReviewedAt)}${String(v.Status||"").toLowerCase()==="approved"?" · approved ✓":""}</div>${v.Feedback?`<div class="vt">${esc(v.Feedback)}</div>`:""}</div>`:"")+`</div>`;
   }).join("")
-  :`<div class="empty-note" style="padding:18px">${s.state==="na"?"Not applicable to "+first:"Not submitted"+(s.due?` · ${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}`:"")}</div>`;
+  :`<div class="empty-note" style="padding:18px">${s.state==="na"?"Not applicable to "+first:"Not submitted"+(s.due?` · ${s.state==="late"||s.pastDue?"was due":"due"} ${esc(fmtDueHub(s.due))}`:"")}</div>`;
   let action="";
   if(former)action=`<div class="ad-row"><span class="sw-hint">${first} is a former mentee, so this is read only — reactivate them on the Mentees roster to send feedback or a reminder.</span></div>`;
   else if(s.latest&&s.state!=="na")action=`<div class="ad-form"><div class="ad-sub">Your feedback on v${esc(s.latest.Version)}</div>
@@ -2872,7 +2881,7 @@ function openCell(repId,aId){
       <div class="ad-row"><button class="btn sm primary" data-override="save"${dis}>Save</button>${s.override?`<button class="btn sm" data-override="clear"${dis}>Back to default</button>`:""}</div>
     </div></details>`;
   d.innerHTML=`<div class="ad-head"><div><div class="t">${esc(a.Title)}</div>
-      <div class="s"><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span>${former?' <span class="chip">former</span>':""} <span class="apill ${s.state}">${CELL_TITLE[s.state]}</span>${s.due?`<span>${s.state==="late"?"was due":"due"} ${esc(fmtDueHub(s.due))}</span>`:""}</div></div>
+      <div class="s"><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span>${former?' <span class="chip">former</span>':""} <span class="apill ${s.state}">${CELL_TITLE[s.state]}</span>${s.due?`<span>${s.state==="late"||s.pastDue?"was due":"due"} ${esc(fmtDueHub(s.due))}</span>`:""}</div></div>
     <button class="btn sm" data-assignact="close" title="Close">✕</button></div>
     <div class="ad-body">${thread}${action}${former?"":more}</div>`;
   d.classList.add("on"); d.setAttribute("aria-hidden","false");

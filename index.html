@@ -2706,20 +2706,18 @@ function assignIsActive(r){const t=(TEAM.rows||[]).find(x=>String(x.RepID)===Str
 const byTierName=(a,b)=>tierRank(a.Tier)-tierRank(b.Tier)||a.Name.localeCompare(b.Name);
 function assignReps(){return (ASSIGN.rows.reps||[]).filter(assignIsActive).sort(byTierName);}
 function assignFormerReps(){return (ASSIGN.rows.reps||[]).filter(r=>!assignIsActive(r)).sort(byTierName);}
-/* The Path isn't required to turn assignments in, so a Path square past its due date
-   stays yellow instead of going red. This is the board only: the shared rule above is
-   untouched, so a Path mentee's own dashboard still says overdue, which matches the
-   mini's "3 days late" reminder text they get. */
-const ASSIGN_NO_OVERDUE=["Path"];
+/* Only the Dojo is required to turn assignments in. So on this board only a Dojo
+   square goes red past its due date (a Path or Masters one stays yellow), and only
+   the Dojo counts toward Waiting on you and Overdue. Path and Masters cells still
+   show, and still count toward Submitted this week and Approved. This is the board
+   only: the shared rule above is untouched, so a Path or Masters mentee's own
+   dashboard still says overdue, which matches the mini's "3 days late" reminder text. */
+const ASSIGN_REQUIRED="Dojo";
 function cellState(rep,a){
   const s=assignState({id:rep.RepID,tier:rep.Tier},a,ASSIGN.rows.overrides||[],ASSIGN.rows.submissions||[],todayISO());
-  if(s.state==="late"&&ASSIGN_NO_OVERDUE.includes(tierName(rep.Tier))){s.state="open";s.pastDue=true;}
+  if(s.state==="late"&&tierName(rep.Tier)!==ASSIGN_REQUIRED){s.state="open";s.pastDue=true;}
   return s;
 }
-/* Only the Dojo is required to turn assignments in, so only the Dojo counts toward
-   Waiting on you and Overdue. Path and Masters cells still show on the board, and
-   still count toward Submitted this week and Approved. */
-const ASSIGN_REQUIRED="Dojo";
 function assignCounts(){
   const c={waiting:0,late:0,week:0,approved:0}; if(!ASSIGN.rows)return c;
   const weekAgo=new Date(Date.now()-7*86400000).toISOString();
@@ -2786,7 +2784,7 @@ function assignBoardHtml(){
     former.forEach(r=>row(r,true));
   }
   h+=`</tbody></table></div>`;
-  h+=`<div class="alegend"><span><i class="sq open"></i> not turned in yet</span><span><i class="sq late"></i> overdue (never on the Path)</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
+  h+=`<div class="alegend"><span><i class="sq open"></i> not turned in yet</span><span><i class="sq late"></i> overdue (Dojo only)</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
   return h;
 }
 function assignBaseOf(progs){return progs.slice().sort((x,y)=>tierRank(x)-tierRank(y))[0]||"Path";}

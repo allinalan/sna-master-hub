@@ -61,7 +61,9 @@ const ROSTER = [
   ["t04", "Morgan Testcase", "The Path", "Ben"], ["t05", "Quinn Former", "The Path", "", false],
   ["t06", "Sam Standin", "The Dojo"], ["t07", "Drew Dummy", "The Dojo"], ["t08", "Kai Mockup", "Masters", "Alan"],
 ].map(([RepID, Name, Program, Coach = "", Active = true]) => ({RepID, Name, Program, Tier:Program.replace("The ", ""), Active, OnRoster:true,
-  CutcoRepNo:"", Phone:"", Email:"", Division:"", Manager:"", ManagerPhone:"", ManagerEmail:"", CareerSales:"", Joined:"", Coach, Goal:"", JoinWeek:""}));
+  CutcoRepNo:"", Phone:"", Email:"", Division:"", Manager:"", ManagerPhone:"", ManagerEmail:"", CareerSales:"", Joined:"", Coach, Goal:"", JoinWeek:"",
+  /* per-mentee switches, as coachRoster hands them over; two start off so the card has something to say */
+  Switches:{checkins:RepID !== "t06", assignments:true, emails:RepID !== "t04"}}));
 /* the assignments sheet, the way the check-in script's assignmentBoard hands
    it over: catalog rows, per-mentee overrides (a date, or "NA"), submissions */
 const BOARD = {assignments:[], overrides:[], submissions:[]};
@@ -71,9 +73,18 @@ let failNext = 0;
 function team(body){
   if(body.key !== KEY) return {ok:false, error:"bad key"};
   if(body.action === "coachRoster") return {ok:true, reps:ROSTER, coaches:[{Name:"Alan", Phone:""}, {Name:"Ben", Phone:""}]};
+  if(body.action === "setRepSwitch"){
+    const r = ROSTER.find(x => x.RepID === body.repId);
+    if(!r) return {ok:false, error:"unknown rep"};
+    if(!(body.kind in r.Switches)) return {ok:false, error:"unknown switch"};
+    if(typeof body.on !== "boolean") return {ok:false, error:"on must be true or false"};
+    r.Switches[body.kind] = body.on;
+    console.log(`[switches] ${r.RepID} ${body.kind} ${body.on ? "ON" : "OFF"}`);
+    return {ok:true, repId:r.RepID, switches:Object.assign({}, r.Switches)};
+  }
   if(body.action === "getSettings") return {ok:true, switches:{texts:false, digest:false, emails:false, replinks:false, assignments:false}};
   if(body.action === "assignmentBoard") return {ok:true, assignments:BOARD.assignments, overrides:BOARD.overrides, submissions:BOARD.submissions,
-    reps:ROSTER.map(r => ({RepID:r.RepID, Name:r.Name, Tier:r.Tier, Active:r.Active, HasEmail:false}))};
+    reps:ROSTER.map(r => ({RepID:r.RepID, Name:r.Name, Tier:r.Tier, Active:r.Active, HasEmail:false, EmailsOff:!r.Switches.emails}))};
   if(body.action === "saveAssignment"){
     const a = body.a || {};
     let row = a.id && BOARD.assignments.find(x => x.AssignmentID === a.id);

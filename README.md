@@ -544,6 +544,39 @@ a make-up only the people who missed can see. `node tools/dev-server.js` serves 
 `curl -X POST localhost:8830/__submit -d '{"repId":"t04","assignmentId":"A1","text":"posted it"}'`
 plays a mentee turning a make-up in.
 
+## Per-mentee automation switches
+
+The Automations card on the Mentees tab holds the **program** switches (check-in texts, coach
+digest, rep emails, rep dashboard links, assignment reminders). Under them, every mentee row has
+three pills of its own in the Automations column:
+
+| Pill | Turns off, for that one mentee |
+|---|---|
+| Check-ins | the Tuesday nudge, the Wednesday last call, the dashboard-link text |
+| Assignments | the due-date reminder texts |
+| Emails | assignment feedback and reminder emails, the monthly booking reminder, the onboarding assignments email |
+
+A send needs the program switch **and** the mentee's own. Everyone starts ON; ON is quiet and
+OFF is red, and the card names every active mentee with something off so a mute is not forgotten.
+A former mentee shows "former · nothing sends" instead of pills.
+
+A click calls the check-in script's coach-key action `setRepSwitch` (`{repId, kind, on}`), and the
+row then shows what the sheet holds after the write (`r.Switches` from `coachRoster`). The values
+live in three columns of the private contacts sheet, blank = ON; the texting Mac reads them from
+its contacts feed at send time. Against a script that predates the switches the column shows a
+dash. The Assignments drawer says when a mentee's emails are off, and so does the toast after a
+review or a reminder (`emailsOff` in the answer).
+
+The pure half is the `REP_SW` block of `index.html`:
+
+```
+node tests/rep-switches.test.js
+```
+
+`node tools/dev-server.js` fakes the switches too (two mentees start with one off), so the pills
+can be clicked at `http://localhost:8830/#team` with the coach key `dev`. Design and the sending
+side: `docs/rep-switches.md` in the private `sharpninja` repo.
+
 ## Adding a tab
 
 `index.html` is one self-contained file with no dependencies. To add a tab:

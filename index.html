@@ -650,6 +650,17 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;l
 .sw-toggle.on .sw-state{color:var(--green,#2a7d4f)}
 .sw-toggle[disabled]{opacity:.55;cursor:default}
 .sw-toggle:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
+/* per-mentee switches (Mentees rows): three small pills. OFF is the exception, so OFF is the loud one */
+.rsw-col{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.rsw{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;background:transparent;
+  padding:2px 9px 2px 6px;cursor:pointer;font:inherit;font-size:11px;color:var(--ink-faint,#8a8175);white-space:nowrap}
+.rsw .rsw-dot{width:8px;height:8px;border-radius:50%;background:var(--green,#2a7d4f)}
+.rsw .rsw-state{font-size:9.5px;font-weight:700;letter-spacing:.07em}
+.rsw.off{border-color:var(--red,#b3261e);color:var(--red,#b3261e);background:var(--paper-deep,#f1ede4)}
+.rsw.off .rsw-dot{background:var(--red,#b3261e)}
+.rsw[disabled]{opacity:.55;cursor:default}
+.rsw:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
+.sw-per{grid-column:1/-1;border-top:1px solid var(--line);padding-top:9px}
 
 /* ── Dojo rows: no coach picker, just the rule ── */
 .nocoach{font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
@@ -1987,7 +1998,7 @@ const TEAM_API = "https://script.google.com/macros/s/AKfycbyNFDkgEAUT5IDNw4wvCHL
 const TEAM = {
   key: localStorage.getItem("sna_coach_key") || "",
   rows: null, coaches: [], loading: false, err: "",
-  sw: null, swErr: "", swBusy: {}
+  sw: null, swErr: "", swBusy: {}, repSwBusy: {}
 };
 
 async function teamCall(body){
@@ -2035,9 +2046,9 @@ async function swLoad(){
   render();
 }
 const SW_META = [
-  {k:"texts",    name:"Check-in texts",      hint:"Monday nudge + Tuesday last-call + post-call texts to reps"},
-  {k:"digest",   name:"Coach digest",        hint:"Tuesday evening who's-missing text to the coaches"},
-  {k:"emails",   name:"Rep emails",          hint:"Post-call survey link + monthly booking reminder emails"},
+  {k:"texts",    name:"Check-in texts",      hint:"Tuesday nudge + Wednesday last-call + the one-time dashboard-link text to reps"},
+  {k:"digest",   name:"Coach digest",        hint:"Wednesday evening who's-missing text to the coaches"},
+  {k:"emails",   name:"Rep emails",          hint:"Assignment feedback + reminder emails, the monthly booking reminder, the onboarding assignments email"},
   {k:"replinks", name:"Rep dashboard links", hint:"Each mentee’s personal dashboard page — when OFF, they see an “almost ready” screen"},
   {k:"assignments", name:"Assignment reminders", hint:"Texts a mentee the day before an assignment is due, and once more if it goes late"}
 ];
@@ -2059,6 +2070,50 @@ function fmtCareer(v){
   const tr = s.match(/true[^0-9$]*(.*)/i);
   const n = (tr ? grab(tr[1]) : null) ?? grab(s);
   return n == null ? "" : "$" + Math.round(n).toLocaleString("en-US");
+}
+
+/*REP_SW_BEGIN*/
+/* Per-mentee switches (2026-10-06). The private Contacts sheet holds three
+   columns per mentee (blank = ON) and coachRoster hands them over as
+   r.Switches = {checkins, assignments, emails}. They sit UNDER the program
+   switches above: a send needs the program switch AND the mentee's own. */
+const REP_SW = [
+  {k:"checkins",    name:"Check-ins",   what:"check-in texts",   hint:"the Tuesday nudge, the Wednesday last call and the dashboard-link text"},
+  {k:"assignments", name:"Assignments", what:"assignment texts", hint:"the text the day before an assignment is due, and the one when it goes late"},
+  {k:"emails",      name:"Emails",      what:"emails",           hint:"assignment feedback and reminder emails, the monthly booking reminder, the onboarding assignments email"}
+];
+/* which switches are off on one roster row. [] when everything is on, and
+   when the sheet's script predates the switches (no Switches at all) */
+function repSwOff(r){
+  const s = r && r.Switches;
+  return s ? REP_SW.filter(m => s[m.k] === false).map(m => m.k) : [];
+}
+/* ACTIVE mentees with something off, for the Automations card. A former
+   mentee is sent nothing either way, so they never show up here. */
+function repSwSummary(rows){
+  return (rows || []).filter(r => r.Active && repSwOff(r).length)
+    .map(r => ({name: r.Name, kinds: repSwOff(r).map(k => REP_SW.find(m => m.k === k).what)}));
+}
+/*REP_SW_END*/
+function repSwCell(r){
+  if(!r.Active) return `<span class="sw-hint" title="Nothing is sent to a former mentee">former · nothing sends</span>`;
+  if(!r.Switches) return `<span class="sw-hint" title="The sheet's script predates per-mentee switches">&ndash;</span>`;
+  const first = esc(r.Name.split(" ")[0]);
+  return `<div class="rsw-col">${REP_SW.map(m => {
+    const on = r.Switches[m.k] !== false, busy = !!TEAM.repSwBusy[r.RepID + "|" + m.k];
+    return `<button class="rsw${on ? "" : " off"}" data-repsw="${esc(r.RepID)}" data-kind="${m.k}" ${busy ? "disabled" : ""}
+        role="switch" aria-checked="${on}" aria-label="${esc(r.Name)}: ${m.what}"
+        title="${on ? "ON" : "OFF"} for ${first}: ${m.hint}. Click to turn ${on ? "off" : "back on"}.">
+        <span class="rsw-dot"></span>${m.name}<span class="rsw-state">${busy ? "…" : on ? "ON" : "OFF"}</span></button>`;
+  }).join("")}</div>`;
+}
+function repSwLine(){
+  if(!TEAM.rows || !TEAM.rows.some(r => r.Switches)) return "";
+  const off = repSwSummary(TEAM.rows);
+  return `<div class="sw-hint sw-per"><b>Per mentee:</b> ${off.length
+      ? `${off.length} ${off.length === 1 ? "has" : "have"} something switched off — ${off.map(o => `${esc(o.name)} (${o.kinds.join(", ")})`).join(" · ")}.`
+      : "everyone is ON."}
+    Each row below has its own Check-ins / Assignments / Emails pills. A send needs the switch up here <i>and</i> the mentee's own.</div>`;
 }
 
 function swPanel(){
@@ -2084,7 +2139,7 @@ function swPanel(){
     <div class="sw-head"><div class="sw-title">Automations</div>
       <div class="sw-hint">Live master switches — a flip is saved to the private sheet's Settings tab
       and takes effect at the very next send. Nothing to restart.</div></div>
-    <div class="sw-grid">${inner}</div>
+    <div class="sw-grid">${inner}${repSwLine()}</div>
   </div>`;
 }
 
@@ -2186,6 +2241,7 @@ function teamRowHtml(r){
         ${r.ManagerPhone || r.ManagerEmail ? `<div style="color:var(--ink-faint)">${esc(r.ManagerPhone || "")}${r.ManagerPhone && r.ManagerEmail ? " · " : ""}${esc(r.ManagerEmail || "")}</div>` : ""}</td>
     <td class="dt" style="font-size:12px">${fmtJoined(r.Joined)}</td>
     <td>${coachCellHtml(r)}</td>
+    <td class="no-print no-export">${repSwCell(r)}</td>
     <td class="no-print no-export"><a class="btn sm" target="_blank" rel="noopener"
         href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}">dashboard ↗</a>
       <div style="margin-top:6px"><a class="btn sm" target="_blank" rel="noopener"
@@ -2233,7 +2289,7 @@ function renderTeam(){
   const inactive = rows.filter(r => !r.Active).length;
   if(!former) rows = rows.filter(r => r.Active);
   rows = rows.filter(r => passesFilters(r, UI.teamProgs, UI.teamCoaches));
-  const visible = rows.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+  const visible = rows.filter(r => !q || JSON.stringify(Object.assign({}, r, {Switches: undefined})).toLowerCase().includes(q));
   const groups = groupRows(visible, UI.teamGroup);
 
   const act = TEAM.rows.filter(r => r.Active);
@@ -2272,10 +2328,10 @@ function renderTeam(){
   if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
   else{
     html += `<div class="tbl"><table class="grid"><thead><tr>
-      <th>Mentee</th><th>Program</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export"></th>
+      <th>Mentee</th><th>Program</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export" title="Per-mentee switches: a send needs the program switch above AND the mentee's own">Automations</th><th class="no-print no-export"></th>
     </tr></thead><tbody>`;
     for(const g of groups){
-      if(g.label) html += `<tr class="grp"><td colspan="8">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      if(g.label) html += `<tr class="grp"><td colspan="9">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
       for(const r of g.rows) html += teamRowHtml(r);
     }
     html += `</tbody></table></div>`;
@@ -2657,6 +2713,27 @@ document.addEventListener("click", async e => {
   else{ TEAM.sw[k] = before; toast("Couldn't flip that switch — try again."); }
   render();
 });
+/* one mentee's switch: optimistic, then the row takes whatever the sheet says it now holds */
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-repsw]");
+  if(!b) return;
+  e.preventDefault();
+  const repId = b.dataset.repsw, k = b.dataset.kind, busyKey = repId + "|" + k;
+  const row = (TEAM.rows || []).find(r => r.RepID === repId), meta = REP_SW.find(m => m.k === k);
+  if(!row || !row.Switches || !meta || TEAM.repSwBusy[busyKey]) return;
+  const before = row.Switches[k] !== false, to = !before, first = row.Name.split(" ")[0];
+  row.Switches[k] = to; TEAM.repSwBusy[busyKey] = true; render();
+  const out = await teamCall({action: "setRepSwitch", repId, kind: k, on: to}).catch(() => ({ok:false}));
+  delete TEAM.repSwBusy[busyKey];
+  if(out.ok && out.switches){
+    row.Switches = out.switches;
+    toast(`${first}: ${meta.what} ${row.Switches[k] !== false ? "ON" : "OFF"}`);
+  }else{
+    row.Switches[k] = before;
+    toast(out.error === "unknown action" ? "The sheet's script doesn't have per-mentee switches yet." : "Couldn't save that — try again.");
+  }
+  render();
+});
 document.addEventListener("keydown", e => {
   if(e.key === "Enter" && e.target.id === "teamKey"){
     const b = document.querySelector('[data-teamact="unlock"]');
@@ -2872,8 +2949,8 @@ function openCell(repId,aId){
       <textarea id="adFb" placeholder="What's working, what to change, what to try next…">${esc(s.state==="waiting"?"":(s.latest.Feedback||""))}</textarea>
       <div class="ad-row"><button class="btn primary" data-review="revise"${dis}>Send feedback · ask for a resubmit</button>
         <button class="btn" data-review="approved"${dis}>Approve ✓</button>
-        ${rep.HasEmail?"":`<span class="sw-hint">no email on file — they'll see it on their dashboard</span>`}</div></div>`;
-  else if(s.state==="open"||s.state==="late")action=`<div class="ad-row"><button class="btn" data-remind="1"${dis}>Email a reminder</button>${rep.HasEmail?"":`<span class="sw-hint">no email on file</span>`}</div>`;
+        ${rep.HasEmail?(rep.EmailsOff?`<span class="sw-hint">${first}'s emails are switched off — they'll see it on their dashboard</span>`:""):`<span class="sw-hint">no email on file — they'll see it on their dashboard</span>`}</div></div>`;
+  else if(s.state==="open"||s.state==="late")action=`<div class="ad-row"><button class="btn" data-remind="1"${dis}>Email a reminder</button>${rep.HasEmail?(rep.EmailsOff?`<span class="sw-hint">${first}'s emails are switched off on the Mentees tab — nothing will send</span>`:""):`<span class="sw-hint">no email on file</span>`}</div>`;
   const more=`<details class="ad-more"><summary>Due date &amp; applicability for ${first}</summary>
     <div class="ad-form" style="margin-top:10px">
       <div class="ad-row"><label class="ad-sub">Due ${(dd => dbtn("field", "", dd, dd ? fmtFull(dd) : "",
@@ -2932,12 +3009,12 @@ document.addEventListener("click",async e=>{
     const fb=$("#adFb").value.trim();
     if(rv.dataset.review==="revise"&&!fb){toast("Write the feedback first");return;}
     await assignWrite({action:"reviewSubmission",submissionId:s.latest.SubmissionID,status:rv.dataset.review,feedback:fb},null,
-      out=>toast(out.emailed?`Sent to ${first} ✓`:out.hasEmail?`Saved · rep emails are paused — nothing sent`:`Saved · no email on file for ${first}`));
+      out=>toast(out.emailed?`Sent to ${first} ✓`:!out.hasEmail?`Saved · no email on file for ${first}`:out.emailsOff?`Saved · ${first}'s emails are switched off — nothing sent`:`Saved · rep emails are paused — nothing sent`));
     return;
   }
   if(e.target.closest("[data-remind]")){
     await assignWrite({action:"remindAssignment",repId:rep.RepID,assignmentId:a.AssignmentID},null,
-      out=>toast(out.emailed?`Reminder sent to ${first} ✓`:out.hasEmail?`Rep emails are paused — nothing sent`:`No email on file for ${first} — nothing sent`));
+      out=>toast(out.emailed?`Reminder sent to ${first} ✓`:!out.hasEmail?`No email on file for ${first} — nothing sent`:out.emailsOff?`${first}'s emails are switched off — nothing sent`:`Rep emails are paused — nothing sent`));
     return;
   }
   const ov=e.target.closest("[data-override]");

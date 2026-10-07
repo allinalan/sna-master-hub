@@ -18,6 +18,8 @@
 //   SLOW=1500 node tools/dev-server.js      every backend reply takes 1.5 s
 //   MONEY_KEY=other node tools/dev-server.js the money script expects a different key than the roster
 //   NO_KEY=1 node tools/dev-server.js        the money script has no MONEY_KEY set at all
+//   NO_PAY=1 node tools/dev-server.js        the check-in script predates the Pay column: the roster
+//                                           carries no Pay and setPayPlan is an unknown action
 //   FAIL_HISTORY=1 node tools/dev-server.js  every History write fails (the entry itself still saves)
 //   curl -X POST localhost:8830/__fail -d 2  the next 2 money calls get an HTML error page,
 //                                           the way Apps Script's /exec sometimes answers
@@ -64,6 +66,22 @@ const ROSTER = [
   CutcoRepNo:"", Phone:"", Email:"", Division:"", Manager:"", ManagerPhone:"", ManagerEmail:"", CareerSales:"", Joined:"", Coach, Goal:"", JoinWeek:"",
   /* per-mentee switches, as coachRoster hands them over; two start off so the card has something to say */
   Switches:{checkins:RepID !== "t06", assignments:true, emails:RepID !== "t04"}}));
+/* What each invented mentee pays, the way the check-in script's PayPlan cell reads
+   (its PAYPLAN block): the words in the cell, and {kind, amount, text} from them.
+   t07's cell was typed by hand and doesn't read as a plan. */
+const NO_PAY = !!process.env.NO_PAY;
+const payMoney = n => { const c = Math.round(n * 100), f = c % 100; return String(Math.floor(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (f ? "." + String(f).padStart(2, "0") : ""); };
+const payText = (kind, amount) => kind === "pct" ? (amount === null ? "" : String(amount)) + "% of sales" : "$" + payMoney(amount) + (kind === "full" ? " in full" : "/mo");
+const pay = (kind, amount) => ({kind, amount, text:payText(kind, amount)});
+const PAY = {t01:pay("monthly", 275), t02:pay("full", 120), t03:pay("pct", 6), t04:pay("pct", null), t07:{kind:"other", amount:null, text:"ask Ben"}};
+if(!NO_PAY) for(const r of ROSTER) r.Pay = PAY[r.RepID] || null;
+/* the one-click plans per program. The real ones are the programs' prices and live in the private
+   script, never in this repo: these are made up. */
+const PAY_PRESETS = {
+  Dojo:[{kind:"full", amount:120}, {kind:"monthly", amount:34.5}],
+  Path:[{kind:"monthly", amount:300}, {kind:"monthly", amount:275}, {kind:"pct", amount:6}],
+  Masters:[{kind:"monthly", amount:400}, {kind:"pct", amount:6}],
+};
 /* the assignments sheet, the way the check-in script's assignmentBoard hands
    it over: catalog rows, per-mentee overrides (a date, or "NA"), submissions */
 const BOARD = {assignments:[], overrides:[], submissions:[]};
@@ -72,7 +90,8 @@ let failNext = 0;
 
 function team(body){
   if(body.key !== KEY) return {ok:false, error:"bad key"};
-  if(body.action === "coachRoster") return {ok:true, reps:ROSTER, coaches:[{Name:"Alan", Phone:""}, {Name:"Ben", Phone:""}]};
+  if(body.action === "coachRoster") return Object.assign({ok:true, reps:ROSTER, coaches:[{Name:"Alan", Phone:""}, {Name:"Ben", Phone:""}]},
+    NO_PAY ? {} : {payPresets:PAY_PRESETS});
   if(body.action === "setRepSwitch"){
     const r = ROSTER.find(x => x.RepID === body.repId);
     if(!r) return {ok:false, error:"unknown rep"};
@@ -82,6 +101,24 @@ function team(body){
     console.log(`[switches] ${r.RepID} ${body.kind} ${body.on ? "ON" : "OFF"}`);
     return {ok:true, repId:r.RepID, switches:Object.assign({}, r.Switches)};
   }
+  if(body.action === "setPayPlan" && !NO_PAY){
+    const r = ROSTER.find(x => x.RepID === body.repId), kind = String(body.kind || "").toLowerCase();
+    if(!r) return {ok:false, error:"unknown rep"};
+    if(kind === "none"){ r.Pay = null; console.log(`[pay] ${r.RepID} cleared`); return {ok:true, repId:r.RepID, pay:null}; }
+    if(!["monthly", "full", "pct"].includes(kind)) return {ok:false, error:"unknown plan"};
+    let a = body.amount;
+    if(kind === "pct" && (a === undefined || a === null)) a = null;
+    else{
+      if(typeof a !== "number" || !isFinite(a) || a <= 0) return {ok:false, error:"amount must be a number above zero"};
+      a = Math.round(a * 100) / 100;
+      if(kind === "pct" && a > 100) return {ok:false, error:"a percent cannot be over 100"};
+      if(kind !== "pct" && a > 100000) return {ok:false, error:"amount is too large"};
+    }
+    r.Pay = pay(kind, a);
+    console.log(`[pay] ${r.RepID} ${r.Pay.text}`);
+    return {ok:true, repId:r.RepID, pay:Object.assign({}, r.Pay)};
+  }
+  if(body.action === "setPayPlan") return {ok:false, error:"unknown action"};
   if(body.action === "getSettings") return {ok:true, switches:{texts:false, digest:false, emails:false, replinks:false, assignments:false}};
   if(body.action === "assignmentBoard") return {ok:true, assignments:BOARD.assignments, overrides:BOARD.overrides, submissions:BOARD.submissions,
     reps:ROSTER.map(r => ({RepID:r.RepID, Name:r.Name, Tier:r.Tier, Active:r.Active, HasEmail:false, EmailsOff:!r.Switches.emails}))};

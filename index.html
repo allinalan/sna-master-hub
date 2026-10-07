@@ -661,6 +661,24 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;l
 .rsw[disabled]{opacity:.55;cursor:default}
 .rsw:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
 .sw-per{grid-column:1/-1;border-top:1px solid var(--line);padding-top:9px}
+/* what a mentee pays (Mentees rows): a chip you click, then presets or an amount of your own */
+.pay{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--card);
+  padding:3px 10px;cursor:pointer;font-family:var(--monof);font-size:11px;color:var(--ink);white-space:nowrap}
+.pay:hover{border-color:var(--ink-faint)}
+.pay.empty{border-style:dashed;background:transparent;color:var(--ink-faint)}
+.pay.odd{border-style:dashed;background:var(--warn-bg);color:#6E5606}
+.pay.cur{cursor:default}
+.pay.cur:hover{border-color:var(--line)}
+.pay.opt.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.pay[disabled]{opacity:.55;cursor:default}
+.pay:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
+.pay-ed{display:flex;flex-direction:column;gap:6px;margin-top:7px;min-width:190px}
+.pay-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.pay-ed input.search{width:78px;flex:0 0 78px;min-width:0;padding:5px 8px;font-size:12px}
+.pay-ed select.btn{padding:4px 6px}
+.pay-links{gap:12px;font-size:10.5px}
+.pay-links a{color:var(--ink-faint)}
+.pay-err{font-size:11px;color:var(--red,#b3261e)}
 
 /* ── Dojo rows: no coach picker, just the rule ── */
 .nocoach{font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
@@ -1998,7 +2016,9 @@ const TEAM_API = "https://script.google.com/macros/s/AKfycbyNFDkgEAUT5IDNw4wvCHL
 const TEAM = {
   key: localStorage.getItem("sna_coach_key") || "",
   rows: null, coaches: [], loading: false, err: "",
-  sw: null, swErr: "", swBusy: {}, repSwBusy: {}
+  sw: null, swErr: "", swBusy: {}, repSwBusy: {},
+  payPresets: {},                   // the one-click plans per program, as coachRoster hands them over
+  payEdit: null, payBusy: {}        // the one row whose Pay editor is open ({repId, kind, amount, err}) · rows mid-save
 };
 
 async function teamCall(body){
@@ -2015,7 +2035,7 @@ async function teamLoad(){
   swLoad();   // the switches don't need the roster — ask for both at once (they used to wait for it, +2 s)
   try{
     const out = await teamCall({action: "coachRoster"});
-    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; }
+    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; TEAM.payPresets = out.payPresets || {}; }
     else if(out.error === "bad key"){
       TEAM.key = ""; localStorage.removeItem("sna_coach_key");
       TEAM.err = "That key wasn't right — ask Alan for the current one.";
@@ -2143,6 +2163,96 @@ function swPanel(){
   </div>`;
 }
 
+/*PAY_BEGIN*/
+/* What a mentee pays (2026-10-06). The private Contacts sheet holds one
+   PayPlan cell per mentee and coachRoster hands it over as
+   r.Pay = {kind, amount, text}, or null when nothing is set:
+     monthly  a flat amount every month           "$300/mo"
+     full     a flat amount paid once (the Dojo)  "$120 in full"
+     pct      a percent of sales, amount = rate   "6% of sales" · "% of sales" with no rate
+     other    a cell typed by hand that doesn't read as a plan: shown as typed
+   A coach sets it on the row (setPayPlan, coach key). It is a record, not a
+   switch: nothing bills or sends off it.
+   The one-click presets are each program's prices, and they are NOT in this
+   file: this page is public, so they come with the roster (coachRoster's
+   payPresets, {Dojo:[{kind, amount}, …], Path:[…], Masters:[…]}) from the
+   private script. Any other amount goes in by hand. */
+const PAY_KINDS = [
+  {k:"monthly", name:"$ a month"},
+  {k:"full",    name:"$ in full"},
+  {k:"pct",     name:"% of sales"}
+];
+/* 300 → "300" · 34.5 → "34.50" · 1250 → "1,250" */
+function payMoney(n){
+  const cents = Math.round(n * 100), frac = cents % 100;
+  const whole = String(Math.floor(cents / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return frac ? whole + "." + String(frac).padStart(2, "0") : whole;
+}
+/* the words on the chip. A plan the hub can't read shows the cell's own words. */
+function payLabel(p){
+  if(!p) return "";
+  if(p.kind === "monthly" && p.amount > 0) return "$" + payMoney(p.amount) + "/mo";
+  if(p.kind === "full" && p.amount > 0) return "$" + payMoney(p.amount) + " in full";
+  if(p.kind === "pct") return (p.amount > 0 ? String(Math.round(p.amount * 100) / 100) : "") + "% of sales";
+  return String(p.text || "");
+}
+/* one program's presets out of what the roster sent; anything that isn't a plan is dropped */
+function payPresets(all, program){
+  const list = all && Array.isArray(all[program]) ? all[program] : [];
+  return list.filter(p => p && PAY_KINDS.some(x => x.k === p.kind) && (p.amount > 0 || (p.kind === "pct" && p.amount == null)))
+             .map(p => ({kind: p.kind, amount: p.amount == null ? null : p.amount}));
+}
+/* the same plan? lights the preset a mentee is already on */
+function paySame(a, b){
+  return !!a && !!b && a.kind === b.kind && (a.amount == null ? null : a.amount) === (b.amount == null ? null : b.amount);
+}
+/* what the editor opens on: the plan they have, else the kind of their program's first preset */
+function payDraft(pay, presets){
+  if(pay && PAY_KINDS.some(x => x.k === pay.kind)) return {kind: pay.kind, amount: pay.amount == null ? "" : String(pay.amount)};
+  return {kind: ((presets || [])[0] || {kind:"monthly"}).kind, amount: ""};
+}
+/* the typed line → {kind, amount} to send, or {error} saying why not. A percent
+   may be left without a rate; a flat plan needs its dollars. */
+function payEntry(kind, raw){
+  if(!PAY_KINDS.some(x => x.k === kind)) return {error: "Pick a plan first."};
+  const s = String(raw == null ? "" : raw).replace(/[$,%\s]/g, "");
+  if(!s) return kind === "pct" ? {kind, amount: null} : {error: "Type the amount."};
+  if(!/^(\d+\.?\d*|\.\d+)$/.test(s)) return {error: "That isn't a number."};
+  const n = Math.round(parseFloat(s) * 100) / 100;
+  if(!(n > 0)) return {error: "It has to be above zero."};
+  if(kind === "pct" && n > 100) return {error: "A percent can't be over 100."};
+  if(kind !== "pct" && n > 100000) return {error: "That's too large to be right."};
+  return {kind, amount: n};
+}
+/*PAY_END*/
+function payCell(r){
+  if(r.Pay === undefined) return `<span class="sw-hint" title="The sheet's script predates the Pay column">&ndash;</span>`;
+  const id = esc(r.RepID), first = esc(r.Name.split(" ")[0]), busy = !!TEAM.payBusy[r.RepID];
+  const ed = TEAM.payEdit && TEAM.payEdit.repId === r.RepID ? TEAM.payEdit : null;
+  const odd = !!r.Pay && r.Pay.kind === "other";
+  if(!ed){
+    if(!r.Pay) return `<button class="pay empty no-print no-export" data-payedit="${id}" ${busy ? "disabled" : ""}
+        title="Nothing set for ${first} yet. Click to put in what they pay.">${busy ? "…" : "+ set"}</button>`;
+    return `<button class="pay${odd ? " odd" : ""}" data-payedit="${id}" ${busy ? "disabled" : ""}
+        title="${odd ? "Typed in the sheet, and not a plan the hub can read. " : ""}What ${first} pays. Click to change it.">${busy ? "…" : esc(payLabel(r.Pay))}</button>`;
+  }
+  const presets = payPresets(TEAM.payPresets, programOf(r));
+  return `${r.Pay ? `<span class="pay cur${odd ? " odd" : ""}">${esc(payLabel(r.Pay))}</span>` : ""}
+    <div class="pay-ed no-print no-export">
+      ${presets.length ? `<div class="pay-row">${presets.map(p =>
+        `<button class="pay opt${paySame(p, r.Pay) ? " on" : ""}" data-payset="${id}" data-kind="${p.kind}" data-amount="${p.amount == null ? "" : p.amount}">${esc(payLabel(p))}</button>`).join("")}</div>` : ""}
+      <div class="pay-row">
+        <input class="search" id="payAmt" inputmode="decimal" autocomplete="off" placeholder="amount" value="${esc(ed.amount)}"
+          aria-label="Amount for ${esc(r.Name)}" title="Any other amount: type it, pick what it is, Save">
+        <select class="btn sm" id="payKind" aria-label="What that amount is">${PAY_KINDS.map(x =>
+          `<option value="${x.k}"${ed.kind === x.k ? " selected" : ""}>${x.name}</option>`).join("")}</select>
+        <button class="btn sm primary" data-paysave="${id}">Save</button>
+      </div>
+      ${ed.err ? `<div class="pay-err">${esc(ed.err)}</div>` : ""}
+      <div class="pay-row pay-links">${r.Pay ? `<a href="#" data-payclear="${id}">clear</a>` : ""}<a href="#" data-paycancel="1">cancel</a></div>
+    </div>`;
+}
+
 /* the sheet stores Joined as a real datetime, so the feed stringifies it long
    ("Tue Aug 18 2026 19:21:06 GMT-0700 ...") — render it as a date, not a log line */
 function fmtJoined(v){
@@ -2234,6 +2344,7 @@ function teamRowHtml(r){
     <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
         <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
     <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
+    <td>${payCell(r)}</td>
     <td class="dt">${fmtCareer(r.CareerSales) ? `<span title="${esc(r.CareerSales)}">${fmtCareer(r.CareerSales)}</span>` : (r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`)}</td>
     <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--red,#b3261e)">no phone</span>`}
         <div>${r.Email ? esc(r.Email) : `<span class="chip" style="color:var(--red,#b3261e)">no email</span>`}</div></td>
@@ -2275,8 +2386,8 @@ function renderTeam(){
       <div class="big serif">Mentees</div>
       <div class="lede">Everyone on Sharp Ninja Academy, straight from the private contacts sheet —
         onboarding form submissions land here on their own. Filter by program or coach (light up more than one to
-        see them side by side), group the board by who's coaching, and pick a coach on any Path or Masters row to assign
-        the mentorship. The Dojo doesn't get check-in calls, so nobody there has a coach until they graduate to The Path.</div>
+        see them side by side), group the board by who's coaching, pick a coach on any Path or Masters row to assign
+        the mentorship, and click a row's Pay chip to put in what they pay. The Dojo doesn't get check-in calls, so nobody there has a coach until they graduate to The Path.</div>
     </div>
   </div>`;
 
@@ -2328,10 +2439,10 @@ function renderTeam(){
   if(!visible.length) html += `<div class="empty-note">Nothing matches.</div>`;
   else{
     html += `<div class="tbl"><table class="grid"><thead><tr>
-      <th>Mentee</th><th>Program</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export" title="Per-mentee switches: a send needs the program switch above AND the mentee's own">Automations</th><th class="no-print no-export"></th>
+      <th>Mentee</th><th>Program</th><th title="What they pay: a flat amount a month, paid in full, or a percent of sales. Click a row's chip to set or change it.">Pay</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export" title="Per-mentee switches: a send needs the program switch above AND the mentee's own">Automations</th><th class="no-print no-export"></th>
     </tr></thead><tbody>`;
     for(const g of groups){
-      if(g.label) html += `<tr class="grp"><td colspan="9">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      if(g.label) html += `<tr class="grp"><td colspan="10">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
       for(const r of g.rows) html += teamRowHtml(r);
     }
     html += `</tbody></table></div>`;
@@ -2733,6 +2844,65 @@ document.addEventListener("click", async e => {
     toast(out.error === "unknown action" ? "The sheet's script doesn't have per-mentee switches yet." : "Couldn't save that — try again.");
   }
   render();
+});
+/* what one mentee pays: open the row's editor, pick a preset or type an amount,
+   and the row then shows whatever the sheet says it now holds */
+function payOpen(repId){
+  const row = (TEAM.rows || []).find(r => r.RepID === repId);
+  if(!row || row.Pay === undefined || TEAM.payBusy[repId]) return;
+  TEAM.payEdit = Object.assign({repId, err: ""}, payDraft(row.Pay, payPresets(TEAM.payPresets, programOf(row))));
+  render();
+  const box = $("#payAmt"); if(box){ box.focus(); box.select(); }
+}
+async function paySave(repId, plan){
+  const row = (TEAM.rows || []).find(r => r.RepID === repId);
+  if(!row || TEAM.payBusy[repId]) return;
+  const first = row.Name.split(" ")[0];
+  TEAM.payBusy[repId] = true; TEAM.payEdit = null; render();
+  const out = await teamCall(Object.assign({action: "setPayPlan", repId}, plan)).catch(() => ({ok:false}));
+  delete TEAM.payBusy[repId];
+  if(out.ok && "pay" in out){
+    row.Pay = out.pay;
+    toast(out.pay ? `${first}: ${payLabel(out.pay)}` : `${first}: pay cleared`);
+  }else{
+    toast(out.error === "unknown action" ? "The sheet's script doesn't have the Pay column yet."
+        : out.error && out.error !== "bad key" ? `Couldn't save that: ${out.error}.` : "Couldn't save that — try again.");
+  }
+  render();
+}
+/* Save on the typed line: a bad amount stays in the editor with the reason under it */
+function payTyped(repId){
+  const ed = TEAM.payEdit;
+  if(!ed || ed.repId !== repId) return;
+  const amt = $("#payAmt"), kind = $("#payKind");
+  if(amt) ed.amount = amt.value;
+  if(kind) ed.kind = kind.value;
+  const entry = payEntry(ed.kind, ed.amount);
+  if(entry.error){
+    ed.err = entry.error; render();
+    const box = $("#payAmt"); if(box) box.focus();
+    return;
+  }
+  paySave(repId, entry);
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-payedit],[data-payset],[data-paysave],[data-payclear],[data-paycancel]");
+  if(!t) return;
+  e.preventDefault();
+  const d = t.dataset;
+  if(d.payedit) payOpen(d.payedit);
+  else if(d.payset) paySave(d.payset, {kind: d.kind, amount: d.amount === "" ? null : Number(d.amount)});
+  else if(d.paysave) payTyped(d.paysave);
+  else if(d.payclear) paySave(d.payclear, {kind: "none"});
+  else { TEAM.payEdit = null; render(); }
+});
+/* the editor is rebuilt by every render, so what's typed lives in TEAM.payEdit */
+document.addEventListener("input", e => { if(e.target.id === "payAmt" && TEAM.payEdit) TEAM.payEdit.amount = e.target.value; });
+document.addEventListener("change", e => { if(e.target.id === "payKind" && TEAM.payEdit) TEAM.payEdit.kind = e.target.value; });
+document.addEventListener("keydown", e => {
+  if(e.target.id !== "payAmt" || !TEAM.payEdit) return;
+  if(e.key === "Enter"){ e.preventDefault(); payTyped(TEAM.payEdit.repId); }
+  else if(e.key === "Escape"){ e.preventDefault(); TEAM.payEdit = null; render(); }
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Enter" && e.target.id === "teamKey"){
@@ -6252,10 +6422,11 @@ function pageIn(){
 const entranceOf = v => [...v.children].flatMap(c => c.getAnimations()).filter(a => a.animationName === "pageIn");
 
 function render(){
-  /* the search box and the "add a task" box are rebuilt by every render (a
-     sync, a flash fading out) — put the cursor back where it was */
+  /* the search box, the "add a task" box and a Mentees row's Pay amount are
+     rebuilt by every render (a sync, a flash fading out) — put the cursor back
+     where it was */
   const act = document.activeElement;
-  const focused = act && (act.id === "q" || act.id === "bizAdd") ? act.id : null;
+  const focused = act && (act.id === "q" || act.id === "bizAdd" || act.id === "payAmt") ? act.id : null;
   const caret = focused ? act.selectionStart : null;
   paintTabs();
   if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance

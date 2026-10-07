@@ -19,7 +19,7 @@ of sub-tabs under it.
 | **Orders of Business** | Everything you two still owe each other, one flat list. Add a task from the box at the top of the list, tick it off, put a name on it (Alan, Ben, or both), give it a note, a due date, a section, a topic, an urgency and an importance. Overdue goes red, due-within-a-fortnight goes amber. Filter by any of those, and sort by **Priority** (urgency and importance added together, so 1+1 is first), urgency, importance, due date or section. Sections aren't headers any more — each row wears its section as a chip; click it to move the item, or type a new section name right there. |
 | **Performance** | The [mentee dashboard](https://allinalan.github.io/sna-dashboard/), embedded live (`?embed=1` drops its chrome). One codebase serves this tab and every rep's private `?rep=` link — so they can never drift out of sync. A bare visit to the old standalone URL redirects here. Every mentee now has **two boards** in there — **Performance** and **Skillset** — on their own tabs. |
 | ↳ Skillset | The skills off Alan's skillset sheet, rated **1–10**. Reps rate themselves on their own tab; you read those ratings from **Rep ▸ pick a mentee ▸ Skillset**, and can put your own number beside theirs — **they never see your column**. Anywhere the two are **3 or more apart** is flagged as a blind spot. Reps star five focus skills, ranked, and the top three are the ones that count. Ratings are **versioned, never reset**: a board stays editable for a week, then the next rating opens a new dated one carrying everything forward, so you get the growth and not just the number. The team board at the foot of Performance says who has actually done it, who is moving, and **where the academy is thinnest** — which is where the next campaign's call topics should come from. Coaches can add, rename and retire skills from the board itself. |
-| **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). Each row links out to that mentee's **dashboard** and straight to their **skillset**. **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
+| **Mentees ▸ Roster** | Everyone on the Academy, live from the private contacts sheet (behind the coach key). Each row links out to that mentee's **dashboard** and straight to their **skillset**. **Program** and **Coach** filters are multi-select — light up Path *and* Masters, or Alan *and* Ben, to see them side by side; **Group** splits the board into labelled blocks per coach or per program. Assign a coach on any Path or Masters row. The **Pay** column shows what each mentee pays (a flat amount a month, an amount paid in full, or a percent of sales): click the chip to set or change it. The Dojo doesn't get check-in calls, so Dojo rows show no coach picker, never count as Unassigned, and sit in their own block when grouping by coach; the day someone's program changes to Path they flip to Unassigned on their own. A coach name left on a Dojo row from before shows faintly with a `clear` link. |
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
 | ↳ Call Attendance | A roll for every group call: one row per mentee, one column per call this campaign. Click a call to take its roll — tick who's **on**, mark anyone **excused** — and press **Roll's in**. Anyone the call was for who wasn't on it (excused included) gets a **make-up** on their dashboard: watch the recording, post takeaways in the GroupMe, then say what they posted, due the **Friday after the call at midnight**. Replays never count as attendance. You read and approve make-ups right on this board. Details in [Call attendance](#call-attendance). |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not turned in yet, red overdue (only a Dojo square goes red: Path and Masters aren't required to turn assignments in, so theirs stay yellow; their own dashboards still say overdue), black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved). Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Only the Dojo is required to turn assignments in, so **Waiting on you** and **Overdue** count the Dojo only; Path and Masters cells still show on the board and still count toward Submitted this week and Approved. The tab itself carries no count. Mentees submit from their dashboard; they get an email when you reply. Mark someone **former** on the roster and they drop off the board and out of its counts straight away; their work stays in the sheet, and **reactivate** brings them back. **Show former** lists them at the foot of the board, faded and never counted, so you can still look up what they turned in — their cells open read only, so nobody emails someone who has left. |
@@ -576,6 +576,46 @@ node tests/rep-switches.test.js
 `node tools/dev-server.js` fakes the switches too (two mentees start with one off), so the pills
 can be clicked at `http://localhost:8830/#team` with the coach key `dev`. Design and the sending
 side: `docs/rep-switches.md` in the private `sharpninja` repo.
+
+## What each mentee pays
+
+The **Pay** column on the Mentees tab, beside Program. One chip per row:
+
+| Chip | Means |
+|---|---|
+| `$300/mo` | a flat amount every month |
+| `$120 in full` | a flat amount paid once |
+| `6% of sales` | a percent of sales (`% of sales` when nobody has put the rate in) |
+| `+ set` | nothing set yet |
+| amber, in the cell's own words | typed in the sheet by hand, and not a plan the script can read |
+
+Click a chip and the row opens: that program's one-click presets, and a line to type any other
+amount and say what it is ($ a month, $ in full, % of sales). Enter or **Save** sends it,
+**clear** empties it, Escape or **cancel** backs out. The preset a mentee is already on is lit.
+
+It is a record the coaches keep, not a switch: nothing bills, texts or emails off it. It is not
+read off the signed agreements either; the private repo's `docs/pay-plan.md` says why.
+
+**No price is in this repo.** This page is public, so the presets come with the roster
+(`payPresets` on `coachRoster`, `{Dojo:[{kind, amount}, …], Path:[…], Masters:[…]}`) from the
+private check-in script, and `tests/pay-plan.test.js` fails if a price list is written into
+`index.html`. The numbers above, in the tests and in the dev server are made up.
+
+A save calls the script's coach-key action `setPayPlan` (`{repId, kind, amount}`; `kind` is
+`monthly`, `full`, `pct` or `none` to clear), and the row then shows what the sheet holds after
+the write (`r.Pay = {kind, amount, text}` or `null`). The value lives in one column of the
+private contacts sheet, as words (`$300/mo`), so it reads there too and can be typed there.
+Against a script that predates the column the cell shows a dash. Print and export leave the
+cell empty for a mentee with nothing set.
+
+The pure half is the `PAY` block of `index.html`:
+
+```
+node tests/pay-plan.test.js
+```
+
+`node tools/dev-server.js` fakes the column (coach key `dev`, `http://localhost:8830/#team`);
+`NO_PAY=1 node tools/dev-server.js` shows the page against a script that predates it.
 
 ## Adding a tab
 

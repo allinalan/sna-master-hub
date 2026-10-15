@@ -46,6 +46,10 @@
 //   leave a square, or a roll-call heading, under the frozen names or past the right edge; Enter
 //   on one the keyboard brought out opens its popover (or that call's roll) right there, and
 //   "Showing Wk a–b" keeps up; a click on a half-covered one opens it without the board moving.
+//   The Weekly Check-ins popover works from the keyboard like a menu: Enter or Space on a square
+//   opens it on what the square is marked (or the first option), Up / Down / Home / End move,
+//   Enter picks (the square shows it), and picking, Escape and Tab put the focus back on the
+//   square. A screen reader hears whose week it is. A click opens it and leaves the focus alone.
 //   The calendar's seasons run on across printed pages (a week never splits, a season's
 //   heading never sits alone at the foot of a page), so page 1 isn't just the stats.
 //   Orders of Business keeps its unset chips and "+ note" out of sight until the row is
@@ -716,6 +720,92 @@ async function frozenNamesKeyboard(){
   });
 }
 
+async function checkinPopKeyboard(){
+  console.log("\nWeekly Check-ins' popover from the keyboard — like a menu: the arrows move, Enter picks, Escape and Tab close");
+  /* (in the page) whether the popover is open and on which square, where the focus is (an option by its label,
+     the square `id`, or something else), what that square shows, and whether it's clear of the frozen names */
+  const ci = (page, id) => page.evaluate(id => {
+    const pop = document.getElementById("ciPop"), a = document.activeElement;
+    const sq = [...document.querySelectorAll("#ciBoard button[data-ci]")].find(b => b.dataset.ci === id);
+    const t = sq.closest(".tbl"), r = sq.getBoundingClientRect();
+    return {open: !pop.classList.contains("hidden"), on: CI_OPEN && [CI_OPEN.camp, CI_OPEN.rep, CI_OPEN.week].join("|"),
+            focus: pop.contains(a) ? "option:" + (a.matches(".cp-opt") ? a.querySelector("span").firstChild.textContent : a.tagName)
+                 : a === sq ? "square" : a && a.dataset && a.dataset.ci ? "square " + a.dataset.ci : a ? a.tagName : null,
+            shows: CI_ORDER.find(k => sq.classList.contains(k)) || "blank",
+            clear: r.left > t.querySelector("th.mentee").getBoundingClientRect().right && r.right < t.getBoundingClientRect().right};
+  }, id);
+  await onPage("#checkins", {width: 390, height: 1800, ready: "#view .tbl table tr.grp"}, async page => {
+    /* the 7th square of the first row: on a phone it's off to the right until the keyboard brings it out */
+    const id = await page.evaluate(() => {
+      const t = document.querySelector("#ciBoard .tbl"), run = t.querySelectorAll("tbody tr:not(.grp)")[0].querySelectorAll("button.ci");
+      run[5].focus();
+      return run[6].dataset.ci;
+    });
+    need("an unmarked square on the Check-ins board", id);
+    await page.keyboard.press("Tab");
+    const blank = await ci(page, id);
+    await page.keyboard.press("Enter");
+    const opened = await ci(page, id);
+    check("Enter on an unmarked square opens its popover with the focus on the first option",
+          blank.focus === "square" && blank.shows === "blank" && opened.open && opened.on === id && opened.focus === "option:Check-in call",
+          {blank, opened});
+    const walk = [];
+    for(const key of ["ArrowDown", "End", "ArrowDown", "ArrowUp", "Home", "ArrowUp", "ArrowDown", "ArrowDown"]){
+      await page.keyboard.press(key);
+      walk.push(key + " → " + (await ci(page, id)).focus.replace("option:", ""));
+    }
+    check("…Down, End, Down, Up, Home, Up, Down, Down move between the options, and round from either end",
+          walk.join(" · ") === "ArrowDown → 1-1 call · End → Clear · ArrowDown → Check-in call · ArrowUp → Clear · Home → Check-in call" +
+                               " · ArrowUp → Clear · ArrowDown → Check-in call · ArrowDown → 1-1 call", walk);
+    await page.keyboard.press("Enter");
+    const picked = await ci(page, id);
+    check("…Enter picks it: the popover closes, the square shows 1-1 call, and the focus is back on the square, in view",
+          !picked.open && picked.shows === "one" && picked.focus === "square" && picked.clear, picked);
+    await page.keyboard.press("Enter");
+    const again = await ci(page, id);
+    check("Enter on a marked square opens the popover with the focus on what it's marked",
+          again.open && again.on === id && again.focus === "option:1-1 call", again);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Escape");
+    const esc = await ci(page, id);
+    check("…Escape closes it, picks nothing, and puts the focus back on the square",
+          !esc.open && esc.shows === "one" && esc.focus === "square", esc);
+    await page.keyboard.press("Space");
+    const sp = await ci(page, id);
+    await page.keyboard.press("Tab");
+    const tab = await ci(page, id);
+    check("Space opens it too, and Tab closes it and puts the focus back on the square, not on to the next one",
+          sp.open && sp.focus === "option:1-1 call" && !tab.open && tab.focus === "square", {sp, tab});
+    /* (in the page) what a screen reader is told about the square and, while it's open, the popover */
+    const told = () => page.evaluate(id => {
+      const pop = document.getElementById("ciPop"), sq = [...document.querySelectorAll("#ciBoard button[data-ci]")].find(b => b.dataset.ci === id);
+      const [camp, rep, week] = id.split("|");
+      return {haspopup: sq.getAttribute("aria-haspopup"), expanded: sq.getAttribute("aria-expanded"),
+              role: pop.getAttribute("role"), label: pop.getAttribute("aria-label") || "",
+              who: TEAM.rows.find(m => m.RepID === rep).Name, week: weekLabel(camp, week),
+              current: [...pop.querySelectorAll(".cp-opt[aria-current='true']")].map(o => o.dataset.cistate),
+              glyphsHidden: [...pop.querySelectorAll(".cp-opt i.ci")].every(i => i.getAttribute("aria-hidden") === "true")};
+    }, id);
+    await page.keyboard.press("Enter");
+    const open = await told();
+    await page.keyboard.press("Escape");
+    const shut = await told();
+    check("…and a screen reader is told: the square opens a dialog, the dialog is named for the mentee and the week, the current option is marked",
+          open.haspopup === "dialog" && open.expanded === "true" && shut.expanded === "false" && open.role === "dialog" &&
+          open.label.includes(open.who) && open.label.includes(open.week) && open.current.join() === "one" && open.glyphsHidden, {open, shut});
+    const other = await page.evaluate(() => {
+      const t = document.querySelector("#ciBoard .tbl"), sq = t.querySelectorAll("tbody tr:not(.grp)")[1].querySelectorAll("button.ci")[0];
+      t.scrollLeft = 0;                                                // Wk 1, just right of the names
+      const r = sq.getBoundingClientRect();
+      return {id: sq.dataset.ci, x: r.left + r.width / 2, y: r.top + r.height / 2};
+    });
+    await page.mouse.click(other.x, other.y);
+    const clicked = await ci(page, other.id);
+    check("A click opens it and leaves the focus out of it",
+          clicked.open && clicked.on === other.id && !clicked.focus.startsWith("option:"), clicked);
+  });
+}
+
 async function calendarPrint(){
   console.log("\nPrinting the calendar — seasons run on across pages; no split week, no stranded heading");
   await onPage("#calendar", {ready: ".week"}, async page => {
@@ -821,6 +911,7 @@ async function bizPlaceholders(){
     await stickyGroupLabels();
     await frozenNames();
     await frozenNamesKeyboard();
+    await checkinPopKeyboard();
     await calendarPrint();
     await bizPlaceholders();
     console.log("\nScript errors");

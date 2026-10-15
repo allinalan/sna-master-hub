@@ -273,8 +273,8 @@ node tools/design-check.js
 
 The same kind of run (its own dev server, a real browser, the same Playwright lookup,
 `--chrome` and `--headed`), for the design rules in **How it looks** below: Export is a menu
-whose Save as PNG downloads a PNG and whose Print calls the print dialog; the menus work from
-the keyboard; Edit's **+ Add…** shows only on the week under the pointer and *Add a note
+whose Save as PNG downloads a PNG and whose Print calls the print dialog; the menus, and the
+Weekly Check-ins popover, work from the keyboard; Edit's **+ Add…** shows only on the week under the pointer and *Add a note
 under …* leaves the caret in the new note; **+ Income** is Money's one primary and **⋯**
 holds Splits, Buyout and Refresh; clicking the dimmed page closes an untouched drawer but
 shakes one you've typed in; popovers spring out of what you clicked; a switch's knob moves
@@ -672,7 +672,10 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
   in a `<template>` and keep their `data-*` attributes, so the usual click handlers run them.
   Menus work from the keyboard: Enter, Space or an arrow on the button opens one with an item
   focused, the arrows, Home and End move, Enter runs one, and Escape or Tab closes it and puts
-  the focus back on the button. A click opens it without moving the focus.
+  the focus back on the button. A click opens it without moving the focus. The Weekly Check-ins
+  popover works the same way: Enter or Space on a square opens it on what the square is marked
+  (or the first option), Enter or Space picks, and picking, Escape and Tab all put the focus
+  back on the square.
 - **Placeholders wait for their row.** A board with a placeholder on every row (Orders of
   Business' dashed topic / urgency / importance chips and its "+ note") shows them only on the
   row under the pointer or holding the focus, like Edit's week tools; on a touch screen they

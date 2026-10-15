@@ -256,7 +256,7 @@ input.search:focus{outline:none;background:var(--card);border-color:var(--accent
 .stat.alert .val{color:var(--accent)}
 
 /* ═══════════ campaign sections ═══════════ */
-.season{margin-bottom:46px;break-inside:avoid}
+.season{margin-bottom:46px}
 .season-head{display:flex;align-items:baseline;gap:13px;padding:0 0 11px;border-bottom:2px solid var(--ink);margin-bottom:2px;flex-wrap:wrap}
 .season-head h3{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.015em}
 .season-head .roman{font-size:12px;font-weight:600;color:var(--brass);letter-spacing:.04em;align-self:center}
@@ -391,10 +391,11 @@ body.editing th.edit-only,body.editing td.edit-only{display:table-cell!important
 .card li .del{float:right;opacity:.5}
 .card li:hover .del{opacity:1}
 /* Edit shows a week's add / off / clear controls under the pointer, not on all
-   fifty-two weeks at once (touch screens have no hover, so they always show) */
+   fifty-two weeks at once (touch screens have no hover, so they always show). They
+   stay up while the week's + Add… menu is open, since the menu grows out of it. */
 body.editing .wk-tools{display:block!important;margin:6px 0 0 -10px}
 body.editing .week :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:0;transition:opacity .2s var(--ease-out)}
-body.editing .week:is(:hover,:focus-within) :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:1;transition-duration:0s}
+body.editing .week:is(:hover,:focus-within,:has([data-menu][aria-expanded="true"])) :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:1;transition-duration:0s}
 @media (hover:none){body.editing .week :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:1}}
 
 /* ═══════════ orders of business ═══════════ */
@@ -443,20 +444,23 @@ body.editing .week:is(:hover,:focus-within) :is(.wk-tools,.slot>.del,.snote>.del
 /* the title and note take a click with Edit off, so they look like it when you're in one */
 .biz [data-live]{cursor:text}
 .biz [data-live]:focus{background:var(--card-raised);box-shadow:0 0 0 2px var(--accent);outline:none}
-/* topic · urgency · importance sit under the title as small chips. Unset ones
-   are faint until the row is hovered (or Edit is on) so a long list doesn't
-   read as sixty placeholders; they never print or export. */
+/* topic · urgency · importance sit under the title as small chips. Set ones always
+   show; unset ones (and an empty note, below) wait until the row is under the pointer
+   or holds the focus, the way Edit's week tools do, so sixty-odd rows don't carry 260
+   placeholders. A touch screen has no pointer, so there they always show. They keep
+   their room while hidden, so nothing moves when they appear, and they never print or
+   export. */
 .biz-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
 .chip.bz{cursor:pointer;line-height:1.35}
-.chip.bz.empty{border-style:dashed;border-color:var(--line-strong);background:transparent;color:var(--ink-faint);opacity:.55}
-.biz-row:hover .chip.bz.empty,body.editing .chip.bz.empty,.chip.bz.empty:focus-visible{opacity:1}
+.chip.bz.empty{border-style:dashed;border-color:var(--line-strong);background:transparent;color:var(--ink-faint)}
+.biz-row :is(.chip.bz.empty,.biz-note [data-ph]){opacity:0;transition:opacity .2s var(--ease-out)}
+.biz-row:is(:hover,:focus-within,:has(.picking)) :is(.chip.bz.empty,.biz-note [data-ph]){opacity:1;transition-duration:0s}
+@media (hover:none){.biz-row :is(.chip.bz.empty,.biz-note [data-ph]){opacity:1}}
 .chip.topic{background:var(--brass-soft);border-color:transparent;color:var(--brass);font-weight:600}
 /* the section an item belongs to — the list is flat, so this is the only place it shows */
 .chip.sec{background:var(--paper-deep);border-color:transparent;color:var(--ink-soft);font-weight:600}
-/* every row carries a note line. Empty ones read as a faint "+ note" that only
-   comes forward on hover or in Edit, and never prints or exports. */
-.biz-note [data-ph]{color:var(--ink-faint);font-style:italic;opacity:.55}
-.biz-row:hover .biz-note [data-ph],body.editing .biz-note [data-ph],.biz-note [data-ph]:focus{opacity:1}
+/* every row carries a note line; an empty one is a "+ note" that shows with the chips above */
+.biz-note [data-ph]{color:var(--ink-faint);font-style:italic}
 .biz-row.is-done .biz-note.empty{display:none}
 .chip .lk{opacity:.72;font-weight:500}
 /* 1 is the top of both scales, so 1 is the hottest colour and 5 the quietest */
@@ -594,8 +598,11 @@ body.exporting::before{display:none}
   body::before{display:none}
   header,nav.tabs,.toolbar,.no-print,.edit-banner,footer .no-print,.scrim,.toasts{display:none!important}
   .wrap{max-width:100%;padding:0}
-  .week,.season,.card,tr{break-inside:avoid}
-  .season-head{break-after:avoid}
+  /* a season runs on across pages (holding a 17-week season together pushed each one to a
+     fresh page and left page 1 with only the stats); a week never splits, and a season's
+     heading (or a section's, like the Backlog's) never sits alone at the foot of a page */
+  .week,.card,tr{break-inside:avoid}
+  .season-head,.sec-title{break-after:avoid;break-inside:avoid}
   a{text-decoration:none;color:var(--ink)}
   .print-head{display:block!important}
   .week.open{background:none;border-left:3px solid var(--accent);padding-left:8px;margin:0;border-radius:0}
@@ -861,6 +868,12 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:11px;l
 table.grid tr.grp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
 table.grid tr.grp td .n{color:var(--ink-faint);letter-spacing:0}
 table.grid tr.grp:hover td{background:var(--paper-deep)}
+/* A group's label spans every lane, so a board scrolled sideways (to this week, say)
+   used to slide it out of view and leave an empty band. It holds at the left edge
+   instead, where it sits unscrolled (the cell's 14px padding). Paper doesn't scroll. */
+:is(table.grid tr.grp,table.aboard tr.agrp) td .glab{position:sticky;left:14px;display:inline-block}
+.png-holder .glab,body.exporting .glab{position:static!important}
+@media print{.glab{position:static!important}}
 
 /* ═══════════ weekly check-ins ═══════════
    green = call · purple = 1-1 call · blue = voice note / texts · red = missed ·
@@ -2747,7 +2760,7 @@ function renderTeam(){
       <th>Mentee</th><th>Program</th><th title="What they pay: a flat amount a month, paid in full, or a percent of sales. Click a row's chip to set or change it.">Pay</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export" title="Per-mentee switches: a send needs the program switch above AND the mentee's own">Automations</th><th class="no-print no-export"></th>
     </tr></thead><tbody>`;
     for(const g of groups){
-      if(g.label) html += `<tr class="grp"><td colspan="10">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      if(g.label) html += `<tr class="grp"><td colspan="10"><span class="glab">${esc(g.label)} <span class="n">· ${g.rows.length}</span></span></td></tr>`;
       for(const r of g.rows) html += teamRowHtml(r);
     }
     html += `</tbody></table></div>`;
@@ -2954,7 +2967,7 @@ function renderCheckins(){
       return `<th class="cw${w === todayMon ? " cur" : ""}${mcls(w)}" title="Week ${i + 1}${mo ? " · " + mo : ""} · ${fmtDay(w)} ${fmtDate(w)} – ${fmtDay(isoOf(e))} ${fmtDate(isoOf(e))}"><span class="wn">Wk ${i + 1}</span><span class="wd">${weekRange(w)}</span></th>`;
     }).join("")}</tr></thead><tbody>`;
     for(const g of groups){
-      if(g.label) html += `<tr class="grp"><td colspan="${weeks.length + 2}">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      if(g.label) html += `<tr class="grp"><td colspan="${weeks.length + 2}"><span class="glab">${esc(g.label)} <span class="n">· ${g.rows.length}</span></span></td></tr>`;
       for(const r of g.rows){
         let rd = 0, rn = 0;
         html += `<tr><td class="an"><b>${esc(r.Name)}</b><div class="an-sub"><span class="chip">${esc(programOf(r))}</span>${coachChip(r)}</div></td>`;
@@ -3347,11 +3360,11 @@ function assignBoardHtml(){
   };
   let lastTier="";
   reps.forEach(r=>{
-    if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}">The ${esc(r.Tier)}</td></tr>`;}
+    if(r.Tier!==lastTier){lastTier=r.Tier;h+=`<tr class="agrp"><td colspan="${list.length+2}"><span class="glab">The ${esc(r.Tier)}</span></td></tr>`;}
     row(r,false);
   });
   if(UI.assignFormer){
-    h+=`<tr class="agrp"><td colspan="${list.length+2}">Former · ${former.length?former.length+" · read only, not counted":"nobody"+(UI.assignProg==="all"?"":" in The "+esc(UI.assignProg))}</td></tr>`;
+    h+=`<tr class="agrp"><td colspan="${list.length+2}"><span class="glab">Former · ${former.length?former.length+" · read only, not counted":"nobody"+(UI.assignProg==="all"?"":" in The "+esc(UI.assignProg))}</span></td></tr>`;
     former.forEach(r=>row(r,true));
   }
   h+=`</tbody></table></div>`;
@@ -3862,7 +3875,7 @@ function renderAttend(){
                    miss:["no", "✕", "missed"], open:["blank pend", "", "roll not in yet"], fut:["blank fut", "", "not yet"], na:["na", "", "the call wasn't for them"]};
     html += `<div class="tbl citbl"><table class="grid ciboard atboard"><thead><tr><th class="mentee">Mentee</th>${calls.map(head).join("")}<th class="tt"></th></tr></thead><tbody>`;
     for(const g of groups){
-      if(g.label) html += `<tr class="grp"><td colspan="${calls.length + 2}">${esc(g.label)} <span class="n">· ${g.rows.length}</span></td></tr>`;
+      if(g.label) html += `<tr class="grp"><td colspan="${calls.length + 2}"><span class="glab">${esc(g.label)} <span class="n">· ${g.rows.length}</span></span></td></tr>`;
       for(const r of g.rows){
         const p = per.get(r.RepID);
         html += `<tr><td class="an"><b>${esc(r.Name)}</b>${p.streak ? `<span class="flag2">missed last 2</span>` : ""}<div class="an-sub">${programOf(r) ? `<span class="chip">${esc(programOf(r))}</span>` : ""}${coachChip(r)}</div></td>`;
@@ -7423,9 +7436,14 @@ function openBizPicker(el){
   pop.innerHTML = inner;
   pop.classList.remove("hidden");
   popAt(pop, el);
+  document.querySelectorAll(".chip.bz.picking").forEach(c => c.classList.remove("picking"));
+  el.classList.add("picking");                       // its row's unset chips stay up while you pick, focus or no
   if(BP.kind === "topic" || BP.kind === "sec") $("#bpNew").focus();
 }
-function closeBizPicker(){ $("#bizPop").classList.add("hidden"); BP = null; }
+function closeBizPicker(){
+  $("#bizPop").classList.add("hidden"); BP = null;
+  document.querySelectorAll(".chip.bz.picking").forEach(c => c.classList.remove("picking"));
+}
 function applyBizPick(v){
   const b = BP;
   if(!b) return;
@@ -7789,32 +7807,80 @@ async function exportPNG(id, label){
 /* ═══════════ menus, the how-to fold, the drawer's dimmed page ═══════════ */
 /* The menu copies its trigger's <template> buttons into #menuPop. Clicking one
    runs it through the ordinary handlers (registered above, so they go first),
-   then this one closes the menu. */
+   then this one closes the menu.
+   From the keyboard: Enter, Space or an arrow on the trigger opens it with an item
+   focused; Up / Down / Home / End move between the items, Enter or Space runs one,
+   and Escape or Tab closes it and puts the focus back on the trigger. The mouse
+   works as it always has: opening a menu with it leaves the focus where it was. */
 let MENU_FOR = null;
-function openMenu(trigger){
+const menuItems = () => [...$("#menuPop").querySelectorAll(".mi:not([disabled])")];
+function openMenu(trigger, focusAt){
   const src = trigger.parentElement && trigger.parentElement.querySelector("template.menu-src");
   if(!src) return;
   const pop = $("#menuPop");
   pop.innerHTML = src.innerHTML;
   pop.querySelectorAll("button").forEach(b => {
-    b.className = "mi" + (b.classList.contains("danger") ? " danger" : ""); b.setAttribute("role", "menuitem");
+    b.className = "mi" + (b.classList.contains("danger") ? " danger" : ""); b.setAttribute("role", "menuitem"); b.tabIndex = -1;
   });
   pop.classList.remove("hidden");
   popAt(pop, trigger);
   MENU_FOR = trigger; trigger.setAttribute("aria-expanded", "true");
+  if(focusAt){ const items = menuItems(); if(items.length) items[focusAt === "last" ? items.length - 1 : 0].focus(); }
 }
-function closeMenu(){
+/* refocus: put the focus back on the trigger (a keyboard close). An item can leave the
+   trigger unable to take it for a moment (Print hides the toolbar while it prints; Export
+   is disabled while the PNG renders), so it keeps trying for a few seconds, and gives up
+   if the trigger has gone (a render rebuilt it), a menu is open again, or something else
+   has taken the focus. */
+function closeMenu(refocus){
   if(!MENU_FOR) return;
-  $("#menuPop").classList.add("hidden");
-  MENU_FOR.setAttribute("aria-expanded", "false"); MENU_FOR = null;
+  const trig = MENU_FOR, pop = $("#menuPop");
+  pop.classList.add("hidden");
+  trig.setAttribute("aria-expanded", "false"); MENU_FOR = null;
+  if(refocus !== true) return;
+  (function again(tries){
+    const a = document.activeElement;
+    if(MENU_FOR || !trig.isConnected || (a && a !== document.body && a !== trig && !pop.contains(a))) return;
+    if(!trig.disabled) trig.focus();
+    if(document.activeElement !== trig && tries < 80) setTimeout(() => again(tries + 1), 100);
+  })(0);
 }
 document.addEventListener("click", e => {
   const trig = e.target.closest("[data-menu]");
-  if(trig){ const same = MENU_FOR === trig; closeMenu(); if(!same && !trig.disabled) openMenu(trig); return; }
-  closeMenu();                                   // an item ran (its own handler did the work), or the click was elsewhere
+  /* Enter or Space on a button is a click with no pointer behind it: detail 0 */
+  if(trig){ const same = MENU_FOR === trig; closeMenu(); if(!same && !trig.disabled) openMenu(trig, e.detail === 0 && "first"); return; }
+  /* an item ran (its own handler did the work), or the click was elsewhere. An item run
+     from the keyboard hands the focus back to the trigger, unless what it did took it. */
+  closeMenu(e.detail === 0 && $("#menuPop").contains(document.activeElement));
 });
-document.addEventListener("keydown", e => { if(e.key === "Escape") closeMenu(); });
-window.addEventListener("scroll", closeMenu, {passive:true});
+document.addEventListener("keydown", e => {
+  const a = document.activeElement;
+  if(!MENU_FOR){
+    const trig = a && a.closest && a.closest("[data-menu]");
+    if(trig && !trig.disabled && (e.key === "ArrowDown" || e.key === "ArrowUp")){
+      e.preventDefault(); openMenu(trig, e.key === "ArrowUp" ? "last" : "first");
+    }
+    return;
+  }
+  const inMenu = $("#menuPop").contains(a), onTrig = a === MENU_FOR;
+  if(e.key === "Escape"){ closeMenu(inMenu || onTrig); return; }
+  if(!inMenu && !onTrig) return;
+  if(e.key === "Tab"){
+    if(inMenu){ e.preventDefault(); closeMenu(true); } else closeMenu();   // from the trigger, Tab carries on as usual
+    return;
+  }
+  const items = menuItems(), at = items.indexOf(a);
+  const to = {ArrowDown: at + 1, ArrowUp: at < 0 ? -1 : at - 1, Home: 0, End: -1}[e.key];
+  if(to === undefined || !items.length) return;
+  e.preventDefault();
+  items[(to + items.length) % items.length].focus();
+});
+/* once the keyboard is in a menu, the pointer moves the focus with it, so only one item is lit */
+$("#menuPop").addEventListener("mousemove", e => {
+  const mi = e.target.closest(".mi:not([disabled])"), pop = e.currentTarget;
+  if(mi && pop.contains(document.activeElement) && document.activeElement !== mi) mi.focus();
+});
+window.addEventListener("scroll", () => closeMenu(), {passive:true});
 
 /* "How this works" — the how-to paragraphs stay folded until asked for */
 function howToggle(){

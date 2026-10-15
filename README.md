@@ -34,10 +34,10 @@ Source: the Google Sheet **Group Calls 2026**.
 
 ## Printing an image
 
-On any tab:
+On any tab, **Export** opens a small menu:
 
-- **Export PNG** — downloads a PNG of just that board (no toolbars, no browser chrome). Fonts are embedded, so it looks exactly like the screen. Filter to one campaign first if you want something short enough to read in a text.
-- **Print / PDF** — opens the print dialog. Choose "Save as PDF" for a multi-page version.
+- **Save as PNG** — downloads a PNG of just that board (no toolbars, no browser chrome). Fonts are embedded, so it looks exactly like the screen. Filter to one campaign first if you want something short enough to read in a text.
+- **Print or save as PDF** — opens the print dialog. Choose "Save as PDF" for a multi-page version.
 
 ---
 
@@ -48,7 +48,10 @@ don't have to press anything. Enter or clicking away finishes the field. Escape 
 the field goes back to what it said when you clicked in, even if some of your typing had
 already saved.
 
-Edit mode also turns on the structural controls, so the hub never needs a code change:
+Edit mode also turns on the structural controls, so the hub never needs a code change. On the
+calendar, a week's controls (its **+ Add…** menu, its `×`, the bank picker) show when the pointer
+is over that week, so fifty-two weeks of buttons don't all shout at once; on a phone they're always
+there.
 
 | To do this | Where |
 |---|---|
@@ -58,8 +61,9 @@ Edit mode also turns on the structural controls, so the hub never needs a code c
 | Change who's on a call | Click the name chip and pick — Alan, Ben, both, or any wording already in use |
 | Move every call's time at once | Click the standing time in the line under the page title |
 | Remove a week entirely | `×` next to the weekday |
-| Add a track, 2nd call, note, or long detail to a week | The small `+ track` / `+ 2nd call` / `+ note` / `+ detail` buttons under it |
-| Wipe a week back to open | `clear` on that week |
+| Add a call, hot seat or guest speaker to a week, a note under one of its calls, or a track, week note or long detail | **+ Add…** under the week's date |
+| Take a week off the schedule, or put it back | **+ Add…** ▸ Mark as an off week / Back on the schedule |
+| Wipe a week back to open | **+ Add…** ▸ Clear this week |
 | Add a whole year | `+ 2028` next to the year picker |
 | Add or delete a topic | `+ topic` at the bottom of a category, `×` on any topic |
 | Add, rename, or delete a category | `+ category` in the toolbar; click a category's name to rename; `×` in its header |
@@ -286,7 +290,7 @@ follows, unless you'd already picked one by hand.
 
 The split follows the contract year, and a contract year never changes partway through a
 campaign — so the split is set **per campaign**. One split covers income and expenses alike.
-**Splits** in the toolbar is where it lives: pick the campaign the new split starts with, type
+**Splits**, in the toolbar's **⋯** menu, is where it lives: pick the campaign the new split starts with, type
 Ben's share, and **Save**. Alan's share is whatever's left, shown as you type.
 
 It works like a price change in a shop: the new price is on everything rung up from the day it
@@ -328,7 +332,7 @@ closing the drawer reloads the list so you can see whether it landed.
 
 ### The buyout
 
-**Buyout** in the toolbar prices the contract's buyout option from the ledger: what the partner
+**Buyout**, in the toolbar's **⋯** menu, prices the contract's buyout option from the ledger: what the partner
 with the smaller share would pay to buy the rest of the bigger share, at a campaign's turn.
 
 - **The terms live on the sheet, not here.** Type the slice bought and the multiple from the
@@ -616,6 +620,31 @@ node tests/pay-plan.test.js
 
 `node tools/dev-server.js` fakes the column (coach key `dev`, `http://localhost:8830/#team`);
 `NO_PAY=1 node tools/dev-server.js` shows the page against a script that predates it.
+
+## How it looks (the rules to keep)
+
+The design system lives at the top of `index.html`'s stylesheet. A few rules hold it together:
+
+- **One type scale**: 11 · 12 · 13 · 14 · 16 · 18 · 22 · 28 · 40px. Nothing ships under 11px.
+  Letter-spacing tightens as text grows; all caps (+.06em) is only for tiny section labels:
+  eyebrows, stat labels, form labels, table headers.
+- **Two families**: Fraunces for titles and topics, Hanken Grotesk for everything else.
+  Hanken's figures are already tabular (every digit is the same width), so dates and amounts
+  line up without a monospace. Fraunces has no tabular figures, so don't use it for numbers
+  that change.
+- **Weight carries hierarchy, not faded colour.** `--ink-faint` is for placeholders and
+  decoration, never for text you read; secondary text is `--ink-soft`.
+- **One primary per page** (filled ink, like **+ Income**). Everything else is a grey filled
+  button or a plain tinted one. Rare actions go in a menu (`menuButton()`), whose buttons wait
+  in a `<template>` and keep their `data-*` attributes, so the usual click handlers run them.
+- **Popovers share one shell**: a frosted material that springs out of whatever you clicked
+  (`popOrigin()`). The drawer comes in on the iOS sheet curve over a dimmed page. Clicking the
+  dimmed page closes it, unless something in it changed since it opened; then it shakes
+  instead and nothing is lost.
+- **No coloured stripes down the side of things.** Tier is a dot before the topic, and a money
+  card's state is the colour of its amount.
+- **On screen, cards separate from the paper by fill. In print they get a hairline edge back.**
+  Keep boards light: Export and Print depend on it.
 
 ## Adding a tab
 

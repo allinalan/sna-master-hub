@@ -39,6 +39,8 @@ On any tab, **Export** opens a small menu:
 - **Save as PNG** — downloads a PNG of just that board (no toolbars, no browser chrome). Fonts are embedded, so it looks exactly like the screen. Filter to one campaign first if you want something short enough to read in a text.
 - **Print or save as PDF** — opens the print dialog. Choose "Save as PDF" for a multi-page version.
 
+Both always give you the light board, even with the Mac in dark mode.
+
 ---
 
 ## Editing
@@ -644,7 +646,31 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
 - **No coloured stripes down the side of things.** Tier is a dot before the topic, and a money
   card's state is the colour of its amount.
 - **On screen, cards separate from the paper by fill. In print they get a hairline edge back.**
-  Keep boards light: Export and Print depend on it.
+- **Every colour is a token** at the top of the stylesheet; a component rule never carries a hex
+  of its own. `--accent` is the brand vermilion (active tab, links, the one thing that's hot);
+  `--bad` is for errors and overdue only. The solid squares and badges on the boards are
+  `--mark-*` tokens: green is a call or a turned-in assignment, red is missed or overdue, black is
+  not needed, on every board. Greys for fills and rings are mixed from `--ink`, so they work in
+  both themes.
+- **Dark mode follows the Mac** (`prefers-color-scheme`, screen only). It swaps the base colours;
+  the masthead stays the dark cover. **Export and Print are always the light board**: the light
+  tokens are restated on `body.exporting` and on the PNG's holder, and print never sees the dark
+  set. Check both when you add a colour.
+- **A failure never vanishes.** `toast(msg)` is for what just happened and goes after 2.6 s. A
+  save or fetch that didn't go through uses `toast(msg, {err:true, retry})`: tinted, it stays until
+  Dismiss or Retry, and the same failure twice replaces its own toast. Say what didn't happen
+  ("Couldn't turn Check-in texts ON — it's still OFF."), not just "try again".
+- **Loading shows the board's shape, not a sentence.** `skelTable()` draws placeholder rows like
+  the table on its way; they wait 300 ms, so a quick load never flashes them. While a save is on
+  its way the drawer's controls are disabled but stay at full strength, and the button you pressed
+  becomes a spinner the width of its label.
+- **An empty board** (`emptyState()`) is a 16px title, one line of why or what to do, and one way
+  out where there is one: **Clear filters** when a filter or the search emptied it. No box.
+- **One underline per tab row**, outside what `paintTabs()` rebuilds, so it slides from the tab
+  you were on to the one you picked. Don't give tabs underlines of their own.
+
+The checks for all of it: `node tools/dev-server.js`, then `BASE=http://localhost:8830/ node
+tools/edit-focus-check.js`, and Export / Print a board with the Mac in dark mode.
 
 ## Adding a tab
 

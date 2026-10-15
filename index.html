@@ -9,19 +9,22 @@
 <meta name="theme-color" content="#191410">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Hanken+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
    SNA MASTER HUB — "Program Book" design system
    A dark lacquer masthead wraps warm paper boards. Vermilion seal, brass
-   details. Fraunces (display) · Hanken Grotesk (text) · Spline Sans Mono
-   (dates, labels, numerals). Boards stay light so PNG export and print
-   keep working exactly as before.
+   details. Fraunces (display) · Hanken Grotesk (everything else — its
+   figures are tabular out of the box, so dates and numbers line up without a
+   monospace). Boards stay light so PNG export and print keep working.
+   Type sits on one scale (11 · 12 · 13 · 14 · 16 · 18 · 22 · 28 · 40px);
+   nothing ships below 11px. Weight carries hierarchy, not faded colour:
+   --ink-faint is for placeholders and decoration, never for text you read.
    ═══════════════════════════════════════════════════════════════════════════ */
 :root{
   --paper:#F3EFE6; --paper-deep:#EAE4D6;
-  --card:#FBF8F1; --card-raised:#FFFDF6;
-  --ink:#1C1712; --ink-soft:#5E5645; --ink-faint:#958C79;
+  --card:#FFFDF8; --card-raised:#FFFEFB;
+  --ink:#1C1712; --ink-soft:#5E5645; --ink-faint:#736A57;
   --line:#DCD5C3; --line-soft:#E8E2D2; --line-strong:#C9C0AA;
   --accent:#AE3B15; --accent-deep:#8F2F0F; --accent-soft:#F1DFD2; --accent-ink:#7C2C0E;
   --brass:#8E7942; --brass-soft:#EFE7D2;
@@ -31,31 +34,43 @@
   --alan:#33608F; --alan-bg:#DCE7F1;
   --ben:#7B4B8F;  --ben-bg:#E9DFF0;
   --shell:#191410; --shell-hi:#221C15;
-  --shell-text:#F4EEDF; --shell-mut:#9A907C; --shell-dim:#7C7360;
+  --shell-text:#F4EEDF; --shell-mut:#9A907C; --shell-dim:#988E78;
   --shell-line:rgba(244,238,223,.1);
   --radius:12px;
   --serif:"Fraunces",Georgia,serif;
   --sans:"Hanken Grotesk",-apple-system,"Helvetica Neue",sans-serif;
-  --monof:"Spline Sans Mono",ui-monospace,SFMono-Regular,monospace;
+  --monof:var(--sans);           /* was Spline Sans Mono: Hanken's tabular figures do the aligning now */
+  --hair:1px;                    /* a separator: one device pixel on a retina screen (below) */
+  /* elevation — three steps, nothing else casts a shadow */
+  --elev-1:0 0 0 var(--hair) rgba(28,23,18,.06),0 1px 2px rgba(28,23,18,.05);
+  --elev-2:0 0 0 var(--hair) rgba(28,23,18,.10),0 4px 12px rgba(28,23,18,.08),0 16px 40px rgba(28,23,18,.14);
+  --elev-3:0 0 0 var(--hair) rgba(28,23,18,.12),0 24px 64px rgba(28,23,18,.28);
+  /* motion — colour fades on --ease-out, sheets on the iOS sheet curve, anything that
+     moves under your hand on a real spring (damping .82, response 320ms: settles in
+     440ms with 1.1% overshoot). The bouncy one (damping .6) is for checkmarks only. */
+  --ease-out:cubic-bezier(.2,.8,.2,1);
+  --ease-sheet:cubic-bezier(.32,.72,0,1);
+  --spring:linear(0,.074,.232,.411,.577,.714,.819,.895,.946,.978,.997,1.007,1.01,1.011,1.01,1.008,1.006,1.004,1.003,1.002,1);
+  --spring-bouncy:linear(0,.075,.249,.458,.659,.827,.952,1.034,1.078,1.094,1.091,1.076,1.057,1.037,1.02,1.007,.998,.993,.991,.991,.992,.994,.996,.998,1);
+  --spring-dur:440ms;
 }
+@media (min-resolution:2dppx){:root{--hair:.5px}}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;
+body{background:linear-gradient(180deg,#F8F5EE 0,var(--paper) 560px) no-repeat,var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;
   -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;padding:0 0 110px}
-.mono{font-family:var(--monof)}
+.mono{font-family:var(--monof);font-variant-numeric:tabular-nums}
 .serif{font-family:var(--serif)}
 ::selection{background:#EAD9C4}
 a{color:var(--accent);text-underline-offset:2px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .wrap{max-width:1220px;margin:0 auto;padding:0 28px}
 
-/* film grain over everything — never exported, never printed */
-body::after{content:"";position:fixed;inset:0;z-index:200;pointer-events:none;opacity:.05;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* the page used to wear a film-grain overlay (a fixed layer at z-index 200, over
+   the content and over the Data modal). Paper gets a little top light instead. */
 
-.eyebrow{font-family:var(--monof);font-size:10px;letter-spacing:.24em;text-transform:uppercase;
-  color:var(--ink-soft);font-weight:500;display:flex;align-items:center;gap:9px}
-.eyebrow::before{content:"";width:20px;height:2px;background:var(--accent);flex:none}
+.eyebrow{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-soft);display:flex;align-items:center;gap:9px}
 
 /* ═══════════ masthead — the dark cover ═══════════ */
 header{background:linear-gradient(180deg,var(--shell-hi),var(--shell));color:var(--shell-text)}
@@ -65,109 +80,123 @@ header{background:linear-gradient(180deg,var(--shell-hi),var(--shell));color:var
 .mark{width:41px;height:41px;background:var(--accent);color:#F6EFE2;border-radius:10px;flex:none;
   display:grid;place-items:center;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:21px;line-height:1;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 2px 8px rgba(0,0,0,.4)}
-.brand h1{font-family:var(--serif);font-size:20px;font-weight:540;letter-spacing:.005em;line-height:1.1;color:var(--shell-text)}
-.brand .sub{font-family:var(--monof);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--shell-mut);margin-top:4px}
+.brand h1{font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:-.011em;line-height:1.1;color:var(--shell-text)}
+.brand .sub{font-size:12px;font-weight:500;color:var(--shell-mut);margin-top:3px}
 .head-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
-.status{font-family:var(--monof);font-size:10.5px;color:var(--shell-mut);display:flex;align-items:center;gap:7px;margin-right:4px}
+.status{font-family:var(--monof);font-size:12px;color:var(--shell-mut);display:flex;align-items:center;gap:7px;margin-right:4px}
 .status #saveLabel{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dot{width:7px;height:7px;border-radius:50%;background:#6FA080;flex:none;box-shadow:0 0 6px rgba(111,160,128,.5)}
 .dot.edited{background:#D9A62E;box-shadow:0 0 6px rgba(217,166,46,.5)}
 
 /* ═══════════ buttons ═══════════ */
-.btn{font-family:var(--monof);font-size:10.5px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
-  padding:8px 14px;border:1px solid var(--line-strong);background:transparent;color:var(--ink-soft);
-  border-radius:8px;cursor:pointer;white-space:nowrap;
-  transition:background .15s,border-color .15s,color .15s,transform .06s}
-.btn:hover{border-color:var(--ink-faint);background:var(--card-raised);color:var(--ink)}
-.btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.primary:hover{background:#000;border-color:#000;color:var(--paper)}
-.btn.on{background:var(--accent);color:#FFF9F1;border-color:var(--accent)}
-.btn.on:hover{background:var(--accent-deep);border-color:var(--accent-deep);color:#FFF9F1}
+/* filled, not outlined: grey for most, ink for the one thing the page is for,
+   plain (tinted text) for the quiet ones. Sentence case, 13px semibold. */
+.btn{font-family:var(--sans);font-size:13px;line-height:18px;font-weight:600;letter-spacing:0;
+  padding:9px 16px;border:0;background:rgba(28,23,18,.06);color:var(--ink);
+  border-radius:10px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:rgba(28,23,18,.10);color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.primary:hover{background:#000;color:var(--paper)}
+.btn.on{background:var(--accent);color:#FFF9F1}
+.btn.on:hover{background:var(--accent-deep);color:#FFF9F1}
+.btn.plain{background:none;color:var(--accent);padding-left:10px;padding-right:10px}
+.btn.plain:hover{background:var(--accent-soft);color:var(--accent-ink)}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.btn.sm{padding:5px 10px;font-size:10px}
-header .btn{border-color:rgba(244,238,223,.26);color:#EDE6D6;background:transparent}
-header .btn:hover{background:rgba(244,238,223,.09);border-color:rgba(244,238,223,.45);color:var(--shell-text)}
-header .btn.on{background:var(--accent);border-color:var(--accent);color:#FFF9F1}
+.btn.sm{padding:7px 12px;font-size:12px;line-height:16px;border-radius:8px}
+a.btn{display:inline-block;text-decoration:none}
+header .btn{color:#EDE6D6;background:rgba(244,238,223,.10)}
+header .btn:hover{background:rgba(244,238,223,.17);color:var(--shell-text)}
+header .btn.on{background:var(--accent);color:#FFF9F1}
 
 /* ═══════════ nav band — sticky part of the cover ═══════════ */
-nav.tabs{position:sticky;top:0;z-index:50;background:var(--shell);
-  border-top:1px solid var(--shell-line);border-bottom:1px solid rgba(142,121,66,.4);
-  box-shadow:0 12px 26px -18px rgba(18,13,7,.55)}
+/* a material, not a slab: the page scrolls under it, blurred, and a hairline
+   (not a shadow) marks the edge */
+nav.tabs{position:sticky;top:0;z-index:50;background:color-mix(in oklab,var(--shell) 94%,transparent);
+  -webkit-backdrop-filter:saturate(1.6) blur(20px);backdrop-filter:saturate(1.6) blur(20px);
+  border-top:1px solid var(--shell-line);border-bottom:var(--hair) solid rgba(244,238,223,.16)}
 .tabs-inner{max-width:1220px;margin:0 auto;padding:0 28px}
 .tabs-primary{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
 .tabs-primary::-webkit-scrollbar{display:none}
-.tab-primary{font-family:var(--serif);font-size:16px;font-weight:500;letter-spacing:.002em;
+.tab-primary{font-family:var(--serif);font-size:16px;font-weight:500;letter-spacing:0;
   padding:15px 2px 13px;margin-right:30px;border:none;background:none;cursor:pointer;color:var(--shell-dim);
   white-space:nowrap;display:flex;align-items:baseline;gap:8px;position:relative;transition:color .18s}
 .tab-primary::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent);
   border-radius:3px 3px 0 0;transform:scaleX(0);transform-origin:left;transition:transform .28s cubic-bezier(.2,.7,.3,1)}
-.tab-primary:hover{color:var(--shell-mut)}
-.tab-primary.on{color:var(--shell-text)}
+.tab-primary:hover{color:var(--shell-text)}
+.tab-primary.on{color:var(--shell-text);font-weight:600}
 .tab-primary.on::after{transform:scaleX(1)}
-.tab-primary .ct{font-family:var(--monof);font-size:9.5px;font-weight:400;letter-spacing:.06em;color:var(--shell-dim)}
+/* the label reserves its semibold width, so the tabs never shuffle when one becomes active */
+:is(.tab-primary,.tab-sub) .tl{display:inline-flex;flex-direction:column}
+:is(.tab-primary,.tab-sub) .tl::after{content:attr(data-label);font-weight:600;height:0;visibility:hidden;overflow:hidden;user-select:none}
+.tab-primary .ct{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:0;color:var(--shell-dim)}
 .tab-primary.on .ct{color:var(--shell-mut)}
 .tabs-sub{display:flex;gap:0;border-top:1px solid var(--shell-line);overflow-x:auto;scrollbar-width:none}
 .tabs-sub::-webkit-scrollbar{display:none}
-.tab-sub{font-family:var(--monof);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
-  padding:11px 1px 10px;margin-right:24px;border:none;background:none;cursor:pointer;color:var(--shell-dim);
+.tab-sub{font-family:var(--sans);font-size:13px;font-weight:500;letter-spacing:0;
+  padding:10px 1px;margin-right:24px;border:none;background:none;cursor:pointer;color:var(--shell-dim);
   white-space:nowrap;position:relative;transition:color .18s}
 .tab-sub::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--shell-text);
   transform:scaleX(0);transform-origin:left;transition:transform .25s cubic-bezier(.2,.7,.3,1)}
-.tab-sub:hover{color:var(--shell-mut)}
-.tab-sub.on{color:var(--shell-text)}
+.tab-sub:hover{color:var(--shell-text)}
+.tab-sub.on{color:var(--shell-text);font-weight:600}
 .tab-sub.on::after{transform:scaleX(1)}
-.tab-sub .ct{color:var(--shell-dim);font-size:9.5px;margin-left:5px;font-weight:400}
+.tab-sub .ct{color:var(--shell-dim);font-size:12px;margin-left:5px;font-weight:500}
 .tab-sub.on .ct{color:var(--shell-mut)}
 
 /* ═══════════ page title + toolbar ═══════════ */
 .page-head{padding:44px 0 0;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
-.page-head .big{font-family:var(--serif);font-size:clamp(30px,4.4vw,42px);font-weight:540;
-  letter-spacing:-.018em;line-height:1.02;margin-top:10px}
-.page-head .lede{font-size:13.5px;color:var(--ink-soft);margin-top:10px;max-width:58ch;line-height:1.6}
+.page-head .big{font-family:var(--serif);font-size:clamp(32px,4vw,40px);font-weight:500;
+  letter-spacing:-.024em;line-height:1.08;margin-top:8px}
+.page-head .lede{font-size:14px;color:var(--ink-soft);margin-top:10px;max-width:58ch;line-height:1.6}
+/* the how-to paragraphs are a manual, not the board: folded behind "How this works"
+   until you ask for them (or turn Edit on, where they explain what you're clicking) */
+body:not(.editing):not(.how-open) .page-head .lede.how{display:none}
+.how-toggle{margin:6px 0 0 -10px}
+body.editing .how-toggle{display:none}
 /* the "what's next" ticket beside the calendar title */
-.next-call{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;
-  padding:14px 18px 15px;min-width:230px;max-width:320px;box-shadow:0 1px 2px rgba(28,23,18,.05);align-self:center}
-.next-call .nc-lab{font-family:var(--monof);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
-.next-call .nc-date{font-family:var(--serif);font-size:19px;font-weight:560;margin-top:7px;letter-spacing:-.01em}
-.next-call .nc-topic{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.45}
-.next-call .nc-open{color:var(--accent);font-family:var(--monof);font-size:10.5px;letter-spacing:.04em}
+.next-call{background:var(--card);border:0;border-radius:14px;
+  padding:14px 18px 15px;min-width:230px;max-width:320px;box-shadow:var(--elev-1);align-self:center}
+.next-call .nc-lab{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.next-call .nc-date{font-family:var(--serif);font-size:18px;font-weight:600;margin-top:6px;letter-spacing:-.011em}
+.next-call .nc-topic{font-size:13px;color:var(--ink-soft);margin-top:4px;line-height:1.45}
+.next-call .nc-open{color:var(--accent);font-size:13px;font-weight:500;letter-spacing:0}
 .next-call .nc-meta{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
-.next-call .nc-time{font-family:var(--monof);font-size:10px;color:var(--ink-faint)}
+.next-call .nc-time{font-size:12px;color:var(--ink-soft)}
 @media (max-width:760px){.next-call{max-width:none;width:100%;align-self:stretch}}
 
 .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:20px 0;border-bottom:1px solid var(--line);margin-bottom:28px}
 .toolbar .grow{flex:1}
 .tb-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .tb-actions{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
-.seg{display:flex;gap:2px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--paper-deep);padding:3px}
-.seg button{font-family:var(--monof);font-size:10.5px;letter-spacing:.03em;padding:6px 12px;border:none;background:none;
-  border-radius:6px;cursor:pointer;color:var(--ink-soft);white-space:nowrap;transition:background .15s,color .15s,box-shadow .15s}
+/* a segmented control: a recessed track, the chosen segment a raised card in it */
+.seg{display:flex;gap:2px;border:0;border-radius:10px;background:rgba(28,23,18,.06);padding:2px}
+.seg button{font-family:var(--sans);font-size:13px;line-height:18px;font-weight:500;letter-spacing:0;padding:6px 13px;border:none;background:none;
+  border-radius:8px;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
 .seg button:hover{color:var(--ink)}
-.seg button.on{background:var(--card-raised);color:var(--ink);font-weight:500;
-  box-shadow:0 1px 3px rgba(28,23,18,.14),inset 0 0 0 1px var(--line)}
-input.search{font-family:var(--sans);font-size:13px;padding:8px 13px;border:1px solid var(--line);border-radius:8px;
-  background:var(--card);color:var(--ink);width:230px;flex:0 1 230px;min-width:150px;transition:border-color .15s,box-shadow .15s}
+.seg button.on{background:var(--card-raised);color:var(--ink);font-weight:600;
+  box-shadow:0 1px 3px rgba(28,23,18,.12),0 0 0 var(--hair) rgba(28,23,18,.08)}
+input.search{font-family:var(--sans);font-size:14px;line-height:18px;padding:8px 12px;border:1px solid transparent;border-radius:10px;
+  background:rgba(28,23,18,.06);color:var(--ink);width:230px;flex:0 1 230px;min-width:150px;
+  transition:background-color .2s var(--ease-out),border-color .2s var(--ease-out),box-shadow .2s var(--ease-out)}
 input.search::placeholder{color:var(--ink-faint)}
-input.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(174,59,21,.12)}
+input.search:focus{outline:none;background:var(--card);border-color:var(--accent);box-shadow:0 0 0 3px rgba(174,59,21,.14)}
 
 /* ═══════════ stat strip — annual-report rules, not boxes ═══════════ */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:14px 24px;margin:0 0 40px}
 .stat{border-top:2px solid var(--ink);padding:11px 0 2px;background:none}
-.stat .lab{font-family:var(--monof);font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--ink-soft)}
-.stat .val{font-family:var(--serif);font-size:31px;font-weight:520;letter-spacing:-.02em;margin-top:8px;line-height:1}
-.stat .meta{font-size:11.5px;color:var(--ink-faint);margin-top:6px}
+.stat .lab{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.stat .val{font-family:var(--sans);font-size:28px;font-weight:600;letter-spacing:-.019em;margin-top:8px;line-height:1}
+.stat .meta{font-size:12px;color:var(--ink-soft);margin-top:6px}
 .stat.alert{border-top-color:var(--accent)}
 .stat.alert .val{color:var(--accent)}
 
 /* ═══════════ campaign sections ═══════════ */
 .season{margin-bottom:46px;break-inside:avoid}
 .season-head{display:flex;align-items:baseline;gap:13px;padding:0 0 11px;border-bottom:2px solid var(--ink);margin-bottom:2px;flex-wrap:wrap}
-.season-head h3{font-family:var(--serif);font-size:23px;font-weight:560;letter-spacing:-.012em}
-.season-head .roman{font-family:var(--monof);font-size:10px;font-weight:500;color:var(--brass);
-  border:1px solid rgba(142,121,66,.55);padding:3px 8px;border-radius:5px;letter-spacing:.14em;align-self:center}
-.season-head .range{font-family:var(--monof);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
-.season-head .fill{margin-left:auto;font-size:10.5px;color:var(--ink-soft);font-family:var(--monof);letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+.season-head h3{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.015em}
+.season-head .roman{font-size:12px;font-weight:600;color:var(--brass);letter-spacing:.04em;align-self:center}
+.season-head .range{font-size:13px;color:var(--ink-soft)}
+.season-head .fill{margin-left:auto;font-size:12px;color:var(--ink-soft);font-family:var(--monof);letter-spacing:0;display:flex;align-items:center;gap:8px}
 .season-head .meter{width:56px;height:3px;border-radius:2px;background:var(--line-strong);overflow:hidden;flex:none}
 .season-head .meter i{display:block;height:100%;background:var(--accent);border-radius:2px}
 
@@ -178,20 +207,20 @@ input.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px 
 .week:hover{background:rgba(255,253,246,.8)}
 .week.open{background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(174,59,21,.045) 9px,rgba(174,59,21,.045) 18px)}
 .week.blocked{opacity:.55}
-.wk-date{font-family:var(--monof);font-size:11.5px;color:var(--ink-soft);padding-top:2px;line-height:1.5}
-.wk-date b{display:block;color:var(--ink);font-size:13.5px;font-weight:600;letter-spacing:.01em}
-.wk-date .wknum{font-size:9px;color:var(--ink-faint);letter-spacing:.14em}
-.wk-time{font-size:10px;color:var(--ink-faint);margin-top:3px;line-height:1.3}
+.wk-date{font-family:var(--monof);font-size:12px;color:var(--ink-soft);padding-top:2px;line-height:1.5}
+.wk-date b{display:block;color:var(--ink);font-size:14px;font-weight:600;letter-spacing:0}
+.wk-date .wknum{font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.04em}
+.wk-time{font-size:12px;color:var(--ink-soft);margin-top:3px;line-height:1.3}
 .wk-time.custom{color:var(--accent)}
 .wk-main{min-width:0}
-.wk-topic{font-family:var(--serif);font-size:17.5px;font-weight:560;letter-spacing:-.008em;line-height:1.3}
-.wk-topic.empty{font-family:var(--monof);font-size:11.5px;font-weight:400;color:var(--accent);letter-spacing:.05em}
-.wk-detail{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.55;max-width:74ch}
+.wk-topic{font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:-.011em;line-height:1.3}
+.wk-topic.empty{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--accent);letter-spacing:0}
+.wk-detail{font-size:13px;color:var(--ink-soft);margin-top:6px;line-height:1.55;max-width:74ch}
 .wk-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;align-items:center}
 .wk-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;padding-top:2px}
 
 /* ═══════════ chips ═══════════ */
-.chip{font-family:var(--monof);font-size:10px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;
+.chip{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:0;padding:2px 9px;border-radius:999px;
   border:1px solid var(--line);background:var(--card);color:var(--ink-soft);white-space:nowrap}
 .chip.track{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink)}
 .chip.note{background:var(--warn-bg);border-color:transparent;color:#6E5606}
@@ -200,48 +229,47 @@ input.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px 
 .chip.both{background:linear-gradient(100deg,var(--alan-bg) 50%,var(--ben-bg) 50%);border-color:transparent;color:var(--ink);font-weight:600}
 .chip.tbd{border-style:dashed;background:transparent;color:var(--ink-faint)}
 .chip.second{background:var(--good-bg);border-color:transparent;color:var(--good)}
-.chip.big{font-size:11px;padding:5px 12px}
+.chip.big{font-size:13px;padding:4px 12px}
 .chip.count{background:var(--line-soft);border-color:transparent}
 
 /* second call / proposed / alt lines under a week */
-.wk-sub{display:flex;gap:9px;align-items:baseline;margin-top:9px;padding-left:12px;border-left:2px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
-.wk-sub .tag{font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);flex:none;padding-top:2px}
-.wk-sub.proposed{border-left-color:var(--accent);color:var(--accent-ink)}
+/* the tag says what the line is — no coloured rule down its side */
+.wk-sub{display:flex;gap:9px;align-items:baseline;margin-top:9px;font-size:13px;color:var(--ink-soft)}
+.wk-sub .tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);flex:none;padding-top:2px}
+.wk-sub.proposed{color:var(--accent-ink)}
 .wk-sub.proposed .tag{color:var(--accent)}
-.wk-sub.alt{border-left-style:dashed}
 
 /* ═══════════ generic cards / columns ═══════════ */
 .cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:17px 18px;break-inside:avoid;
-  box-shadow:0 1px 2px rgba(28,23,18,.04)}
-.card h4{font-family:var(--serif);font-size:15.5px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline;gap:8px;
-  padding-bottom:10px;border-bottom:1px solid var(--line-soft);margin-bottom:10px}
-.card h4 .n{font-family:var(--monof);font-size:10px;color:var(--ink-faint);font-weight:400;letter-spacing:.06em}
+/* surfaces separate by fill: a brighter card on the paper, no outline, no shadow */
+.card{background:var(--card);border:0;border-radius:var(--radius);padding:17px 18px;break-inside:avoid}
+.card h4{font-family:var(--serif);font-size:16px;font-weight:600;display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  padding-bottom:10px;border-bottom:var(--hair) solid var(--line);margin-bottom:10px}
+.card h4 .n{font-size:12px;color:var(--ink-soft);font-weight:500;letter-spacing:0}
 .card ul{list-style:none}
-.card li{font-size:13px;line-height:1.45;padding:6px 0 6px 16px;position:relative;border-bottom:1px solid var(--line-soft)}
+.card li{font-size:13px;line-height:1.45;padding:6px 0 6px 16px;position:relative;border-bottom:var(--hair) solid var(--line)}
 .card li:last-child{border-bottom:none}
-.card li::before{content:"";position:absolute;left:2px;top:13px;width:5px;height:5px;border-radius:50%;background:var(--line-strong)}
+.card li::before{content:"";position:absolute;left:2px;top:12px;width:5px;height:5px;border-radius:50%;background:var(--line-strong)}
 .card li.used::before{background:var(--good)}
-.card li .when{font-family:var(--monof);font-size:9.5px;color:var(--good);margin-left:6px;white-space:nowrap;letter-spacing:.03em}
+.card li .when{font-size:12px;font-weight:500;color:var(--good);margin-left:6px;white-space:nowrap;letter-spacing:0}
 .card li.sched::before{background:var(--accent)}
 .card li .when.sched{color:var(--accent)}
 
 /* ═══════════ tables ═══════════ */
-.tbl{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;
-  box-shadow:0 1px 2px rgba(28,23,18,.04)}
+.tbl{background:var(--card);border:0;border-radius:var(--radius);overflow-x:auto}
 table.grid{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
-table.grid th{text-align:left;font-family:var(--monof);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--ink-soft);font-weight:500;padding:13px 14px 9px;border-bottom:1.5px solid rgba(28,23,18,.65);white-space:nowrap}
-table.grid td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.grid th{text-align:left;font-family:var(--sans);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-soft);font-weight:600;padding:13px 14px 9px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+table.grid td{padding:11px 14px;border-bottom:var(--hair) solid var(--line);vertical-align:top}
 table.grid tr:last-child td{border-bottom:none}
 table.grid tbody tr{transition:background .12s}
 table.grid tbody tr:hover{background:var(--paper-deep)}
-table.grid td.num{font-family:var(--monof);color:var(--ink-faint);font-size:11px;width:34px}
-table.grid td.dt{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap;width:96px}
+table.grid td.num{color:var(--ink-soft);font-size:12px;width:34px}
+table.grid td.dt{font-family:var(--monof);font-size:12px;color:var(--ink-soft);white-space:nowrap;width:96px}
 table.grid tr.nocall td{color:var(--ink-faint);font-style:italic}
 #teamBoard table.grid{min-width:880px}
-.sec-title{font-family:var(--serif);font-size:19px;font-weight:560;margin:34px 0 12px;display:flex;align-items:baseline;gap:10px;letter-spacing:-.008em}
-.sec-title .n{font-family:var(--monof);font-size:10.5px;color:var(--ink-faint);font-weight:400;letter-spacing:.04em}
+.sec-title{font-family:var(--serif);font-size:18px;font-weight:600;margin:34px 0 12px;display:flex;align-items:baseline;gap:10px;letter-spacing:-.011em}
+.sec-title .n{font-family:var(--sans);font-size:12px;color:var(--ink-soft);font-weight:500;letter-spacing:0}
 .empty-note{font-size:13px;color:var(--ink-faint);padding:30px;text-align:center;border:1px dashed var(--line-strong);border-radius:var(--radius);background:var(--card)}
 
 /* ═══════════ editing ═══════════ */
@@ -256,7 +284,7 @@ body.editing [data-edit]:focus{background:var(--card-raised);box-shadow:0 0 0 2p
 [data-edit][data-live]:focus{display:inline-block;min-width:44px;min-height:1.2em}
 body.editing .wk-topic.empty{color:var(--ink-faint)}
 .edit-banner{display:none;background:var(--accent-soft);border:1px solid #E0C2AC;border-radius:10px;padding:11px 15px;
-  font-size:12.5px;color:var(--accent-ink);margin:20px 0 0;align-items:center;gap:12px;flex-wrap:wrap}
+  font-size:13px;color:var(--accent-ink);margin:20px 0 0;align-items:center;gap:12px;flex-wrap:wrap}
 body.editing .edit-banner{display:flex}
 .edit-banner b{font-weight:600}
 .edit-banner .grow{flex:1}
@@ -265,37 +293,42 @@ body.editing .edit-banner{display:flex}
 .edit-only{display:none!important}
 body.editing .edit-only{display:inline-block!important}
 body.editing th.edit-only,body.editing td.edit-only{display:table-cell!important;width:28px}
-.del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:0 4px;border-radius:4px;vertical-align:middle;transition:background .12s,color .12s}
+.del{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:16px;line-height:1;padding:2px 5px;border-radius:5px;vertical-align:middle;transition:background .12s,color .12s}
 .del:hover{background:var(--bad-bg);color:var(--bad)}
 .card h4 .del{margin-left:auto}
 .card li .del{float:right;opacity:.5}
 .card li:hover .del{opacity:1}
-body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-faint)}
+/* Edit shows a week's add / off / clear controls under the pointer, not on all
+   fifty-two weeks at once (touch screens have no hover, so they always show) */
+body.editing .wk-tools{display:block!important;margin:6px 0 0 -10px}
+body.editing .week :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:0;transition:opacity .2s var(--ease-out)}
+body.editing .week:is(:hover,:focus-within) :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:1;transition-duration:0s}
+@media (hover:none){body.editing .week :is(.wk-tools,.slot>.del,.snote>.del,.wk-date .del,.slot-pick){opacity:1}}
 
 /* ═══════════ orders of business ═══════════ */
-.biz{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:6px;
-  box-shadow:0 1px 2px rgba(28,23,18,.04)}
+.biz{background:var(--card);border:0;border-radius:var(--radius);overflow:hidden;margin-bottom:6px}
 .biz-row{display:grid;grid-template-columns:30px minmax(0,1fr) 112px 92px 20px;gap:10px;align-items:center;padding:11px 16px;
-  border-bottom:1px solid var(--line-soft);transition:background .12s}
+  border-bottom:var(--hair) solid var(--line);transition:background .12s}
 .biz-row:last-of-type{border-bottom:none}
 .biz-row:hover{background:var(--paper-deep)}
 .biz-row.is-done{opacity:.5}
 .biz-row.is-done .biz-note,.biz-row.is-done .due{text-decoration:line-through}
 .biz-row.flash{animation:flash 2.6s ease-out}
 @keyframes flash{0%,55%{background:var(--accent-soft)}100%{background:transparent}}
-.biz-row.flash .tick{animation:tickpop .32s cubic-bezier(.34,1.56,.64,1)}
-@keyframes tickpop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+/* only the row that just changed: render() rebuilds every row, so a bare .tick.on would replay on each redraw */
+.biz-row.flash .tick{animation:tickpop var(--spring-dur) var(--spring-bouncy)}
+@keyframes tickpop{from{transform:scale(.6)}to{transform:none}}
 .del.always{display:inline-block!important}
 .biz-row.is-done .biz-t{text-decoration:line-through}
 .biz-main{min-width:0}
-.biz-t{font-size:13.5px;line-height:1.4}
-.biz-note{font-size:11.5px;color:var(--ink-faint);margin-top:2px;line-height:1.4}
-.tick{width:21px;height:21px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--card-raised);cursor:pointer;
-      display:grid;place-items:center;font-size:12px;color:transparent;padding:0;line-height:1;transition:border-color .15s,background .15s}
+.biz-t{font-size:14px;line-height:1.4}
+.biz-note{font-size:12px;color:var(--ink-soft);margin-top:2px;line-height:1.4}
+.tick{width:22px;height:22px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--card-raised);cursor:pointer;
+      display:grid;place-items:center;font-size:13px;color:transparent;padding:0;line-height:1}
 .tick:hover{border-color:var(--good)}
 .tick.on{background:var(--good);border-color:var(--good);color:#fff}
-.chip.who{justify-self:start;font-size:10px}
-.due{font-family:var(--monof);font-size:10.5px;text-align:right;color:var(--ink-faint);white-space:nowrap;letter-spacing:.03em}
+.chip.who{justify-self:start;font-size:11px}
+.due{font-size:12px;font-weight:500;text-align:right;color:var(--ink-soft);white-space:nowrap;letter-spacing:0}
 .due [data-ph],.chip.who [data-ph]{border-bottom:1px dashed var(--line-strong)}
 .due.over{color:var(--bad);font-weight:600}
 .due.soon{color:var(--warn)}
@@ -304,14 +337,14 @@ body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-fa
 /* the "add a task" line at the top of the list. Always there — adding a task
    is everyday work, so it doesn't wait for Edit mode. The dashed box sits in
    the tick column so what you type lines up with the titles below it. */
-.biz-add{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);background:var(--paper-deep)}
-.biz-add:focus-within{background:var(--card-raised);box-shadow:inset 3px 0 0 var(--accent)}
-.biz-add .plus{width:21px;height:21px;margin-right:9px;flex:none;display:grid;place-items:center;border:1.5px dashed var(--line-strong);
+.biz-add{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:var(--hair) solid var(--line);background:var(--paper-deep)}
+.biz-add:focus-within{background:var(--card-raised)}
+.biz-add .plus{width:22px;height:22px;margin-right:8px;flex:none;display:grid;place-items:center;border:1.5px dashed var(--line-strong);
   border-radius:7px;color:var(--ink-faint);font-size:14px;line-height:1}
-.biz-add input{flex:1;min-width:0;border:none;background:transparent;font-family:var(--sans);font-size:13.5px;color:var(--ink);padding:5px 0}
+.biz-add input{flex:1;min-width:0;border:none;background:transparent;font-family:var(--sans);font-size:14px;color:var(--ink);padding:5px 0}
 .biz-add input::placeholder{color:var(--ink-faint)}
 .biz-add input:focus{outline:none}
-.biz-add .to{font-family:var(--monof);font-size:10.5px;letter-spacing:.03em;color:var(--ink-faint);white-space:nowrap;
+.biz-add .to{font-size:12px;letter-spacing:0;color:var(--ink-soft);white-space:nowrap;
   max-width:34%;overflow:hidden;text-overflow:ellipsis}
 .biz .biz-add .btn.sm{margin:0;flex:none}
 .biz-t [data-ph]{color:var(--ink-faint);font-style:italic}
@@ -340,51 +373,49 @@ body.editing .wk-meta .btn.sm{font-size:9.5px;padding:3px 8px;color:var(--ink-fa
 .chip.lv3{background:var(--warn-bg);border-color:transparent;color:#6E5606;font-weight:600}
 .chip.lv4{background:var(--paper-deep);border-color:transparent;color:var(--ink-soft)}
 .chip.lv5{background:var(--card);color:var(--ink-faint)}
-.chip.lvn{padding:2px 0;width:22px;text-align:center;flex:none}
+.chip.lvn{padding:2px 0;width:24px;text-align:center;flex:none}
 .tb-row2{flex-basis:100%}
-select.fsel{font-family:var(--monof);font-size:10.5px;letter-spacing:.03em;padding:6px 9px;border:1px solid var(--line);
-  border-radius:9px;background:var(--paper-deep);color:var(--ink);max-width:220px;cursor:pointer}
-select.fsel:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(174,59,21,.12)}
-/* the topic / urgency / importance picker — same shell as the who picker */
-#bizPop{position:fixed;z-index:320;width:236px;max-width:94vw;background:var(--card,#fff);
-  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
-#bizPop.hidden{display:none}
+select.fsel{font-family:var(--sans);font-size:13px;line-height:18px;font-weight:500;letter-spacing:0;padding:6px 10px;border:1px solid transparent;
+  border-radius:10px;background-color:rgba(28,23,18,.06);color:var(--ink);max-width:220px;cursor:pointer}
+select.fsel:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(174,59,21,.14)}
+/* the topic / urgency / importance picker — the popover shell is shared (see "popovers") */
+#bizPop{z-index:320;width:236px;overflow:hidden}
 #bizPop .pp-list{max-height:46vh}
 #bizPop .pp-item.on{background:var(--paper-deep,#f1ede4)}
 #bizPop .pp-new{grid-template-columns:1fr auto}
 #bizPop .pp-new .search{grid-column:auto;width:auto;min-width:0}
 
 /* ═══════════ modal ═══════════ */
-.scrim{position:fixed;inset:0;background:rgba(18,13,8,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+.scrim{position:fixed;inset:0;background:rgba(18,13,8,.32);
+  -webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);
   z-index:60;display:none;align-items:center;justify-content:center;padding:24px}
-.scrim.on{display:flex}
-.modal{background:var(--card-raised);border:1px solid var(--line);border-radius:16px;max-width:640px;width:100%;max-height:82vh;
-  overflow:auto;padding:26px;box-shadow:0 30px 70px rgba(10,7,4,.4)}
-.scrim.on .modal{animation:pageIn .3s cubic-bezier(.16,.68,.32,1)}
-.modal h3{font-family:var(--serif);font-size:21px;font-weight:560;margin-bottom:7px;letter-spacing:-.012em}
+.scrim.on{display:flex;animation:fadeIn .2s var(--ease-out)}
+.modal{background:var(--card-raised);border:0;border-radius:16px;max-width:640px;width:100%;max-height:82vh;
+  overflow:auto;padding:26px;box-shadow:var(--elev-3)}
+.scrim.on .modal{animation:sheetIn var(--spring-dur) var(--spring)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(16px) scale(.98)}}
+@keyframes fadeIn{from{opacity:0}}
+.modal h3{font-family:var(--serif);font-size:22px;font-weight:600;margin-bottom:7px;letter-spacing:-.015em}
 .modal p{font-size:13px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6}
-.modal textarea{width:100%;height:240px;font-family:var(--monof);font-size:11px;line-height:1.5;border:1px solid var(--line);
+.modal textarea{width:100%;height:240px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;border:1px solid var(--line);
   border-radius:10px;padding:12px;background:var(--paper);color:var(--ink);resize:vertical}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 
 /* toast */
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(16px) scale(.97);
-  background:var(--ink);color:var(--paper);font-family:var(--monof);font-size:11.5px;letter-spacing:.02em;
-  padding:11px 20px;border-radius:10px;opacity:0;box-shadow:0 12px 30px rgba(10,7,4,.35);
-  transition:opacity .22s,transform .28s cubic-bezier(.34,1.4,.64,1);z-index:80;pointer-events:none;max-width:90vw;text-align:center}
+  background:var(--ink);color:var(--paper);font-family:var(--sans);font-size:13px;font-weight:500;letter-spacing:0;
+  padding:11px 20px;border-radius:12px;opacity:0;box-shadow:var(--elev-3);
+  transition:opacity .2s var(--ease-out),transform var(--spring-dur) var(--spring);z-index:80;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 
-footer{border-top:1px solid var(--line);margin-top:64px;padding-top:20px;font-family:var(--monof);font-size:10.5px;
-  letter-spacing:.03em;color:var(--ink-faint);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+footer{border-top:var(--hair) solid var(--line-strong);margin-top:64px;padding-top:20px;font-size:12px;
+  letter-spacing:0;color:var(--ink-soft);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
 footer a{color:var(--ink-soft)}
 
-/* page entrance — replayed on tab switches only */
-@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-#view.page-enter>*{animation:pageIn .4s cubic-bezier(.16,.68,.32,1) both}
-#view.page-enter>*:nth-child(2){animation-delay:.05s}
-#view.page-enter>*:nth-child(3){animation-delay:.1s}
-#view.page-enter>*:nth-child(4){animation-delay:.15s}
-#view.page-enter>*:nth-child(n+5){animation-delay:.19s}
+/* page entrance — replayed on tab switches only. A quick crossfade: switching
+   tabs is navigation, not a show, so nothing slides or staggers in. */
+@keyframes pageIn{from{opacity:0}}
+#view.page-enter>*{animation:pageIn .2s var(--ease-out) both}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 
 /* ═══════════ responsive ═══════════ */
@@ -402,10 +433,10 @@ footer a{color:var(--ink-soft)}
   .head-inner{padding:12px 18px 11px}
   .brand{gap:11px}
   .mark{width:36px;height:36px;font-size:18px;border-radius:9px}
-  .brand h1{font-size:16.5px}
-  .brand .sub{font-size:8px;letter-spacing:.2em;margin-top:3px}
+  .brand h1{font-size:16px}
+  .brand .sub{font-size:11px;margin-top:2px}
   .status #saveLabel{max-width:110px}
-  .tab-primary{font-size:14.5px;margin-right:20px;padding:13px 2px 11px}
+  .tab-primary{font-size:14px;margin-right:20px;padding:13px 2px 11px}
   .tab-sub{margin-right:18px}
   .tabs-primary,.tabs-sub{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
   .page-head{padding-top:32px}
@@ -418,9 +449,9 @@ footer a{color:var(--ink-soft)}
   input.search{width:100%;flex:1 1 100%;min-width:0}
   .tb-actions{margin-left:0;width:100%}
   .stats{grid-template-columns:repeat(2,1fr);gap:12px 20px;margin-bottom:32px}
-  .stat .val{font-size:26px}
+  .stat .val{font-size:28px}
   .season{margin-bottom:36px}
-  .season-head h3{font-size:20px}
+  .season-head h3{font-size:22px}
   .season-head .range{display:none}
   .week{margin:0;padding:13px 2px;border-radius:0}
   .biz-row{grid-template-columns:26px minmax(0,1fr) auto 20px;row-gap:6px}
@@ -435,9 +466,8 @@ footer a{color:var(--ink-soft)}
   .head-inner{flex-wrap:nowrap;gap:10px}
   .status #saveLabel{display:none}
   .head-right{gap:6px;flex-wrap:nowrap}
-  header .btn{padding:6px 10px;font-size:10px}
-  .brand h1{font-size:15.5px;white-space:nowrap}
-  .brand .sub{font-size:7.5px;letter-spacing:.18em}
+  header .btn{padding:7px 12px;font-size:12px;line-height:16px}
+  .brand h1{font-size:16px;white-space:nowrap}
   /* the standing call time is already in the lede — only per-week overrides
      earn a line in the narrow date column */
   .wk-time:not(.custom){display:none}
@@ -447,11 +477,11 @@ footer a{color:var(--ink-soft)}
 .export-frame{background:var(--paper)}
 body.exporting .no-export,body.exporting nav.tabs,body.exporting header{display:none!important}
 body.exporting .week:hover{background:none}
-body.exporting::after{display:none}
+body.exporting::before{display:none}
 @media print{
   @page{size:letter portrait;margin:12mm}
   body{padding:0;background:#fff}
-  body::after{display:none}
+  body::before{display:none}
   header,nav.tabs,.toolbar,.no-print,.edit-banner,footer .no-print,.scrim,.toast{display:none!important}
   .wrap{max-width:100%;padding:0}
   .week,.season,.card,tr{break-inside:avoid}
@@ -466,14 +496,14 @@ body.exporting::after{display:none}
   .export-frame{background:#fff}
 }
 .print-head{display:none;padding-bottom:14px;margin-bottom:18px;border-bottom:2px solid var(--ink)}
-.print-head .t{font-family:var(--serif);font-size:24px;font-weight:560;letter-spacing:-.012em}
-.print-head .s{font-size:10.5px;color:var(--ink-soft);margin-top:5px;font-family:var(--monof);letter-spacing:.04em}
+.print-head .t{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.015em}
+.print-head .s{font-size:12px;color:var(--ink-soft);margin-top:5px;letter-spacing:0}
 
 /* ── tiers: T1 The Dojo (green) · T2 The Path (rust) · T3 The Masters (indigo) ── */
 :root{--tier3:#5b57a8}
-.tierchip{font-family:var(--monof);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
-  border-radius:999px;padding:2px 8px;border:1px solid;background:transparent;vertical-align:2px;white-space:nowrap}
-button.tierchip{cursor:pointer;font:inherit;font-family:var(--monof);font-size:8.5px}
+.tierchip{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.01em;
+  border-radius:999px;padding:1px 8px;border:1px solid;background:transparent;vertical-align:1px;white-space:nowrap}
+button.tierchip{cursor:pointer;font:inherit;font-family:var(--sans);font-size:11px;font-weight:600}
 button.tierchip:hover{filter:brightness(.85)}
 .tierchip.t1{color:var(--good);border-color:var(--good)}
 .tierchip.t2{color:var(--accent);border-color:var(--accent)}
@@ -482,85 +512,98 @@ button.tierchip:hover{filter:brightness(.85)}
 /* ── call slots: A's stacked layout + C's per-call times ── */
 .slot{display:flex;gap:10px;align-items:baseline;padding:6px 10px;margin:2px 0;border-radius:8px;min-width:0}
 .slot+.slot{border-top:1px dashed var(--line-soft)}
-.slot .stime{font-family:var(--monof);font-size:10px;color:var(--ink-faint);flex:none;min-width:44px}
-.slot .sday{font-family:var(--monof);font-size:10px;font-weight:600;color:var(--ink-soft);flex:none}
-.slot .sdate{font-family:var(--monof);font-size:10px;font-weight:600;color:var(--ink-soft);flex:none;min-width:54px}
-.slot .stag{font-family:var(--monof);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;flex:none;min-width:60px;color:var(--ink-faint)}
+.slot .stime{font-size:12px;color:var(--ink-soft);flex:none;min-width:44px}
+.slot .sday{font-size:12px;font-weight:600;color:var(--ink-soft);flex:none}
+.slot .sdate{font-size:12px;font-weight:600;color:var(--ink-soft);flex:none;min-width:54px}
+.slot .stag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;flex:none;min-width:60px;color:var(--ink-faint)}
 .slot.second .stag{color:var(--accent-ink)}
 .slot.hot .stag{color:var(--warn);min-width:78px}
-.slot .stopic{font-family:var(--serif);font-size:15.5px;font-weight:560;min-width:0;flex:1;overflow-wrap:break-word}
+.slot .stopic{font-family:var(--serif);font-size:16px;font-weight:600;letter-spacing:-.008em;min-width:0;flex:1;overflow-wrap:break-word}
 .slot.second .stopic,.slot.hot .stopic{font-size:14px;font-weight:500}
-.slot .stopic.empty{font-family:var(--monof);font-size:11px;font-weight:400;color:var(--ink-faint)}
-.slot.t1{box-shadow:inset 3px 0 0 var(--good)}
-.slot.t2{box-shadow:inset 3px 0 0 var(--accent)}
-.slot.t3{box-shadow:inset 3px 0 0 var(--tier3)}
+.slot .stopic.empty{font-family:var(--sans);font-size:13px;font-weight:500;letter-spacing:0;color:var(--ink-faint)}
+/* the tier is a dot in front of the topic, not a coloured rule down the slot's side */
+.slot:is(.t1,.t2,.t3) .stopic:not(.empty)::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  margin:0 8px 0 0;vertical-align:.18em}
+.slot.t1 .stopic::before{background:var(--good)}
+.slot.t2 .stopic::before{background:var(--accent)}
+.slot.t3 .stopic::before{background:var(--tier3)}
 .slot.hot{background:linear-gradient(90deg,var(--warn-bg),transparent 72%)}
-.slot.ghost{border:1px dashed var(--line);gap:8px;padding:5px 10px}
-.slot-pick{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:11px;padding:2px 5px;flex:none;border-radius:5px}
+.slot-pick{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:13px;padding:3px 6px;flex:none;border-radius:6px}
 .slot-pick:hover{color:var(--accent);background:var(--accent-soft)}
 .slot.guest{background:linear-gradient(90deg,var(--brass-soft),transparent 72%)}
-.spk{font-family:var(--monof);font-size:11px;color:var(--brass);flex:none;white-space:nowrap}
-.typesel,.tiersel{font-family:var(--monof);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+.spk{font-size:12px;font-weight:500;color:var(--brass);flex:none;white-space:nowrap}
+.typesel,.tiersel{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0;
   border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink-soft);
-  padding:2px 6px;flex:none;cursor:pointer;max-width:118px}
+  padding:5px 8px;flex:none;cursor:pointer;max-width:130px}
 .tiersel.t1{color:var(--good);border-color:var(--good)}
 .tiersel.t2{color:var(--accent);border-color:var(--accent)}
 .tiersel.t3{color:var(--tier3);border-color:var(--tier3)}
-.snote{display:flex;gap:8px;align-items:baseline;padding:2px 10px 2px 34px;font-size:12px;color:var(--ink-soft)}
-.snote .ntag{font-family:var(--monof);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);flex:none}
+.snote{display:flex;gap:8px;align-items:baseline;padding:2px 10px 2px 34px;font-size:13px;color:var(--ink-soft)}
+.snote .ntag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);flex:none}
 .snote .ntext{min-width:0;flex:1}
-.snote-add{margin:1px 0 3px 34px}
 .week.off .wk-main{text-decoration:line-through;opacity:.45}
 .week.off .wk-main .edit-only{text-decoration:none}
 .week.off .wk-date b{text-decoration:line-through}
-.count.offb{background:var(--paper-deep);color:var(--ink-faint);text-decoration:none;letter-spacing:.12em}
-.count{font-family:var(--monof);font-size:9px;letter-spacing:.1em;color:var(--accent-ink);
-  background:var(--accent-soft);border-radius:999px;padding:2px 8px;display:inline-block;margin-top:5px}
-li.tier-t1{box-shadow:inset 2px 0 0 var(--good);padding-left:9px}
-li.tier-t2{box-shadow:inset 2px 0 0 var(--accent);padding-left:9px}
-li.tier-t3{box-shadow:inset 2px 0 0 var(--tier3);padding-left:9px}
+.count.offb{background:var(--paper-deep);color:var(--ink-soft);text-decoration:none;letter-spacing:0}
+.count{font-size:12px;font-weight:600;letter-spacing:0;color:var(--accent-ink);
+  background:var(--accent-soft);border-radius:999px;padding:1px 8px;display:inline-block;margin-top:5px}
+/* (Topic Bank rows used to carry a tier stripe too; their tier chip already says it) */
+
+/* ═══════════ popovers ═══════════
+   One shell for every pop-up picker and menu: a frosted material, the menu
+   elevation, and a spring that grows it out of whatever you clicked
+   (--pop-x/--pop-y, set by popOrigin() when it opens). Closing is a quick fade,
+   no shrink. .hidden keeps its layout, so the openers can still measure it. */
+:is(#pickPop,#datePop,#timePop,#whoPop,#bizPop,#ciPop,#menuPop){position:fixed;max-width:94vw;
+  background:color-mix(in oklab,var(--card-raised) 86%,transparent);
+  -webkit-backdrop-filter:saturate(1.8) blur(24px);backdrop-filter:saturate(1.8) blur(24px);
+  border:0;border-radius:12px;box-shadow:var(--elev-2);
+  transform-origin:var(--pop-x,50%) var(--pop-y,0);
+  transition:opacity .16s var(--ease-out),transform var(--spring-dur) var(--spring)}
+:is(#pickPop,#datePop,#timePop,#whoPop,#bizPop,#ciPop,#menuPop).hidden{
+  visibility:hidden;opacity:0;transform:scale(.94);pointer-events:none;
+  transition:opacity .12s ease-in,visibility 0s .12s,transform 0s .12s}
+/* a menu: the toolbar's rare actions, and Edit's per-week add / off / clear */
+#menuPop{z-index:320;min-width:200px;padding:5px}
+#menuPop .mi{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;cursor:pointer;
+  font-family:var(--sans);font-size:13px;line-height:18px;font-weight:500;padding:7px 10px;color:var(--ink);white-space:nowrap}
+#menuPop .mi:hover,#menuPop .mi:focus-visible{background:var(--accent);color:#fff;outline:none}
+#menuPop .mi[disabled]{opacity:.45;pointer-events:none}
+#menuPop .mi.danger{color:var(--bad)}
+#menuPop .mi.danger:hover{background:var(--bad);color:#fff}
+#menuPop hr{border:0;border-top:var(--hair) solid var(--line-strong);margin:5px 8px}
 
 /* ── topic picker popover ── */
-#pickPop{position:fixed;z-index:300;width:380px;max-width:94vw;background:var(--card,#fff);
-  border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);
-  display:flex;flex-direction:column}
-#pickPop.hidden{display:none}
+#pickPop{z-index:300;width:380px;display:flex;flex-direction:column}
 /* ═══════════ the date picker — every date on the board is clicked, not typed ═══════════ */
-#datePop{position:fixed;z-index:320;width:272px;max-width:94vw;background:var(--card,#fff);
-  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
-#datePop.hidden{display:none}
-.dp-head{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+#datePop{z-index:320;width:272px;overflow:hidden}
+.dp-head{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:var(--hair) solid var(--line-strong)}
 .dp-head .m{flex:1;text-align:center;font-family:var(--serif);font-size:14px;font-weight:600}
-.dp-nav{border:1px solid var(--line);background:none;border-radius:7px;cursor:pointer;font:inherit;
-  font-size:12px;line-height:1;padding:5px 8px;color:var(--ink-soft)}
-.dp-nav:hover{background:var(--paper-deep,#f1ede4);color:var(--ink)}
+.dp-nav{border:0;background:rgba(28,23,18,.06);border-radius:8px;cursor:pointer;font:inherit;
+  font-size:13px;line-height:1;padding:7px 10px;color:var(--ink-soft)}
+.dp-nav:hover{background:rgba(28,23,18,.10);color:var(--ink)}
 .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:8px 8px 4px}
-.dp-dow{font-family:var(--monof);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+.dp-dow{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   text-align:center;color:var(--ink-faint);padding:2px 0}
-.dp-d{border:1px solid transparent;background:none;border-radius:7px;cursor:pointer;
-  font-family:var(--monof);font-size:11.5px;padding:6px 0;color:var(--ink)}
+.dp-d{border:1px solid transparent;background:none;border-radius:8px;cursor:pointer;
+  font-family:var(--sans);font-size:13px;font-weight:500;padding:6px 0;color:var(--ink)}
 .dp-d:hover{background:var(--paper-deep,#f1ede4)}
 .dp-d.out{color:var(--ink-faint)}
 .dp-d.wk{background:var(--accent-soft)}
 .dp-d.today{border-color:var(--accent)}
 .dp-d.on{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent)}
-.dp-hint{font-family:var(--monof);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--ink-faint);text-align:center;padding:2px 10px 8px}
-.dp-foot{display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--line);flex-wrap:wrap}
+.dp-hint{font-size:12px;color:var(--ink-soft);text-align:center;padding:2px 10px 8px}
+.dp-foot{display:flex;gap:6px;padding:8px 10px;border-top:var(--hair) solid var(--line-strong);flex-wrap:wrap}
 /* the time picker — every call time is Central, so the popup says so once */
-#timePop{position:fixed;z-index:320;width:178px;max-width:94vw;background:var(--card,#fff);
-  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
-#timePop.hidden{display:none}
+#timePop{z-index:320;width:178px;overflow:hidden}
 .tp-list{overflow:auto;max-height:46vh;padding:5px}
 .tp-item{display:block;width:100%;text-align:left;background:none;border:1px solid transparent;
-  border-radius:7px;cursor:pointer;font-family:var(--monof);font-size:11.5px;padding:5px 9px;color:var(--ink)}
-.tp-item:hover{background:var(--paper-deep,#f1ede4)}
+  border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:500;padding:6px 10px;color:var(--ink)}
+.tp-item:hover{background:rgba(28,23,18,.07)}
 .tp-item.hour{font-weight:700}
 .tp-item.on{background:var(--accent);color:#fff;font-weight:700}
 /* who's on the call — the same shell again, listing chips instead of times */
-#whoPop{position:fixed;z-index:320;width:236px;max-width:94vw;background:var(--card,#fff);
-  border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.18);overflow:hidden}
-#whoPop.hidden{display:none}
+#whoPop{z-index:320;width:236px;overflow:hidden}
 #whoPop .pp-list{max-height:46vh}
 #whoPop .pp-item.on{background:var(--paper-deep,#f1ede4)}
 /* the thing you click to open it — a dashed outline says "this is settable" */
@@ -575,95 +618,115 @@ body.editing .dpick,.dpick.always{border-color:var(--line)}
 /* ═══════════ assignments tab ═══════════ */
 table.aboard{min-width:0}
 table.aboard th.ah{text-align:center;max-width:120px;white-space:normal;vertical-align:bottom;padding:10px 6px 8px}
-table.aboard th.ah .at{font-family:var(--sans);font-size:11.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-table.aboard th.ah small{display:block;font-size:9px;color:var(--ink-faint);margin-top:3px;letter-spacing:.04em;text-transform:none}
+table.aboard th.ah .at{font-family:var(--sans);font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+table.aboard th.ah small{display:block;font-size:11px;color:var(--ink-faint);margin-top:3px;letter-spacing:0;text-transform:none}
 table.aboard td.an{white-space:nowrap}
 table.aboard td.ac{text-align:center;padding:6px}
-table.aboard tr.agrp td{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
-table.aboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap}
-.sq{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;font-family:var(--monof);font-size:13px;font-weight:600;line-height:1;color:#F4EEDF;transition:transform .12s}
-.sq:hover{transform:scale(1.08)}
-.sq.open{background:#DDAA00}
+table.aboard tr.agrp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
+table.aboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.sq{position:relative;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;line-height:1;color:#F4EEDF}
+.sq.open{background:#DDAA00;color:#3A2C00}       /* cream on this yellow was 1.85:1; this is 6.4:1 */
 .sq.late{background:var(--bad)}
 .sq.na{background:var(--ink)}
 .sq.waiting,.sq.revise,.sq.approved{background:var(--good)}
-.alegend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:12px 2px 0;font-size:12px;color:var(--ink-soft)}
+.alegend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:12px 2px 0;font-size:13px;color:var(--ink-soft)}
 .alegend span{display:inline-flex;align-items:center;gap:7px}
-.alegend .sq{width:16px;height:16px;border-radius:4px;font-size:9px;cursor:default}
-.alegend .sq:hover{transform:none}
-.apill{display:inline-block;font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:2px 8px;font-weight:500}
+.alegend .sq{width:16px;height:16px;border-radius:4px;font-size:11px;cursor:default}
+.alegend .sq:hover{transform:none;box-shadow:none}
+.apill{display:inline-block;font-size:12px;letter-spacing:0;border-radius:999px;padding:1px 9px;font-weight:600}
 .apill.open{background:var(--warn-bg);color:#7A5E06}
 .apill.late{background:var(--bad-bg);color:var(--bad)}
 .apill.waiting,.apill.revise,.apill.approved{background:var(--good-bg);color:var(--good)}
 .apill.na{background:var(--line-soft);color:var(--ink-faint)}
-.ainstr{font-size:11.5px;color:var(--ink-faint);margin-top:2px;max-width:52ch}
+.ainstr{font-size:12px;color:var(--ink-soft);margin-top:2px;max-width:52ch}
 .aform{background:var(--card);border:1px solid var(--line-strong);border-radius:10px;padding:14px;display:grid;gap:10px;margin-bottom:12px}
 .aform textarea,.ad-form textarea{width:100%;min-height:110px;font-family:var(--sans);font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper);resize:vertical}
-.aform input[type=date],.ad-form input[type=date]{font-family:var(--monof);font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.aform input[type=date],.ad-form input[type=date]{font-family:var(--monof);font-size:13px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
 .ad-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.ad-sub{font-family:var(--monof);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);display:inline-flex;gap:8px;align-items:center}
-/* review drawer */
-.adrawer{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:96vw;background:var(--card-raised);border-left:1px solid var(--line);box-shadow:-18px 0 44px rgba(28,23,18,.22);z-index:320;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s cubic-bezier(.16,.68,.32,1)}
-.adrawer.on{transform:none}
+.ad-sub{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);display:inline-flex;gap:8px;align-items:center}
+/* review drawer — a sheet: it comes in on the iOS sheet curve over a dimmed page,
+   and clicking the dimmed page closes it (unless that would lose what you typed:
+   then the drawer shakes instead — see drawerScrimClick) */
+/* closed, it's hidden outright once it has slid away — parked just off the right
+   edge, its shadow used to shade the page's right side on screen and in print */
+.adrawer{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:96vw;background:var(--card-raised);border-left:0;box-shadow:var(--elev-3);z-index:320;display:flex;flex-direction:column;
+  transform:translateX(102%);visibility:hidden;transition:transform .3s var(--ease-sheet),visibility 0s .3s}
+.adrawer.on{transform:none;visibility:visible;transition:transform .5s var(--ease-sheet),visibility 0s}
+@media print{.adrawer,#menuPop{display:none!important}}
+@keyframes nope{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+.adrawer.nope{animation:nope .4s var(--ease-out)}
+body::before{content:"";position:fixed;inset:0;z-index:310;background:rgba(18,13,8,.24);opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease-out)}
+body:has(#adrawer.on)::before{opacity:1;pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.adrawer{transition:none}}
 .ad-head{padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.ad-head .t{font-family:var(--serif);font-size:20px;font-weight:560;letter-spacing:-.01em}
-.ad-head .s{font-size:12px;color:var(--ink-soft);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ad-head .t{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.015em}
+.ad-head .s{font-size:13px;color:var(--ink-soft);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .ad-body{padding:16px 20px;overflow:auto;flex:1;min-height:0;display:grid;gap:12px;align-content:start}
 .ad-ver{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;background:var(--card)}
-.ad-ver .vh{font-family:var(--monof);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+.ad-ver .vh{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
 .ad-ver .vt{white-space:pre-wrap}
 .ad-fb{margin-top:8px;border-left:3px solid var(--accent);padding:6px 10px;background:var(--accent-soft);border-radius:0 8px 8px 0}
 .ad-form{display:grid;gap:8px}
 details.ad-more{border-top:1px solid var(--line);padding-top:10px}
-details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
 .pp-head{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
 .pp-head .search{flex:1}
 .pp-list{overflow:auto;max-height:44vh;padding:6px}
-.pp-cat{font-family:var(--monof);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+.pp-cat{font-family:var(--monof);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ink-faint);padding:9px 8px 3px}
 .pp-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;
-  border:none;border-radius:8px;padding:6px 8px;cursor:pointer;font:inherit;font-size:12.5px;color:var(--ink)}
-.pp-item:hover{background:var(--paper-deep,#f1ede4)}
+  border:none;border-radius:8px;padding:6px 8px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink)}
+.pp-item:hover{background:rgba(28,23,18,.07)}
 .pp-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--line)}
 .pp-dot.t1{background:var(--good)} .pp-dot.t2{background:var(--accent)} .pp-dot.t3{background:var(--tier3)}
-.pp-tier{margin-left:auto;font-family:var(--monof);font-size:9px}
+.pp-tier{margin-left:auto;font-size:11px;font-weight:600}
 .pp-tier.t1{color:var(--good)} .pp-tier.t2{color:var(--accent)} .pp-tier.t3{color:var(--tier3)}
-.pp-new{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;padding:10px;border-top:1px solid var(--line)}
+.pp-new{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;padding:10px;border-top:var(--hair) solid var(--line-strong)}
 .pp-new .search{grid-column:1 / -1}
-.pp-new select{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:7px;
+.pp-new select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7px;
   background:var(--paper,#fff);color:var(--ink);padding:4px 6px;max-width:150px}
 
 /* ── Automations switches (Mentees tab) ── */
-.sw-card{background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:0 0 16px}
+.sw-card{background:var(--card,#fff);border:0;border-radius:var(--radius);padding:14px 18px;margin:0 0 16px}
 .sw-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:4px}
-.sw-title{font-weight:700;font-size:14px}
-.sw-hint{font-size:11.5px;color:var(--ink-faint,#8a8175);line-height:1.5}
+.sw-title{font-weight:600;font-size:14px}
+.sw-hint{font-size:12px;color:var(--ink-soft);line-height:1.5}
 .sw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 28px}
-.sw-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--line)}
+.sw-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 0;border-top:var(--hair) solid var(--line)}
 .sw-name{font-size:13px;font-weight:600}
-.sw-toggle{flex:none;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;
-  background:var(--paper-deep,#f1ede4);padding:3px 10px 3px 4px;cursor:pointer;font:inherit}
-.sw-toggle .sw-knob{width:17px;height:17px;border-radius:50%;background:var(--ink-faint,#9a9184);transition:background .15s}
-.sw-toggle .sw-state{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--ink-faint,#8a8175);min-width:24px;text-align:left}
-.sw-toggle.on .sw-knob{background:var(--green,#2a7d4f)}
-.sw-toggle.on .sw-state{color:var(--green,#2a7d4f)}
-.sw-toggle[disabled]{opacity:.55;cursor:default}
+/* a real switch: the knob travels on a spring, stretches under the press, and the
+   track fills green. ON/OFF stays written beside it, because OFF is the exception. */
+.sw-toggle{flex:none;display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:2px 0;cursor:pointer;font:inherit}
+.sw-toggle .sw-knob{position:relative;width:38px;height:22px;border-radius:11px;background:rgba(28,23,18,.16);
+  transition:background-color .2s var(--ease-out)}
+.sw-toggle .sw-knob::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:9px;background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.2),0 0 0 .5px rgba(0,0,0,.06);
+  transition:transform var(--spring-dur) var(--spring),width .2s var(--ease-out)}
+.sw-toggle.on .sw-knob{background:var(--good)}
+.sw-toggle.on .sw-knob::after{transform:translateX(16px)}
+.sw-toggle:active .sw-knob::after{width:22px}
+.sw-toggle.on:active .sw-knob::after{transform:translateX(12px)}
+.sw-toggle[disabled] .sw-knob{animation:pulse .8s ease-in-out infinite alternate}   /* saving */
+@keyframes pulse{to{opacity:.55}}
+.sw-toggle .sw-state{font-size:12px;font-weight:600;letter-spacing:0;color:var(--ink-soft);min-width:24px;text-align:left}
+.sw-toggle.on .sw-state{color:var(--good)}
+.sw-toggle[disabled]{cursor:default}
 .sw-toggle:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
 /* per-mentee switches (Mentees rows): three small pills. OFF is the exception, so OFF is the loud one */
 .rsw-col{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
 .rsw{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;background:transparent;
-  padding:2px 9px 2px 6px;cursor:pointer;font:inherit;font-size:11px;color:var(--ink-faint,#8a8175);white-space:nowrap}
-.rsw .rsw-dot{width:8px;height:8px;border-radius:50%;background:var(--green,#2a7d4f)}
-.rsw .rsw-state{font-size:9.5px;font-weight:700;letter-spacing:.07em}
-.rsw.off{border-color:var(--red,#b3261e);color:var(--red,#b3261e);background:var(--paper-deep,#f1ede4)}
-.rsw.off .rsw-dot{background:var(--red,#b3261e)}
+  padding:2px 9px 2px 6px;cursor:pointer;font:inherit;font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.rsw .rsw-dot{width:8px;height:8px;border-radius:50%;background:var(--good)}
+.rsw .rsw-state{font-size:11px;font-weight:700;letter-spacing:0}
+.rsw.off{border-color:var(--red);color:var(--red);background:var(--paper-deep,#f1ede4)}
+.rsw.off .rsw-dot{background:var(--red)}
 .rsw[disabled]{opacity:.55;cursor:default}
 .rsw:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
-.sw-per{grid-column:1/-1;border-top:1px solid var(--line);padding-top:9px}
+.sw-per{grid-column:1/-1;border-top:var(--hair) solid var(--line);padding-top:9px}
 /* what a mentee pays (Mentees rows): a chip you click, then presets or an amount of your own */
 .pay{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--card);
-  padding:3px 10px;cursor:pointer;font-family:var(--monof);font-size:11px;color:var(--ink);white-space:nowrap}
+  padding:3px 10px;cursor:pointer;font-family:var(--monof);font-size:12px;color:var(--ink);white-space:nowrap}
 .pay:hover{border-color:var(--ink-faint)}
 .pay.empty{border-style:dashed;background:transparent;color:var(--ink-faint)}
 .pay.odd{border-style:dashed;background:var(--warn-bg);color:#6E5606}
@@ -674,20 +737,20 @@ details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:10px;l
 .pay:focus-visible{outline:2px solid var(--accent,#23698c);outline-offset:2px}
 .pay-ed{display:flex;flex-direction:column;gap:6px;margin-top:7px;min-width:190px}
 .pay-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-.pay-ed input.search{width:78px;flex:0 0 78px;min-width:0;padding:5px 8px;font-size:12px}
+.pay-ed input.search{width:78px;flex:0 0 78px;min-width:0;padding:5px 8px;font-size:13px}
 .pay-ed select.btn{padding:4px 6px}
-.pay-links{gap:12px;font-size:10.5px}
-.pay-links a{color:var(--ink-faint)}
-.pay-err{font-size:11px;color:var(--red,#b3261e)}
+.pay-links{gap:12px;font-size:12px}
+.pay-links a{color:var(--ink-soft)}
+.pay-err{font-size:12px;color:var(--red)}
 
 /* ── Dojo rows: no coach picker, just the rule ── */
-.nocoach{font-family:var(--monof);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+.nocoach{font-size:12px;color:var(--ink-faint);white-space:nowrap}
 .chip.stale{border-style:dashed;background:transparent;color:var(--ink-faint)}
 /* ── labelled filter groups (Mentees) + grouped board rows ── */
 .fgroup{display:flex;align-items:center;gap:7px}
-.flab{font-family:var(--monof);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
-table.grid tr.grp td{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
-table.grid tr.grp td .n{color:var(--ink-faint);letter-spacing:.04em}
+.flab{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+table.grid tr.grp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
+table.grid tr.grp td .n{color:var(--ink-faint);letter-spacing:0}
 table.grid tr.grp:hover td{background:var(--paper-deep)}
 
 /* ═══════════ weekly check-ins ═══════════
@@ -697,8 +760,8 @@ table.grid tr.grp:hover td{background:var(--paper-deep)}
 /* every week is its own bordered lane — the labels had 6px between them and
    read as one run-on string. The current week's lane is tinted top to bottom. */
 table.ciboard th.cw{text-align:center;padding:10px 7px 9px;min-width:56px;border-left:1px solid var(--line-soft);vertical-align:bottom}
-table.ciboard th.cw .wn{display:block;font-size:9px;color:var(--ink-faint);letter-spacing:.14em}
-table.ciboard th.cw .wd{display:block;font-family:var(--monof);font-size:10.5px;font-weight:500;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:4px}
+table.ciboard th.cw .wn{display:block;font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.04em}
+table.ciboard th.cw .wd{display:block;font-size:12px;font-weight:500;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:4px}
 table.ciboard th.cw.cur,table.ciboard th.cw.cur.m1{background:rgba(174,59,21,.07);box-shadow:inset 0 3px 0 var(--accent)}
 table.ciboard th.cw.cur .wn,table.ciboard th.cw.cur .wd{color:var(--accent);font-weight:600}
 table.ciboard th.tt,table.ciboard td.tot{border-left:1px solid var(--line-soft)}
@@ -707,30 +770,28 @@ table.ciboard th.mentee{vertical-align:bottom;z-index:2}
 /* month bands: a heavier rule where a Vector month starts, alternate months faintly shaded */
 table.ciboard tr.mrow th.mb{text-align:center;font-family:var(--serif);font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink);
   padding:10px 8px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
-table.ciboard tr.mrow th.mb small{font-family:var(--monof);font-size:9px;font-weight:500;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-left:7px}
+table.ciboard tr.mrow th.mb small{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.06em;text-transform:uppercase;margin-left:7px}
 table.ciboard th.mstart,table.ciboard td.cc.mstart{border-left:2px solid var(--line-strong)}
 table.ciboard th.m1,table.ciboard td.cc.m1{background:rgba(28,23,18,.035)}
 table.ciboard tbody tr:hover td.an{background:var(--paper-deep)}
 table.ciboard td.an{white-space:nowrap;padding-right:18px}
 table.ciboard td.an .an-sub{display:flex;gap:5px;margin-top:4px}
-table.ciboard td.an .an-sub .chip{font-size:9px;padding:2px 7px}
+table.ciboard td.an .an-sub .chip{font-size:11px;padding:2px 7px}
 table.ciboard td.cc{text-align:center;padding:7px 5px;border-left:1px solid var(--line-soft)}
-.ci-scroll{font-family:var(--monof);font-size:10px;letter-spacing:.06em;color:var(--ink-faint);text-align:right;margin-top:6px;min-height:14px}
+.ci-scroll{font-size:12px;letter-spacing:0;color:var(--ink-soft);text-align:right;margin-top:6px;min-height:14px}
 /* a PNG export widens to fit the whole board; paper can't, so it compresses the lanes instead */
 body.exporting .tbl{overflow:visible}
 @media print{
   table.ciboard th.cw{padding:6px 3px;min-width:0}
-  table.ciboard th.cw .wd{font-size:8.5px}
+  table.ciboard th.cw .wd{font-size:11px}
   table.ciboard td.cc{padding:3px 2px}
   table.ciboard td.an{padding-right:8px}
-  table.ciboard tr.mrow th.mb{font-size:11px;padding:6px 3px 4px}
+  table.ciboard tr.mrow th.mb{font-size:12px;padding:6px 3px 4px}
 }
 table.ciboard td.cc.cur,table.ciboard td.cc.cur.m1{background:rgba(174,59,21,.06)}
-table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+table.ciboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
 .ci{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;border:1.5px solid transparent;cursor:pointer;
-  font-family:var(--monof);font-size:12px;font-weight:600;line-height:1;color:#F4EEDF;background:var(--line-soft);padding:0;
-  transition:transform .12s,box-shadow .12s}
-.ci:hover{transform:scale(1.1);box-shadow:0 2px 6px rgba(28,23,18,.22)}
+  font-family:var(--sans);font-size:13px;font-weight:600;line-height:1;color:#F4EEDF;background:var(--line-soft);padding:0}
 .ci.yes{background:#2E7D4F}
 .ci.one{background:#7A3FA8}
 .ci.text{background:#2C6BB5}
@@ -740,22 +801,20 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
 .ci.blank.due{border-style:dashed;border-color:var(--ink-faint)}
 .ci.blank.fut{opacity:.5}
 .ci.blank.cur{border-color:var(--accent)}
-.cilegend{display:flex;flex-wrap:wrap;gap:10px 20px;margin:12px 2px 0;font-size:12px;color:var(--ink-soft)}
+.cilegend{display:flex;flex-wrap:wrap;gap:10px 20px;margin:12px 2px 0;font-size:13px;color:var(--ink-soft)}
 .cilegend span{display:inline-flex;align-items:center;gap:7px}
-.cilegend .ci{width:16px;height:16px;border-radius:4px;font-size:9px;cursor:default}
+.cilegend .ci{width:16px;height:16px;border-radius:4px;font-size:11px;cursor:default}
 .cilegend .ci:hover{transform:none;box-shadow:none}
-#ciPop{position:fixed;z-index:300;width:264px;max-width:94vw;background:var(--card-raised);border:1px solid var(--line);
-  border-radius:12px;box-shadow:0 14px 44px rgba(28,23,18,.22);padding:8px}
-#ciPop.hidden{display:none}
-.cp-head{font-family:var(--monof);font-size:10px;letter-spacing:.06em;color:var(--ink-soft);padding:6px 8px 8px;border-bottom:1px solid var(--line-soft);margin-bottom:4px}
-.cp-head b{display:block;font-family:var(--sans);font-size:13px;letter-spacing:0;color:var(--ink);font-weight:600;margin-bottom:2px}
+#ciPop{z-index:300;width:264px;padding:8px}   /* the shell is shared — see "popovers" */
+.cp-head{font-size:12px;letter-spacing:0;color:var(--ink-soft);padding:6px 8px 8px;border-bottom:var(--hair) solid var(--line-strong);margin-bottom:4px}
+.cp-head b{display:block;font-family:var(--sans);font-size:14px;letter-spacing:0;color:var(--ink);font-weight:600;margin-bottom:2px}
 .cp-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;
-  padding:7px 8px;cursor:pointer;font:inherit;font-size:12.5px;color:var(--ink);line-height:1.3}
-.cp-opt:hover{background:var(--paper-deep)}
+  padding:7px 8px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink);line-height:1.3}
+.cp-opt:hover{background:rgba(28,23,18,.07)}
 .cp-opt.on{background:var(--accent-soft)}
-.cp-opt .ci{width:20px;height:20px;border-radius:5px;font-size:10px;flex:none}
+.cp-opt .ci{width:20px;height:20px;border-radius:5px;font-size:11px;flex:none}
 .cp-opt .ci:hover{transform:none;box-shadow:none}
-.cp-opt small{display:block;font-size:10.5px;color:var(--ink-faint)}
+.cp-opt small{display:block;font-size:12px;color:var(--ink-soft)}
 @media (max-width:760px){.fgroup{flex:none}}
 @media print{.ci{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
@@ -765,17 +824,17 @@ table.ciboard td.tot{font-family:var(--monof);font-size:11px;color:var(--ink-sof
    drop-in, and a small corner badge for how the replay is going. */
 #atBoard table.grid{min-width:0}
 table.atboard th.call{text-align:left;padding:9px 8px 8px;min-width:96px;max-width:118px;border-left:1px solid var(--line-soft);vertical-align:bottom}
-table.atboard th.call .wn{display:block;font-size:9px;color:var(--ink-faint);letter-spacing:.12em}
-table.atboard th.call .ct{display:block;font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--ink);letter-spacing:0;text-transform:none;
+table.atboard th.call .wn{display:block;font-size:11px;font-weight:600;color:var(--ink-faint);letter-spacing:.04em}
+table.atboard th.call .ct{display:block;font-family:var(--sans);font-size:12px;font-weight:600;color:var(--ink);letter-spacing:0;text-transform:none;
   margin:4px 0 5px;white-space:normal;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 table.atboard th.call .tl{display:flex;gap:6px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-table.atboard th.call .tally{font-family:var(--monof);font-size:10.5px;color:var(--ink);letter-spacing:0;text-transform:none}
+table.atboard th.call .tally{font-family:var(--sans);font-size:12px;font-weight:600;color:var(--ink);letter-spacing:0;text-transform:none}
 table.atboard th.call .tally small{color:var(--good);margin-left:3px}
-table.atboard th.call .tierchip{font-size:7.5px;padding:1px 5px}
+table.atboard th.call .tierchip{font-size:11px;padding:1px 5px}
 table.atboard th.call button.rollhd{all:unset;cursor:pointer;display:block;border-radius:6px}
 table.atboard th.call button.rollhd:hover .ct{color:var(--accent)}
 table.atboard th.call button.rollhd:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-table.atboard th.call .take{font-family:var(--monof);font-size:9.5px;letter-spacing:.06em;color:var(--accent);text-transform:none}
+table.atboard th.call .take{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:0;color:var(--accent);text-transform:none}
 table.atboard th.call.cur{background:rgba(174,59,21,.07);box-shadow:inset 0 3px 0 var(--accent)}
 table.atboard th.call.cur .wn{color:var(--accent);font-weight:600}
 table.atboard th.call.fut{opacity:.45}
@@ -787,48 +846,48 @@ table.atboard td.an .flag2{margin-left:6px}
 .ci.na:hover{transform:none;box-shadow:none}
 .ci.drop{background:#2E7D4F;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px #2E7D4F}
 .ci.blank.pend{border-style:dashed;border-color:var(--accent)}
-.mu{display:inline-block;min-width:13px;height:13px;border-radius:7px;padding:0 2px;font-style:normal;font-family:var(--monof);font-size:8px;line-height:13px;
+.mu{display:inline-block;min-width:16px;height:16px;border-radius:8px;padding:0 3px;font-style:normal;font-family:var(--sans);font-size:11px;line-height:16px;
   text-align:center;font-weight:700;color:#fff;background:var(--ink-soft);box-shadow:0 0 0 1.5px var(--card)}
-.ci .mu{position:absolute;top:-6px;right:-7px}
+.ci .mu{position:absolute;top:-8px;right:-9px}
 .mu.late{background:#C0392B}
 .mu.waiting{background:var(--accent)}
 .mu.revise{background:var(--brass)}
 .mu.approved{background:#2E7D4F}
 .mu.unsent{background:var(--card-raised);color:var(--ink-soft);box-shadow:0 0 0 1.5px var(--line-strong)}
-.flag2{font-family:var(--monof);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--bad);background:var(--bad-bg);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.flag2{font-size:12px;font-weight:600;letter-spacing:0;color:var(--bad);background:var(--bad-bg);border-radius:999px;padding:1px 8px;white-space:nowrap}
 .at-banner{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;
   border:1px solid var(--warn);background:var(--warn-bg);border-radius:10px;font-size:13px}
 .at-banner.err{border-color:var(--bad);background:var(--bad-bg)}
 /* the roll-call drawer */
-.rc-exp{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--ink-soft)}
+.rc-exp{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ink-soft)}
 .rc-tally{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.rc-tally .chip{font-size:10.5px;padding:4px 10px}
+.rc-tally .chip{font-size:12px;padding:4px 10px}
 .rc-actions{display:flex;gap:8px;align-items:center}
 .rc-actions .search{flex:1;min-width:0;width:auto}
-.rc-sec{font-family:var(--monof);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass);margin-top:6px}
+.rc-sec{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);margin-top:6px}
 .rc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 .rc-row.on{border-color:#2E7D4F;background:#EAF2EC}
 .rc-row.ex{background:var(--paper-deep)}
 .rc-name{min-width:0}
-.rc-name b{font-size:13.5px}
+.rc-name b{font-size:14px}
 .rc-name .an-sub{display:flex;gap:5px;margin-top:3px;flex-wrap:wrap}
-.rc-name .chip{font-size:9px;padding:2px 7px}
+.rc-name .chip{font-size:11px;padding:2px 7px}
 .rc-seg{display:flex;gap:4px;flex-shrink:0}
-.rc-seg button{font-family:var(--monof);font-size:10.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card-raised);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+.rc-seg button{font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 11px;border-radius:8px;border:1px solid var(--line);background:var(--card-raised);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
 .rc-seg button:disabled{opacity:.5;cursor:default}
 .rc-seg button.here.on{background:#2E7D4F;border-color:#2E7D4F;color:#fff;font-weight:600}
 .rc-seg button.exc.on{background:#1C1712;border-color:#1C1712;color:#F4EEDF}
 .rc-guest{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px dashed var(--line-strong);border-radius:10px}
-.rc-guest .step{display:flex;align-items:center;gap:10px;font-family:var(--monof);font-size:15px}
-.rc-guest small,.rc-mu small{display:block;font-size:11px;color:var(--ink-faint);margin-top:3px;line-height:1.45}
+.rc-guest .step{display:flex;align-items:center;gap:10px;font-family:var(--monof);font-size:16px}
+.rc-guest small,.rc-mu small{display:block;font-size:12px;color:var(--ink-soft);margin-top:3px;line-height:1.45}
 .rc-mu{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-.rc-mu .ad-row input{flex:1;min-width:0;font-size:12.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.rc-mu .ad-row input{flex:1;min-width:0;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
 .rc-mu .who{display:flex;gap:5px;flex-wrap:wrap}
-.rc-msg{font-size:12px;color:var(--good)}
+.rc-msg{font-size:13px;color:var(--good)}
 .rc-msg.err{color:var(--bad)}
 .rc-msg.busy{color:var(--ink-soft)}
-.rc-foot{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink-soft)}
-.rc-add{font-family:var(--monof);font-size:11px;padding:7px 9px;border:1px dashed var(--line-strong);border-radius:8px;background:var(--card-raised);color:var(--ink-soft);justify-self:start;max-width:100%}
+.rc-foot{padding:12px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:var(--ink-soft)}
+.rc-add{font-family:var(--sans);font-size:13px;padding:7px 9px;border:1px dashed var(--line-strong);border-radius:8px;background:var(--card-raised);color:var(--ink-soft);justify-self:start;max-width:100%}
 /* the calendar's roll chip — counts only, never names; the names are behind the coach key */
 .chip.roll{background:var(--good-bg);border-color:transparent;color:var(--good);font-weight:600;cursor:pointer}
 .chip.rollopen{background:transparent;border-color:var(--accent);color:var(--accent);font-weight:600;cursor:pointer}
@@ -843,21 +902,19 @@ table.atboard td.an .flag2{margin-left:6px}
   .wrap,.tabs-inner{padding:0 16px}
   .page-head{padding-top:26px;gap:16px}
   .page-head .lede{margin-top:8px;max-width:none}
-  /* the two how-to paragraphs are a manual, not the board — fold them until Edit is on */
-  body:not(.editing) .page-head .lede.how{display:none}
   .next-call{padding:12px 15px 13px}
   .toolbar{margin-bottom:22px}
   .stats{gap:12px 16px;margin-bottom:26px}
-  .stat .val{font-size:24px}
+  .stat .val{font-size:22px}
   .season{margin-bottom:30px}
   .season-head{gap:10px;padding-bottom:9px}
-  .season-head h3{font-size:19px}
-  .season-head .fill{font-size:10px}
+  .season-head h3{font-size:18px}
+  .season-head .fill{font-size:12px}
 
   .week{grid-template-columns:minmax(0,1fr);gap:7px;padding:14px 0}
   /* the date column turns into one header line: Jan 6 · Tue · WK 01 · [2 calls] */
-  .wk-date{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 9px;padding-top:0;font-size:12px}
-  .wk-date b{display:inline;order:-1;font-size:15.5px}
+  .wk-date{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 9px;padding-top:0;font-size:13px}
+  .wk-date b{display:inline;order:-1;font-size:16px}
   .wk-date .wknum{order:1}
   .wk-date .count{order:1;margin-top:0}
   .wk-date .del{order:2;margin-left:auto}
@@ -870,8 +927,8 @@ table.atboard td.an .flag2{margin-left:6px}
   /* a zero-height, full-width break after the topic line, so a short topic never
      gets the time or the host pulled up beside it */
   .slot:not(.ghost)::before{content:"";flex:0 0 100%;order:-1;height:0}
-  .slot.second .stopic,.slot.hot .stopic{font-size:15px}
-  .slot .stopic.empty{font-size:11.5px}
+  .slot.second .stopic,.slot.hot .stopic{font-size:16px}
+  .slot .stopic.empty{font-size:13px}
   .slot .stime,.slot .sdate,.slot .stag{min-width:0}
   /* the host hugs the right edge of the meta row — with Edit off. Edit adds a
      picker and a delete after it, and the row reads better flowing left */
@@ -880,9 +937,8 @@ table.atboard td.an .flag2{margin-left:6px}
   .wk-meta .chip{white-space:normal;line-height:1.4}    /* a long week note wraps instead of widening the page */
   /* an open week has nothing to type-tag yet — "GROUP" alone on a line is just noise */
   .slot:has(.stopic.empty) span.stag{display:none}
-  .slot.ghost{flex-wrap:wrap;gap:6px 8px}
   .snote{padding-left:10px}
-  .snote-add{margin-left:10px}
+  body.editing .wk-date .wk-tools{order:3;margin:0 0 0 -4px}
   .wk-detail{max-width:none}
   .wk-sub{gap:8px;padding-left:10px}
   .wk-sub .tag{padding-top:3px}
@@ -898,7 +954,7 @@ table.atboard td.an .flag2{margin-left:6px}
   .tbl table.grid:not(.ciboard):not(.aboard) tbody,
   .tbl table.grid:not(.ciboard):not(.aboard) tr,
   .tbl table.grid:not(.ciboard):not(.aboard) td{display:block;width:auto;white-space:normal}
-  .tbl table.grid:not(.ciboard):not(.aboard) tr{position:relative;padding:11px 14px 12px;border-bottom:1px solid var(--line-soft)}
+  .tbl table.grid:not(.ciboard):not(.aboard) tr{position:relative;padding:11px 14px 12px;border-bottom:var(--hair) solid var(--line)}
   .tbl table.grid:not(.ciboard):not(.aboard) tr:last-child{border-bottom:none}
   .tbl table.grid:not(.ciboard):not(.aboard) td{padding:1px 0;border-bottom:none;font-size:13px}
   .tbl table.grid:not(.ciboard):not(.aboard) td:empty{display:none}
@@ -910,14 +966,14 @@ table.atboard td.an .flag2{margin-left:6px}
   #teamBoard td:nth-child(3)::before,#teamBoard td:nth-child(5)::before,#teamBoard td:nth-child(6)::before,#teamBoard td:nth-child(7)::before,
   #archBoard td:nth-child(7)::before,#spkBoard td:nth-child(3)::before,
   #assignBoard table.acat td:nth-child(3)::before,#assignBoard table.acat td:nth-child(4)::before{
-    font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:8px}
+    font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-right:8px}
   /* roster: name · program · then labelled lines · dashboard link last */
   #teamBoard td:nth-child(1){font-size:14px}
   #teamBoard td:nth-child(2){margin:4px 0 5px}
   #teamBoard td:nth-child(3)::before{content:"Career sales"}
   #teamBoard td:nth-child(4){margin:4px 0}
   #teamBoard td:nth-child(5)::before{content:"Manager"}
-  #teamBoard td:nth-child(5) div{display:inline;color:var(--ink-faint)}
+  #teamBoard td:nth-child(5) div{display:inline;color:var(--ink-soft)}
   #teamBoard td:nth-child(5) div::before{content:" · "}
   #teamBoard td:nth-child(6)::before{content:"Joined"}
   #teamBoard td:nth-child(7)::before{content:"Coach"}
@@ -925,7 +981,7 @@ table.atboard td.an .flag2{margin-left:6px}
   #teamBoard td:nth-child(8){margin-top:8px;display:flex;align-items:center;gap:12px}
   #teamBoard td:nth-child(8) div{margin-top:0!important}
   /* archive: "#3 · Jan 27 '25" on one line, topic under it, chips in a row */
-  #archBoard td.num,#archBoard td.dt{display:inline-block;padding:0;font-size:11px;margin-bottom:3px}
+  #archBoard td.num,#archBoard td.dt{display:inline-block;padding:0;font-size:12px;margin-bottom:3px}
   #archBoard td.num{margin-right:8px}
   #archBoard td.num::before{content:"#"}
   #archBoard td:nth-child(3){font-size:14px;font-weight:500}
@@ -947,17 +1003,18 @@ table.atboard td.an .flag2{margin-left:6px}
   #teamBoard td:empty,#archBoard td:empty,#spkBoard td:empty,#assignBoard table.acat td:empty{display:none}
 }
 /* ═══════════ money ═══════════ */
-.mtest{display:inline-block;margin-top:12px;font-family:var(--monof);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
-  background:var(--warn-bg);color:var(--warn);border-radius:999px;padding:4px 11px}
-.mcard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:12px;
+.mtest{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;letter-spacing:0;
+  background:var(--warn-bg);color:#6E5606;border-radius:999px;padding:3px 11px}
+/* the who-owes-whom card: its state is in the colour of the amount, not a stripe down its side */
+.mcard{background:var(--card);border:0;border-radius:14px;box-shadow:var(--elev-1);
   padding:16px 20px;margin:0 0 26px;display:flex;align-items:center;gap:12px 22px;flex-wrap:wrap}
 .mcard .mc-main{flex:1 1 300px;min-width:0}
-.mcard .mc-head{font-family:var(--serif);font-size:21px;line-height:1.3}
-.mcard .mc-sub{font-size:12.5px;color:var(--ink-soft);margin-top:5px}
-.mcard .mc-amt{font-family:var(--monof);font-weight:600;white-space:nowrap}
-.mcard.warn{border-left-color:var(--accent)}
-.mcard.bad{border-left-color:var(--bad);background:var(--bad-bg)}
-.mcard.good{border-left-color:var(--good)}
+.mcard .mc-head{font-family:var(--serif);font-size:22px;line-height:1.3;letter-spacing:-.015em}
+.mcard .mc-sub{font-size:13px;color:var(--ink-soft);margin-top:5px}
+.mcard .mc-amt{font-family:var(--sans);font-weight:600;white-space:nowrap}
+.mcard.warn .mc-amt{color:var(--accent)}
+.mcard.bad .mc-amt{color:var(--bad)}
+.mcard.good .mc-amt{color:var(--good)}
 .mlate{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;background:var(--bad-bg);color:var(--bad);border-radius:10px;
   padding:9px 14px;margin:0 0 10px;font-size:13px}
 .mlate b{color:var(--ink)}
@@ -968,17 +1025,17 @@ table.mledger tr.mrow:focus-visible{outline:2px solid var(--accent);outline-offs
 table.mledger tr.mrow.void td{color:var(--ink-faint)}
 table.mledger tr.mrow.void td b,table.mledger tr.mrow.void td.mamt{text-decoration:line-through}
 table.mledger .num,table.mcamps .num{text-align:right;white-space:nowrap}
-table.mledger td.num,table.mcamps td.num{font-family:var(--monof);font-size:12.5px}
-table.mledger td.mamt{font-size:13.5px}
+table.mledger td.num,table.mcamps td.num{font-size:13px;font-weight:500}
+table.mledger td.mamt{font-size:14px;font-weight:600}
 table.mledger tr.income td.mamt{color:var(--good)}
-table.mledger .msub{font-size:11.5px;color:var(--ink-faint);margin-top:2px}
-table.mledger .mclip{display:block;font-size:11px;color:var(--ink-faint);margin-top:2px}
-table.mledger td.mwho,table.mledger td.msplit{font-size:12.5px;white-space:nowrap}
-table.mcamps td.mstate{font-size:12.5px}
+table.mledger .msub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+table.mledger .mclip{display:block;font-size:12px;color:var(--ink-soft);margin-top:2px}
+table.mledger td.mwho,table.mledger td.msplit{font-size:13px;white-space:nowrap}
+table.mcamps td.mstate{font-size:13px}
 table.mcamps td.mstate.due,table.mcamps td.mstate.reopened,table.mcamps td.mstate.blocked{color:var(--bad);font-weight:600}
 table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
 .linkish{background:none;border:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-.chip.mk{font-family:var(--monof);font-size:9px;letter-spacing:.1em;text-transform:uppercase;border-color:transparent}
+.chip.mk{font-size:12px;font-weight:600;letter-spacing:0;border-color:transparent}
 .chip.mk.income{background:var(--good-bg);color:var(--good)}
 .chip.mk.expense{background:var(--accent-soft);color:var(--accent-ink)}
 .chip.mk.settle{background:var(--line-soft);color:var(--ink-soft)}
@@ -988,9 +1045,9 @@ table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
   #moneyBoard table.mledger td:nth-child(2){padding-right:104px}
   #moneyBoard table.mledger td.mwho,#moneyBoard table.mledger td.msplit{display:inline-block;margin:5px 14px 0 0}
   #moneyBoard table.mledger td.msplit:empty{display:none}
-  #moneyBoard table.mledger td.msplit::before{content:"Split";font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:6px}
+  #moneyBoard table.mledger td.msplit::before{content:"Split";font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-right:6px}
   #moneyBoard table.mcamps td.num{text-align:left}
-  #moneyBoard table.mcamps td.num::before{font-family:var(--monof);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:8px}
+  #moneyBoard table.mcamps td.num::before{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-right:8px}
   #moneyBoard table.mcamps td:nth-child(2)::before{content:"Income"}
   #moneyBoard table.mcamps td:nth-child(3)::before{content:"Expenses"}
   #moneyBoard table.mcamps td:nth-child(4)::before{content:"Profit"}
@@ -1001,36 +1058,36 @@ table.mcamps td.mstate.settled,table.mcamps td.mstate.square{color:var(--good)}
 .mform{gap:14px;grid-auto-rows:max-content}   /* rows keep their height and the drawer scrolls — a .seg (overflow:hidden) would otherwise shrink to a sliver on a phone */
 .mform .mlab{display:grid;gap:6px;min-width:0;justify-items:start}
 .mform .mlab>input,.mform .mlab>select,.mform .mlab>.mmoney{justify-self:stretch}
-.mform .mlt{font-family:var(--monof);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.mform .mlt{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
 .mform input.search,.mform select{width:100%;min-width:0;font-family:var(--sans);font-size:14px;padding:8px 10px;
   border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
 .mform .seg{flex-wrap:wrap}
 .mform .mrow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mmoney{display:flex;align-items:center;gap:6px}
-.mmoney i{font-style:normal;color:var(--ink-faint);font-family:var(--monof);font-size:13px}
-.mcalc{font-family:var(--monof);font-size:15px;color:var(--good);margin-top:-6px}
+.mmoney i{font-style:normal;color:var(--ink-soft);font-size:13px}
+.mcalc{font-size:16px;font-weight:600;color:var(--good);margin-top:-6px}
 .mcalc:empty{display:none}
 .merr{color:var(--bad);font-size:13px;line-height:1.45;font-weight:600}
 .merr:empty{display:none}
-.mvoid{background:var(--line-soft);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--ink-soft)}
-.mreceipt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.mvoid{background:var(--line-soft);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--ink-soft)}
+.mreceipt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
 .mfile{position:relative;overflow:hidden;cursor:pointer}
 .mfile input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
 .mfile.is-busy{opacity:.5;pointer-events:none}
 #mfViewer{justify-self:stretch}
 #mfViewer img{display:block;max-width:100%;border:1px solid var(--line);border-radius:8px;margin-top:8px}
 #mfViewer iframe{display:block;width:100%;height:60vh;border:1px solid var(--line);border-radius:8px;margin-top:8px}
-.maudit{font-size:11.5px;color:var(--ink-faint)}
+.maudit{font-size:12px;color:var(--ink-soft)}
 /* its own box rather than .tbl: two short columns fit a phone-wide drawer as they are, so it never turns into cards */
-.msplitsbox{justify-self:stretch;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto}
-table.msplits{min-width:0;font-size:12.5px}
+.msplitsbox{justify-self:stretch;background:var(--card);border:var(--hair) solid var(--line-strong);border-radius:var(--radius);overflow-x:auto}
+table.msplits{min-width:0;font-size:13px}
 table.msplits th,table.msplits td{padding:7px 8px}
 table.msplits td{white-space:nowrap}
 table.msplits td:first-child{white-space:normal}
-table.msplits .msub{font-size:11px;color:var(--ink-faint);margin-top:2px}
-table.msplits .linkish{font-size:11px}
-table.msplits .chip{font-size:9px;padding:1px 7px;margin-left:4px}
-table.mbuy td.num{text-align:right;font-family:var(--monof);white-space:nowrap}
+table.msplits .msub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+table.msplits .linkish{font-size:12px}
+table.msplits .chip{font-size:11px;padding:1px 7px;margin-left:4px}
+table.mbuy td.num{text-align:right;white-space:nowrap}
 table.mbuy tr.mtot td{border-top:1.5px solid var(--line-strong);font-weight:600}
 table.mbuy .msub{font-weight:400}
 .mcard .mc-sub+.mc-sub{margin-top:6px}
@@ -1038,6 +1095,40 @@ table.mbuy .msub{font-weight:400}
   .mform .mrow2{grid-template-columns:1fr}
   table.msplits td{white-space:normal}
 }
+
+/* ═══════════ how things answer your hand ═══════════
+   A press lands instantly and springs back on release; a hover lights up
+   instantly and fades when you leave. Squares on the dense boards get a ring,
+   not a grow, so their neighbours never jostle. */
+:is(.btn,.seg button,.tick,.ci,.sq,.rsw,.pay,.chip.dpick,.dp-d,.tp-item,.rc-seg button){
+  transition:background-color .2s var(--ease-out),color .2s var(--ease-out),box-shadow .2s var(--ease-out),transform var(--spring-dur) var(--spring)}
+:is(.btn,.seg button,.tick,.ci,.sq,.rsw,.pay,.chip.dpick,.dp-d,.tp-item,.rc-seg button):hover{transition-duration:0s,0s,0s,var(--spring-dur)}
+:is(.btn,.seg button,.tick,.ci,.sq,.rsw,.pay,.chip.dpick,.rc-seg button):active:not([disabled]){transform:scale(.96);transition-duration:0s}
+:is(.ci,.sq):hover{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px rgba(28,23,18,.3)}
+
+/* hit areas: the small controls take a click a few pixels beyond what they draw,
+   and on a touch screen a full 44pt. The Edit × keeps its own box — a stray
+   tap on a delete is the one miss that costs something. */
+:is(.slot-pick,.tick,.dpick,.chip.bz,.rsw,.pay,button.tierchip,.dp-nav){position:relative}
+:is(.slot-pick,.tick,.dpick,.chip.bz,.rsw,.pay,button.tierchip,.dp-nav)::after{content:"";position:absolute;inset:-5px}
+button:is(.ci,.sq):not(.na)::before{content:"";position:absolute;inset:-5px}
+@media (pointer:coarse){
+  :is(.slot-pick,.tick,.dpick,.chip.bz,.rsw,.pay,button.tierchip,.dp-nav,header .btn)::after{
+    content:"";position:absolute;inset:auto;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+  header .btn{position:relative}
+  button:is(.ci,.sq):not(.na)::before{inset:-9px}
+  .btn{padding-top:13px;padding-bottom:13px}
+  header .btn{padding-top:7px;padding-bottom:7px}
+  .btn.sm{padding-top:10px;padding-bottom:10px}
+  .seg button{padding-top:11px;padding-bottom:11px}
+  .tab-sub{padding-top:13px;padding-bottom:13px}
+  select.fsel{padding-top:12px;padding-bottom:12px}
+  input.search{padding-top:12px;padding-bottom:12px}
+  .del{padding:6px 8px}
+}
+/* on screen the cards separate from the paper by fill; on white paper they need
+   their edge back (last in the sheet, so no card rule above can take it away) */
+@media print{.card,.tbl,.biz,.sw-card,.next-call,.mcard{border:.5pt solid #D8D1BF!important;box-shadow:none!important}}
 </style>
 </head>
 <body>
@@ -1078,6 +1169,7 @@ table.mbuy .msub{font-weight:400}
 <div id="timePop" class="hidden"></div>
 <div id="whoPop" class="hidden"></div>
 <div id="bizPop" class="hidden"></div>
+<div id="menuPop" class="hidden" role="menu"></div>
 <div id="ciPop" class="hidden" role="dialog" aria-label="Mark this week's check-in"></div>
 <div id="adrawer" class="adrawer" aria-hidden="true"></div>
 <div class="scrim" id="scrim">
@@ -2332,7 +2424,7 @@ function coachCellHtml(r){
        the rule (or from someone who moved down) stays visible, with a way out. */
     return `<span class="nocoach" title="The Dojo doesn't get check-in calls — a coach is assigned the day they graduate to The Path">Dojo · no coach</span>${
       coach ? ` <span class="chip stale" title="Still on the sheet — clear it, or leave it until they graduate">${esc(coach.split(" ")[0])}</span>
-      <a href="#" class="no-print no-export" data-coachclear="${esc(r.RepID)}" style="font-size:10.5px;color:var(--ink-faint)">clear</a>` : ""}`;
+      <a href="#" class="no-print no-export" data-coachclear="${esc(r.RepID)}" style="font-size:12px;color:var(--ink-faint)">clear</a>` : ""}`;
   }
   return `<select class="btn sm" data-coach="${esc(r.RepID)}" style="padding:3px 6px">
       <option value=""${coach ? "" : " selected"}>—</option>
@@ -2342,7 +2434,7 @@ function coachCellHtml(r){
 function teamRowHtml(r){
   return `<tr${r.Active ? "" : ` style="opacity:.55"`}>
     <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
-        <div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
+        <div style="font-size:12px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
     <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
     <td>${payCell(r)}</td>
     <td class="dt">${fmtCareer(r.CareerSales) ? `<span title="${esc(r.CareerSales)}">${fmtCareer(r.CareerSales)}</span>` : (r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`)}</td>
@@ -2359,7 +2451,7 @@ function teamRowHtml(r){
         href="https://allinalan.github.io/sna-dashboard/?rep=${esc(r.RepID)}&amp;tab=skills"
         title="their 1–10 self ratings across the 137 skills">skillset ↗</a></div>${
       r.OnRoster ? `<div style="margin-top:6px"><a href="#" data-repactive="${esc(r.RepID)}" data-to="${r.Active ? 0 : 1}"
-        style="font-size:10.5px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
+        style="font-size:12px;color:${r.Active ? "var(--ink-faint)" : "var(--accent)"}">${r.Active ? "mark former" : "reactivate"}</a></div>` : ""}</td>
   </tr>`;
 }
 
@@ -2448,7 +2540,7 @@ function renderTeam(){
     html += `</tbody></table></div>`;
   }
   html += `</div>`;
-  html += `<div class="no-export no-print" style="margin-top:14px;font-size:11.5px;color:var(--ink-faint)">
+  html += `<div class="no-export no-print" style="margin-top:14px;font-size:12px;color:var(--ink-faint)">
     New mentees appear here automatically when they submit the onboarding form.
     <a href="#" data-teamact="lock" style="margin-left:10px">Forget key on this device</a></div>`;
   return html;
@@ -2690,6 +2782,7 @@ function openCiPop(btn){
   let top = r.bottom + 8;
   if(top + ph > innerHeight - 8) top = Math.max(8, r.top - ph - 8);
   pop.style.left = left + "px"; pop.style.top = top + "px";
+  popOrigin(pop, r);
 }
 function closeCiPop(){ $("#ciPop").classList.add("hidden"); CI_OPEN = null; }
 /* 17 lanes at a readable size are wider than the page, so the board scrolls
@@ -3430,6 +3523,7 @@ function renderAttend(){
       <div class="lede">A roll for every group call. Click a call to take it: tick who's on, and once the roll is in,
         anyone the call was for who isn't ticked has missed it, and owes the replay. Excused doesn't get anyone out of the
         replay, and a replay never counts as being on the call.</div>
+      ${howToggle()}
       <div class="lede how" style="margin-top:6px">Each call is for its own program, from its topic's tier: T1 is The Dojo,
         T2 The Path, T3 The Masters, and an untagged topic is for everyone. Anyone else on it is a drop-in and never owes
         the replay. A make-up lands on the dashboard of each person who owes one, due the Friday after the call at
@@ -4378,12 +4472,14 @@ function renderMoney(){
     </div>
     <input class="search" id="q" placeholder="Search ${scope.length} entr${scope.length === 1 ? "y" : "ies"}…" value="${esc(UI.q)}">
     <div class="tb-actions">
-      <button class="btn" data-moneyact="new" data-kind="income">+ Income</button>
+      <button class="btn primary" data-moneyact="new" data-kind="income">+ Income</button>
       <button class="btn" data-moneyact="new" data-kind="expense">+ Expense</button>
       <button class="btn" data-moneyact="settle" data-camp="${esc(isAll ? mCampaignOf(today) : camp)}">Settle up</button>
-      <button class="btn" data-moneyact="splits" title="The split new entries start from, campaign by campaign">Splits</button>
-      <button class="btn" data-moneyact="buyout" title="What the contract's buyout would cost at a campaign's turn">Buyout</button>
-      <button class="btn" data-moneyact="reload" title="Pull the latest from the sheet"${MONEY.loading ? " disabled" : ""}>${MONEY.loading ? "Refreshing…" : "Refresh"}</button>
+      ${menuButton(MONEY.loading ? "Refreshing…" : "⋯", `
+        <button data-moneyact="splits" title="The split new entries start from, campaign by campaign">Splits</button>
+        <button data-moneyact="buyout" title="What the contract's buyout would cost at a campaign's turn">Buyout</button><hr>
+        <button data-moneyact="reload" title="Pull the latest from the sheet"${MONEY.loading ? " disabled" : ""}>Refresh from the sheet</button>`,
+        "btn", `aria-label="More: splits, buyout, refresh" title="Splits · Buyout · Refresh from the sheet"`)}
       ${exportButtons("moneyBoard", "Money · " + (isAll ? "All campaigns" : camp))}
     </div>`);
 
@@ -5418,9 +5514,18 @@ function edLive(path, value, cls, placeholder){
   return ed(path, value, cls, placeholder).replace("<span ", "<span data-live ");
 }
 function toolbar(inner){ return `<div class="toolbar no-export no-print">${inner}</div>`; }
+/* exporting is the rarest thing on a page, so it's one quiet button with a menu,
+   not the page's loudest pair */
 function exportButtons(id, label){
-  return `<button class="btn primary" data-png="${id}" data-label="${esc(label)}">Export PNG</button>
-          <button class="btn" data-print="${id}">Print / PDF</button>`;
+  return menuButton("Export", `<button data-png="${id}" data-label="${esc(label)}">Save as PNG</button>
+          <button data-print="${id}">Print or save as PDF</button>`, "btn", `data-exportfor="${id}"`);
+}
+/* A button that opens a small menu of other buttons. The menu's buttons keep their
+   data-* attributes, so the document click handlers that ran them as toolbar
+   buttons run them from the menu too. They wait in a <template>, which is inert:
+   nothing on the page can find or click them until the menu copies them out. */
+function menuButton(label, items, cls = "btn", attrs = ""){
+  return `<span class="menu-wrap"><button class="${cls}" data-menu aria-haspopup="menu" aria-expanded="false" ${attrs}>${label}</button><template class="menu-src">${items}</template></span>`;
 }
 function printHead(title, sub){
   return `<div class="print-head"><div class="t">Sharp Ninja Academy — ${esc(title)}</div><div class="s">${esc(sub)}</div></div>`;
@@ -5504,7 +5609,8 @@ function renderCalendar(){
       <div class="big serif">Campaign Calendar</div>
       <div class="lede">Every call night of the year. This year and next are always here —
         the board rolls itself forward, so Spring is plannable months ahead. Turn on
-        <b>Edit</b> to plan straight into the page, then <b>Export PNG</b> for a clean image.</div>
+        <b>Edit</b> to plan straight into the page, then <b>Export</b> for a clean image.</div>
+      ${howToggle()}
       <div class="lede how" style="margin-top:6px">Calls run at <b>${
         EDITING ? tbtn("meta.callTime", callTime(), {ph:"set a time", title:"The standing time for every call (Central)"})
                 : esc(fmtTime(callTime()) || "no set time")}</b>
@@ -5634,11 +5740,20 @@ function weekRow(r, idx, wkNum){
       : `<span class="stag">${CALL_TYPES[type] || "Group"}</span>`;
   const spk = (path, type, val) =>
     (type === "guest") ? `<span class="spk">${ed(path, val || "", "", "speaker name?")}</span>` : "";
-  /* per-call notes: as many as you want, each line editable + deletable */
-  const noteLines = (arrPath, arr) =>
-    (arr || []).map((n, i) =>
-      `<div class="snote"><span class="ntag">note</span><span class="ntext">${ed(arrPath + "." + i, n, "", "type the note")}</span>${del(arrPath + "." + i, "note")}</div>`).join("") +
-    `<button class="btn sm edit-only no-export no-print snote-add" data-addnote="${arrPath}">+ note</button>`;
+  /* per-call notes: as many as you want, each line editable + deletable. Adding
+     one is an item in the week's Edit menu ("Add a note under …"), not a button
+     under every call. */
+  const noteAdds = [];
+  const callName = (topic, type) => {
+    const s = String(topic || "").trim();
+    return s ? "“" + (s.length > 30 ? s.slice(0, 29) + "…" : s) + "”"
+             : "the " + String(CALL_TYPES[type] || "group").toLowerCase() + " call";
+  };
+  const noteLines = (arrPath, arr, name) => {
+    noteAdds.push(`<button data-addnote="${arrPath}">Add a note under ${esc(name)}</button>`);
+    return (arr || []).map((n, i) =>
+      `<div class="snote"><span class="ntag">note</span><span class="ntext">${ed(arrPath + "." + i, n, "", "type the note")}</span>${del(arrPath + "." + i, "note")}</div>`).join("");
+  };
 
   /* An additional call can land on any night, in or out of its own week — it
      carries its own date, and the week lists in the order it actually runs, so a
@@ -5655,7 +5770,7 @@ function weekRow(r, idx, wkNum){
   if(planned){
     slots.push({date:r.date, j:-1, html:
       `<div class="slot main ${mainType} t${mainType === "hotseat" ? 0 : tierOf(r.topic)}">${sdate(p+".date", r.date, r.date)}${stime(p+".time", r.time, callTime(), r.date)}${stag(p+".callType", mainType)}<span class="stopic">${ed(p+".topic", r.topic)}${mainType === "hotseat" ? "" : tierChip(r.topic)}</span>${spk(p+".speaker", mainType, r.speaker)}${pchip(p+".presenter", r.presenter)}${spick("topic")}</div>`
-      + (off ? "" : atChip(r.cid, r.date)) + noteLines(p + ".mainNotes", r.mainNotes)});
+      + (off ? "" : atChip(r.cid, r.date)) + noteLines(p + ".mainNotes", r.mainNotes, callName(r.topic, mainType))});
   } else if(blocked){
     main += `<div class="wk-topic empty mono">${ed(p+".note", r.note || "blocked", "", "blocked")}</div>`;
   } else {
@@ -5666,17 +5781,10 @@ function weekRow(r, idx, wkNum){
     const xp = `${p}.extra.${j}`, xt = x.type || "group";
     slots.push({date:callDateOf(r, x), j, html:
       `<div class="slot xtra ${xt} t${xt === "hotseat" ? 0 : tierOf(x.topic)}">${sdate(xp+".date", callDateOf(r, x), r.date)}${x.day ? sday(xp+".day", x.day) : ""}${stime(xp+".time", x.time, "", callDateOf(r, x))}${stag(xp+".type", xt)}<span class="stopic">${ed(xp+".topic", x.topic || "", "", "topic?")}${xt === "hotseat" ? "" : tierChip(x.topic)}</span>${spk(xp+".speaker", xt, x.speaker)}${pchip(xp+".presenter", x.presenter)}${spick("extra." + j)}${del(xp, "this call")}</div>`
-      + (isLiveCall(x) && !off && !blocked ? atChip(x.cid, callDateOf(r, x)) : "") + noteLines(xp + ".notes", x.notes)});
+      + (isLiveCall(x) && !off && !blocked ? atChip(x.cid, callDateOf(r, x)) : "") + noteLines(xp + ".notes", x.notes, callName(x.topic, xt))});
   });
   slots.sort((a, b) => a.date.localeCompare(b.date) || a.j - b.j);
   main += slots.map(sl => sl.html).join("");
-
-  if(!blocked)
-    main += `<div class="slot ghost edit-only no-export no-print">
-      <button class="btn sm" data-addcall="${idx}|group">+ call</button>
-      <button class="btn sm" data-addcall="${idx}|hotseat">+ \ud83d\udd25 hot seat</button>
-      <button class="btn sm" data-addcall="${idx}|guest">+ \ud83c\udfa4 guest speaker</button>
-    </div>`;
 
   if(r.detail) main += `<div class="wk-detail">${ed(p+".detail", r.detail)}</div>`;
 
@@ -5688,22 +5796,30 @@ function weekRow(r, idx, wkNum){
   if(r.proposed) main += `<div class="wk-sub proposed"><span class="tag">proposed</span><span>${ed(p+".proposed", r.proposed)}</span></div>`;
   if(r.alt) main += `<div class="wk-sub alt no-export no-print"><span class="tag">alt draft</span><span>${ed(p+".alt", r.alt)}</span></div>`;
 
-  /* in edit mode every week can gain the optional fields, or be wiped back to open */
-  const extras = [];
-  if(!r.track)  extras.push(`<button class="btn sm" data-setfield="${p}.track">+ track</button>`);
-  if(!r.note)   extras.push(`<button class="btn sm" data-setfield="${p}.note">+ week note</button>`);
-  if(!r.detail) extras.push(`<button class="btn sm" data-setfield="${p}.detail">+ detail</button>`);
-  if(!blocked)  extras.push(`<button class="btn sm" data-offweek="${p}">${off ? "back on" : "off week"}</button>`);
-  if(planned || blocked || r.note) extras.push(`<button class="btn sm" data-clearweek="${p}">clear</button>`);
-  main += `<div class="wk-meta edit-only no-export no-print">${extras.join("")}</div>`;
+  /* in edit mode one menu per week holds every way to add to it, take it off the
+     schedule, or wipe it back to open — and it shows under the pointer, not on all
+     fifty-two weeks at once */
+  const adds = [], fields = [], week = [];
+  if(!blocked)  adds.push(`<button data-addcall="${idx}|group">Add a call</button>`,
+                          `<button data-addcall="${idx}|hotseat">Add a 🔥 hot seat</button>`,
+                          `<button data-addcall="${idx}|guest">Add a 🎤 guest speaker</button>`);
+  if(!r.track)  fields.push(`<button data-setfield="${p}.track">Add a track</button>`);
+  if(!r.note)   fields.push(`<button data-setfield="${p}.note">Add a week note</button>`);
+  if(!r.detail) fields.push(`<button data-setfield="${p}.detail">Add a detail</button>`);
+  if(!blocked)  week.push(`<button data-offweek="${p}">${off ? "Back on the schedule" : "Mark as an off week"}</button>`);
+  if(planned || blocked || r.note) week.push(`<button class="danger" data-clearweek="${p}">Clear this week</button>`);
+  const items = [adds, noteAdds, fields, week].filter(g => g.length).map(g => g.join("")).join("<hr>");
+  /* it sits in the date column, which has room to spare, so it never adds a line to the week */
+  const tools = EDITING && items ? `<div class="wk-tools edit-only no-export no-print">${menuButton("+ Add…", items, "btn sm plain",
+    `title="Add a call, a note or a detail to this week, or take it off the schedule"`)}</div>` : "";
 
   return `<div class="week ${state}">
     <div class="wk-date mono"><span class="wknum">WK ${String(wkNum).padStart(2,"0")}</span>
       <b>${EDITING ? dbtn("week", p+".date", r.date, fmtDate(r.date),
             {anchor:r.date, title:"Pick the week's night — its calls move with it"})
           : esc(fmtDate(r.date))}</b>${fmtDay(r.date)}${
-        off ? `<span class="count offb">OFF WEEK</span>` :
-        nCalls > 1 ? `<span class="count">${nCalls} calls</span>` : ""}${del(p, "this week")}</div>
+        off ? `<span class="count offb">Off week</span>` :
+        nCalls > 1 ? `<span class="count">${nCalls} calls</span>` : ""}${del(p, "this week")}${tools}</div>
     <div class="wk-main">${main}</div>
   </div>`;
 }
@@ -5852,7 +5968,7 @@ function renderArchive(){
       html += `<tr class="${r.status==="nocall"?"nocall":""}">
         <td class="num">${r.n}</td>
         <td class="dt">${fmtDate(r.date)} '${String(parseDate(r.date).getFullYear()).slice(2)}</td>
-        <td>${ed(p+".topic", r.topic)}${r.note?`<div style="font-size:11.5px;color:var(--ink-faint);margin-top:3px">${ed(p+".note", r.note)}</div>`:""}</td>
+        <td>${ed(p+".topic", r.topic)}${r.note?`<div style="font-size:12px;color:var(--ink-faint);margin-top:3px">${ed(p+".note", r.note)}</div>`:""}</td>
         <td>${r.series?`<span class="chip">${ed(p+".series", r.series)}</span>`:""}</td>
         <td>${r.call?`<span class="chip">${ed(p+".call", r.call)}</span>`:""}</td>
         <td>${whoChip(p+".presenter", r.presenter)}</td>
@@ -6375,13 +6491,13 @@ function currentTab(){ return TABS.find(t => t.id === TAB) || TABS[0]; }
 function paintTabs(){
   const active = sectionOf(TAB);
   const primary = SECTIONS.map(sec =>
-    `<button class="tab-primary ${sec.id===active?"on":""}" data-section="${sec.id}">${esc(sec.label)}
+    `<button class="tab-primary ${sec.id===active?"on":""}" data-section="${sec.id}"><span class="tl" data-label="${esc(sec.label)}">${esc(sec.label)}</span>
        <span class="ct">${sec.count ? esc(sec.count()) : ""}</span></button>`).join("");
 
   const siblings = tabsIn(active);
   const sub = siblings.length < 2 ? "" :
     `<div class="tabs-sub">` + siblings.map(t =>
-      `<button class="tab-sub ${t.id===TAB?"on":""}" data-tab="${t.id}">${esc(t.sub || t.label)}
+      `<button class="tab-sub ${t.id===TAB?"on":""}" data-tab="${t.id}"><span class="tl" data-label="${esc(t.sub || t.label)}">${esc(t.sub || t.label)}</span>
          <span class="ct">${t.count ? esc(t.count()) : ""}</span></button>`).join("") + `</div>`;
 
   $("#tabBar").innerHTML = `<div class="tabs-primary">${primary}</div>${sub}`;
@@ -6651,6 +6767,7 @@ function openPicker(idx, anchor, field){
   const r = anchor.getBoundingClientRect();
   pop.style.top  = Math.max(10, Math.min(window.innerHeight - pop.offsetHeight - 12, r.bottom + 6)) + "px";
   pop.style.left = Math.max(10, Math.min(window.innerWidth - pop.offsetWidth - 12, r.left)) + "px";
+  popOrigin(pop, r);
   $("#ppq").focus();
 }
 function closePicker(){ $("#pickPop").classList.add("hidden"); PICK_IDX = null; }
@@ -6715,6 +6832,14 @@ function popAt(pop, el){
   const r = el.getBoundingClientRect();
   pop.style.top  = Math.max(10, Math.min(window.innerHeight - pop.offsetHeight - 12, r.bottom + 6)) + "px";
   pop.style.left = Math.max(10, Math.min(window.innerWidth  - pop.offsetWidth  - 12, r.left)) + "px";
+  popOrigin(pop, r);
+}
+/* where a popup grows from: the middle of what was clicked, on the edge nearest
+   it — the top edge when it opened below, the bottom when it had to sit above */
+function popOrigin(pop, r){
+  const left = parseFloat(pop.style.left) || 0, top = parseFloat(pop.style.top) || 0;
+  pop.style.setProperty("--pop-x", Math.max(0, Math.min(pop.offsetWidth, r.left + r.width / 2 - left)) + "px");
+  pop.style.setProperty("--pop-y", top >= r.top + r.height / 2 ? "0" : "100%");
 }
 function closeDatePicker(){ $("#datePop").classList.add("hidden"); DP = null; }
 
@@ -7284,7 +7409,7 @@ async function inlineFonts(){
 async function exportPNG(id, label){
   const node = document.getElementById(id);
   if(!node) return toast("Nothing to export here");
-  const btn = document.querySelector(`[data-png="${id}"]`);
+  const btn = document.querySelector(`[data-exportfor="${id}"]`);   // the Export button the menu opened from
   if(btn){ btn.disabled = true; btn.textContent = "Rendering…"; }
   document.body.classList.add("exporting");
 
@@ -7360,9 +7485,91 @@ async function exportPNG(id, label){
     toast("PNG export failed — use Print / PDF instead");
   }finally{
     document.body.classList.remove("exporting");
-    if(btn){ btn.disabled = false; btn.textContent = "Export PNG"; }
+    if(btn){ btn.disabled = false; btn.textContent = "Export"; }
   }
 }
+
+/* ═══════════ menus, the how-to fold, the drawer's dimmed page ═══════════ */
+/* The menu copies its trigger's <template> buttons into #menuPop. Clicking one
+   runs it through the ordinary handlers (registered above, so they go first),
+   then this one closes the menu. */
+let MENU_FOR = null;
+function openMenu(trigger){
+  const src = trigger.parentElement && trigger.parentElement.querySelector("template.menu-src");
+  if(!src) return;
+  const pop = $("#menuPop");
+  pop.innerHTML = src.innerHTML;
+  pop.querySelectorAll("button").forEach(b => {
+    b.className = "mi" + (b.classList.contains("danger") ? " danger" : ""); b.setAttribute("role", "menuitem");
+  });
+  pop.classList.remove("hidden");
+  popAt(pop, trigger);
+  MENU_FOR = trigger; trigger.setAttribute("aria-expanded", "true");
+}
+function closeMenu(){
+  if(!MENU_FOR) return;
+  $("#menuPop").classList.add("hidden");
+  MENU_FOR.setAttribute("aria-expanded", "false"); MENU_FOR = null;
+}
+document.addEventListener("click", e => {
+  const trig = e.target.closest("[data-menu]");
+  if(trig){ const same = MENU_FOR === trig; closeMenu(); if(!same && !trig.disabled) openMenu(trig); return; }
+  closeMenu();                                   // an item ran (its own handler did the work), or the click was elsewhere
+});
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeMenu(); });
+window.addEventListener("scroll", closeMenu, {passive:true});
+
+/* "How this works" — the how-to paragraphs stay folded until asked for */
+function howToggle(){
+  const open = document.body.classList.contains("how-open");
+  return `<button class="btn sm plain how-toggle" data-howto aria-expanded="${open}">${open ? "Hide how this works" : "How this works"}</button>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-howto]");
+  if(!b) return;
+  const open = document.body.classList.toggle("how-open");
+  b.textContent = open ? "Hide how this works" : "How this works"; b.setAttribute("aria-expanded", String(open));
+});
+
+/* The drawer (assignment review, roll call, money entry) sits over a dimmed page;
+   a click on the dimmed page closes it — unless something in it has changed since
+   it opened, or a save is in flight. Then nothing is thrown away: the drawer
+   shakes and says how to leave. */
+let DRAWER_SNAP = null;                          // {owner, state} from when its current contents first showed
+function drawerOwner(){
+  if(MONEY.form && moneyDrawerMine()) return "money:" + MONEY.form.mode + ":" + (MONEY.form.id || "");
+  if(ASSIGN.open) return "cell:" + ASSIGN.open.repId + ":" + ASSIGN.open.aId;
+  if(AT.open) return "roll:" + AT.open;
+  return "";
+}
+function drawerState(){
+  const d = $("#adrawer");
+  if(MONEY.form && moneyDrawerMine()){ moneyHarvest(); return "m" + JSON.stringify(MONEY.form); }
+  return [...d.querySelectorAll("input,textarea,select")].map(el =>
+           el.type === "checkbox" || el.type === "radio" ? el.checked : el.type === "file" ? el.files.length : el.value)
+         .concat([...d.querySelectorAll(".rc-row")].map(r => r.className)).join("\u0001");
+}
+new MutationObserver(() => {
+  const d = $("#adrawer");
+  if(!d.classList.contains("on")){ DRAWER_SNAP = null; return; }
+  const owner = drawerOwner();
+  if(!DRAWER_SNAP || DRAWER_SNAP.owner !== owner) DRAWER_SNAP = {owner, state: drawerState()};
+}).observe($("#adrawer"), {attributes:true, attributeFilter:["class"], childList:true});
+document.addEventListener("click", e => {
+  const d = $("#adrawer");
+  if(e.target !== document.body || !d.classList.contains("on")) return;   // the dimmed page is body::before
+  const busy = MONEY.busy || ASSIGN.busy || AT.busy;
+  const changed = DRAWER_SNAP && DRAWER_SNAP.owner === drawerOwner() && DRAWER_SNAP.state !== drawerState();
+  if(busy || changed){
+    d.classList.remove("nope"); void d.offsetWidth; d.classList.add("nope");
+    toast(busy ? "Still saving — give it a second" : "You've changed something here — save it, or Cancel to throw it away");
+    return;
+  }
+  if(MONEY.form && moneyDrawerMine()) moneyCloseForm();
+  else if(ASSIGN.open) closeCell();
+  else if(AT.open) closeRoll();
+});
+$("#adrawer").addEventListener("animationend", e => { if(e.animationName === "nope") e.currentTarget.classList.remove("nope"); });
 
 /* ═══════════ DATA EXPORT / IMPORT ═══════════ */
 function openData(){

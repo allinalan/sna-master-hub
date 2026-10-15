@@ -3516,9 +3516,11 @@ document.addEventListener("change",e=>{
 });
 /* the browser scrolls a square the keyboard lands on into view only when none of it is inside
    the board's box, and one under the frozen names is inside it, just covered (as is one half
-   off the right edge). By focusin it has done its scrolling: finish the job. */
+   off the right edge). By focusin it has done its scrolling: finish the job. Every board with
+   frozen names: Assignments' squares, Check-ins' and Attendance's, and Attendance's roll-call
+   headings, which scroll under the Mentee heading the same way. */
 document.addEventListener("focusin",e=>{
-  const sq=e.target.closest&&e.target.closest("table.aboard button.sq");
+  const sq=e.target.closest&&e.target.closest(":is(table.aboard,table.ciboard) :is(button.sq,button.ci,button.rollhd)");
   if(!sq||!sq.matches(":focus-visible"))return;          // a click: the square is where you pointed, leave it
   const tbl=sq.closest(".tbl"),th=tbl.querySelector("th.mentee");if(!th)return;
   const r=sq.getBoundingClientRect(),ring=6;              // the focus ring sits 4px outside

@@ -280,8 +280,10 @@ holds Splits, Buyout and Refresh; clicking the dimmed page closes an untouched d
 shakes one you've typed in; popovers spring out of what you clicked; a switch's knob moves
 across when it's on; the boards' group labels stay in view when a board is scrolled
 sideways (and show in print and in the PNG); the Assignments board's names stay put when it
-scrolls sideways, and a square the keyboard lands on is never under them; the calendar's
-seasons run on across printed pages; and the Orders of Business placeholders wait for their row.
+scrolls sideways; on Assignments, Weekly Check-ins and Call Attendance a square (or a roll-call
+heading) the keyboard lands on is never under the names, and a click never slides the board;
+the calendar's seasons run on across printed pages; and the Orders of Business placeholders
+wait for their row.
 
 It unlocks the coach boards with the dev server's key (`dev`), so it only runs against
 `tools/dev-server.js` on this machine: point `BASE` anywhere else and it refuses before a
@@ -680,9 +682,11 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
   label the same way.
 - **A board's names stay put too.** Weekly Check-ins, Call Attendance and Assignments freeze the
   mentee column (`th.mentee` and `td.an`: sticky at the left, on the card, with a hairline edge),
-  so a row's squares never lose whose they are; a hovered row's band runs under the name. On
-  Assignments, a square the keyboard lands on is nudged out from under the names, and on paper
-  and in the PNG it's the plain column it always was (nothing scrolls there).
+  so a row's squares never lose whose they are; a hovered row's band runs under the name. A
+  square the keyboard lands on (or a roll-call heading on Call Attendance) is nudged out from
+  under the names: the browser won't do it, because a control under a sticky column counts as
+  in view. A click never slides the board. On Assignments, on paper and in the PNG it's the
+  plain column it always was (nothing scrolls there).
 - **Popovers share one shell**: a frosted material that springs out of whatever you clicked
   (`popOrigin()`). The drawer comes in on the iOS sheet curve over a dimmed page. Clicking the
   dimmed page closes it, unless something in it changed since it opened; then it shakes

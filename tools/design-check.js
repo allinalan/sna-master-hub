@@ -37,6 +37,11 @@
 //   spring out of what you clicked. A switch's knob moves across when it's on.
 //   A board's group labels ("Alan's mentees · 2", "The Dojo") stay in view when the board
 //   is scrolled sideways, and still show in print and in the PNG, which is the whole width.
+//   The Assignments board's name column holds at the left edge when it scrolls sideways (at
+//   390 and 600px wide): every name stays in view and on top of the squares under it, faded
+//   former rows too, with the group labels lined up over it; a hovered row's band runs under
+//   its name; dark mode fills it with the dark card; a square the keyboard lands on is never
+//   under it; a click doesn't slide the board. In print and the PNG it's a plain column.
 //   The calendar's seasons run on across printed pages (a week never splits, a season's
 //   heading never sits alone at the foot of a page), so page 1 isn't just the stats.
 //   Orders of Business keeps its unset chips and "+ note" out of sight until the row is
@@ -375,6 +380,24 @@ async function switchLook(){
   });
 }
 
+/* (runs in the page) a dozen assignments on the Assignments board, so it's wider than a phone or a
+   600px page, plus the former mentees if asked. They live in the page only: nothing reaches the dev server. */
+const dozenAssignments = async former => {
+  while(!(ASSIGN.rows && TEAM.rows)) await new Promise(ok => setTimeout(ok, 50));   // a fresh dev server has none
+  for(let i = 1; i <= 12; i++) ASSIGN.rows.assignments.push({AssignmentID: "DC" + i, Programs: "The Dojo, The Path, Masters",
+    Campaign: ASSIGN.campaign, Title: "Design check " + i, Instructions: "", MaterialsURL: "", DueDate: "", Active: "Y"});
+  if(former) UI.assignFormer = true;
+  render();
+};
+/* keep a copy of the holder the next PNG is drawn from, as window.__holder */
+const keepPngHolder = page => page.evaluate(() => {
+  const real = XMLSerializer.prototype.serializeToString;
+  XMLSerializer.prototype.serializeToString = function(node){
+    if(node && node.classList && node.classList.contains("png-holder")) window.__holder = node.cloneNode(true);
+    return real.call(this, node);
+  };
+});
+
 async function stickyGroupLabels(){
   console.log("\nGroup labels — stay in view when a board is scrolled sideways, and in print and the PNG");
   /* every group label's text, relative to its board's visible box: in view, and where it sits unscrolled */
@@ -395,12 +418,7 @@ async function stickyGroupLabels(){
       DATA.calendar.forEach((r, i) => { if(!isPlanned(r) && !isOff(r) && !isBlocked(r)) r.topic = "Practice topic " + i; });
       render();
     }],
-    ["Assignments", "#assign", 600, "#view .toolbar", async () => {   // a dozen assignments, in the page only
-      while(!(ASSIGN.rows && TEAM.rows)) await new Promise(ok => setTimeout(ok, 50));   // a fresh dev server has none
-      for(let i = 1; i <= 12; i++) ASSIGN.rows.assignments.push({AssignmentID: "DC" + i, Programs: "The Dojo, The Path, Masters",
-        Campaign: ASSIGN.campaign, Title: "Design check " + i, Instructions: "", MaterialsURL: "", DueDate: "", Active: "Y"});
-      render();
-    }],
+    ["Assignments", "#assign", 600, "#view .toolbar", dozenAssignments],
   ];
   for(const [name, hash, width, ready, widen] of boards){
     await onPage(hash, {width, ready}, async page => {
@@ -430,13 +448,7 @@ async function stickyGroupLabels(){
     await page.emulateMedia({media: "screen"});
 
     /* keep a copy of the holder the PNG is drawn from, then look at its labels */
-    await page.evaluate(() => {
-      const real = XMLSerializer.prototype.serializeToString;
-      XMLSerializer.prototype.serializeToString = function(node){
-        if(node && node.classList && node.classList.contains("png-holder")) window.__holder = node.cloneNode(true);
-        return real.call(this, node);
-      };
-    });
+    await keepPngHolder(page);
     await page.click("#view [data-exportfor]");
     const dl = need("a PNG from the check-ins board's Export", await download(page, () => page.click("#menuPop .mi[data-png]")));
     const png = fs.readFileSync(await dl.path());
@@ -457,6 +469,132 @@ async function stickyGroupLabels(){
     const pngWidth = png.readUInt32BE(16) / 2 - 56;                // drawn at 2x, with 28px either side
     check("the PNG is the whole board's width, not the slice on screen", pngWidth >= st.screen, {pngWidth, ...st});
     check("…and each group label is in it, at the left of its band", st.rows.length > 0 && st.rows.every(r => r.shown && r.fromCell === 14), st.rows);
+  });
+}
+
+async function frozenNames(){
+  console.log("\nAssignments — the name column stays put when the board scrolls sideways (on screen only)");
+  /* the header's and every row's name cell against the board's visible box, and what's drawn on top
+     of each (elementFromPoint): the name, not a square scrolled under it; the same for the group labels */
+  const names = page => page.evaluate(() => {
+    const t = document.querySelector("#assignBoard .tbl"), box = t.getBoundingClientRect();
+    const onTop = (el, r) => { const hit = document.elementFromPoint(r.left + 4, r.top + r.height / 2); return !!hit && el.contains(hit); };
+    return {scrolls: t.scrollWidth > t.clientWidth + 20, at: Math.round(t.scrollLeft), below: box.bottom > innerHeight, head: !!t.querySelector("th.mentee"),
+            cells: [t.querySelector("th.mentee"), ...t.querySelectorAll("td.an")].filter(Boolean).map(c => { const r = c.getBoundingClientRect();
+              return {text: c.textContent.trim(), fromEdge: Math.round(r.left - box.left), inView: r.width > 0 && r.left >= box.left - 1 && r.right <= box.right + 1,
+                      onTop: onTop(c, r), former: c.parentElement.style.opacity !== ""}; }),
+            labels: [...t.querySelectorAll("tr.agrp .glab")].map(g => { const r = g.getBoundingClientRect();
+              return {text: g.textContent.trim(), fromEdge: Math.round(r.left - box.left), onTop: onTop(g, r)}; })};
+  });
+  const toEnd = page => page.evaluate(() => { const t = document.querySelector("#assignBoard .tbl"); t.scrollLeft = t.scrollWidth; });
+  const ready = "#assignBoard .tbl table.aboard tr.agrp";
+  for(const width of [390, 600]){
+    await onPage("#assign", {width, height: 1800, ready: "#view .toolbar"}, async page => {
+      await page.evaluate(dozenAssignments, true);
+      await page.waitForSelector(ready);
+      await toEnd(page);
+      const far = await names(page);
+      if(!far.scrolls) throw new Missing(`Assignments isn't wider than a ${width}px page, so there's no sideways scroll to check`);
+      if(far.below) throw new Missing(`the Assignments board runs past the bottom of a ${width}x1800 page`);
+      check(`${width}px, scrolled to the far end: every name, and the Mentee heading, is still in view at the left edge`,
+            far.head && far.at > 0 && far.cells.length > 1 && far.cells.every(c => c.inView && c.fromEdge === 0), {head: far.head, out: far.cells.filter(c => !c.inView || c.fromEdge)});
+      check(`…drawn over the squares that scrolled under it, a former mentee's faded row too`,
+            far.cells.some(c => c.former) && far.cells.every(c => c.onTop), far.cells.filter(c => !c.onTop));
+      check(`…and the group labels sit over it, lined up with the names (14px in)`,
+            far.labels.length > 0 && far.labels.every(l => l.onTop && l.fromEdge === 14), far.labels);
+    });
+  }
+
+  await onPage("#assign", {width: 390, height: 1800, ready: "#view .toolbar"}, async page => {
+    await page.evaluate(dozenAssignments, true);
+    await page.waitForSelector(ready);
+    /* a row under the pointer: its band runs under its frozen name; the others' names stay on the card */
+    await page.evaluate(() => { const t = document.querySelector("#assignBoard .tbl"); t.scrollLeft = (t.scrollWidth - t.clientWidth) / 2; });
+    const fills = () => page.evaluate(() => {
+      const t = document.querySelector("#assignBoard .tbl"), rows = [...t.querySelectorAll("tbody tr:not(.agrp)")];
+      const bg = el => getComputedStyle(el).backgroundColor;
+      return {card: bg(t), rows: rows.map(tr => ({name: tr.querySelector("td.an b").textContent, hovered: tr.matches(":hover"), row: bg(tr), an: bg(tr.querySelector("td.an"))}))};
+    });
+    const tbl = await page.locator("#assignBoard .tbl").boundingBox(), row = await page.locator("#assignBoard tbody tr:not(.agrp)").nth(2).boundingBox();
+    await page.mouse.move(tbl.x + tbl.width - 30, row.y + row.height / 2);
+    await pause(page, 300);                                              // the row's fill eases in over .12 s
+    const light = await fills(page), hov = light.rows.filter(r => r.hovered);
+    check("a hovered row's band runs under its frozen name, and the other names stay on the card",
+          hov.length === 1 && hov[0].an === hov[0].row && hov[0].an !== light.card && light.rows.every(r => r.hovered || r.an === light.card), light);
+    await page.mouse.move(0, 0);
+    await page.emulateMedia({colorScheme: "dark"});
+    const dark = await fills(page);
+    check("in dark mode the frozen column is the dark card, not a light patch", dark.card !== light.card && dark.rows.every(r => r.an === dark.card), dark);
+    await page.emulateMedia({colorScheme: "light"});
+
+    /* the keyboard: Shift+Tab from the far end along a row, then Tab along the next and round
+       onto the one after. Each square it lands on is clear of the column and of the right edge. */
+    const sweep = async (row, key, from) => {
+      await page.evaluate(([row, from]) => {
+        const t = document.querySelector("#assignBoard .tbl"), sq = [...t.querySelectorAll("tbody tr:not(.agrp)")[row].querySelectorAll("button.sq")];
+        t.scrollLeft = from === "end" ? t.scrollWidth : 0; (from === "end" ? sq[sq.length - 1] : sq[0]).focus();
+      }, [row, from]);
+      const n = await page.locator("#assignBoard tbody tr:not(.agrp)").nth(row).locator("button.sq").count(), out = [];
+      for(let i = 0; i < n; i++){
+        await page.keyboard.press(key);
+        out.push(await page.evaluate(() => {
+          const t = document.querySelector("#assignBoard .tbl"), a = document.activeElement, r = a.getBoundingClientRect();
+          return {at: a.title.split(" · ").slice(0, 2).join(" · "), under: Math.round(a.closest("tr").querySelector("td.an").getBoundingClientRect().right - r.left),
+                  past: Math.round(r.right - t.getBoundingClientRect().right)};
+        }));
+      }
+      return out;
+    };
+    const back = await sweep(1, "Shift+Tab", "end"), fwd = await sweep(2, "Tab", "start");
+    check("Shift+Tab along a row from the far end: every square it lands on is clear of the frozen names",
+          back.length > 6 && back.every(s => s.under < 0 && s.past < 0), back.filter(s => s.under >= 0 || s.past >= 0));
+    check("…and Tab along a row and round onto the next one: the same, at the right edge too",
+          fwd.length > 6 && fwd.every(s => s.under < 0 && s.past < 0), fwd.filter(s => s.under >= 0 || s.past >= 0));
+
+    /* a click on a square half under the column opens it where it is: the board doesn't slide under the pointer */
+    const half = await page.evaluate(() => {
+      const t = document.querySelector("#assignBoard .tbl"), sq = t.querySelectorAll("tbody tr:not(.agrp)")[0].querySelectorAll("button.sq")[3];
+      t.scrollLeft += sq.getBoundingClientRect().left - sq.closest("tr").querySelector("td.an").getBoundingClientRect().right + 12;
+      const r = sq.getBoundingClientRect();
+      return {at: t.scrollLeft, x: r.right - 5, y: r.top + r.height / 2, cell: sq.dataset.cell};
+    });
+    await page.mouse.click(half.x, half.y);
+    const opened = await page.evaluate(() => ({at: document.querySelector("#assignBoard .tbl").scrollLeft, open: ASSIGN.open && ASSIGN.open.repId + "|" + ASSIGN.open.aId}));
+    check("a click on a square half under the column opens that square, and the board stays where it was",
+          opened.at === half.at && opened.open === half.cell, {half, opened});
+  });
+
+  await onPage("#assign", {width: 600, ready: "#view .toolbar"}, async page => {
+    await page.evaluate(dozenAssignments, true);
+    await page.waitForSelector(ready);
+    await toEnd(page);
+    /* paper doesn't scroll: the column is a plain one there (no hold, no divider, no fill), as it always was */
+    const plain = sel => page.evaluate(sel => [...document.querySelectorAll(sel)].map(c => {
+      const s = getComputedStyle(c), r = c.getBoundingClientRect(), tb = c.closest("table").getBoundingClientRect();
+      return {text: c.textContent.trim(), pos: s.position, shadow: s.boxShadow, fill: s.backgroundColor, fromTable: Math.round(r.left - tb.left)};
+    }), sel);
+    const isPlain = cells => cells.length > 1 && cells.every(c => c.pos === "static" && c.shadow === "none" && c.fill === "rgba(0, 0, 0, 0)" && c.fromTable === 0);
+    await page.emulateMedia({media: "print"});
+    const pr = await plain("#assignBoard th.mentee, #assignBoard td.an");
+    check("in print the name column is a plain column again, at the board's left, whatever the screen was scrolled to", isPlain(pr), pr);
+    await page.emulateMedia({media: "screen"});
+
+    await keepPngHolder(page);
+    await page.click("#view [data-exportfor]");
+    const dl = need("a PNG from the Assignments board's Export", await download(page, () => page.click("#menuPop .mi[data-png]")));
+    const png = fs.readFileSync(await dl.path());
+    const st = await page.evaluate(() => {
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "position:absolute;left:0;top:0;z-index:9999";
+      wrap.appendChild(window.__holder); document.body.appendChild(wrap);
+      wrap.id = "pngHeld";
+      return {screen: document.querySelector("#assignBoard .tbl").scrollWidth};
+    });
+    const held = await plain("#pngHeld th.mentee, #pngHeld td.an");
+    await page.evaluate(() => document.getElementById("pngHeld").remove());
+    const pngWidth = png.readUInt32BE(16) / 2 - 56;                // drawn at 2x, with 28px either side
+    check("the PNG is the whole board's width, not the slice on screen", pngWidth >= st.screen, {pngWidth, ...st});
+    check("…and its name column is the plain one, at the board's left", isPlain(held), held);
   });
 }
 
@@ -563,6 +701,7 @@ async function bizPlaceholders(){
     await popoversSpring();
     await switchLook();
     await stickyGroupLabels();
+    await frozenNames();
     await calendarPrint();
     await bizPlaceholders();
     console.log("\nScript errors");

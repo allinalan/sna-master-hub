@@ -3044,6 +3044,11 @@ document.addEventListener("click", e => {
   if(o && CI_OPEN){
     const {camp, rep, week} = CI_OPEN, st = o.dataset.cistate;
     const row = (TEAM.rows || []).find(r => r.RepID === rep);
+    /* picked from the keyboard (Enter or Space make a click with no click count): the focus goes
+       back to the week it was opened from, and render() keeps it there, so the next Tab carries on
+       along the row. A mouse pick leaves the focus alone, as the menus do. */
+    const back = e.detail === 0 && $(`#view [data-ci="${CSS.escape([camp, rep, week].join("|"))}"]`);
+    if(back) back.focus({preventScroll: true});
     setCheckin(camp, rep, week, st);
     closeCiPop(); render();
     toast(`${row ? row.Name.split(" ")[0] : rep} · ${weekLabel(camp, week)} · ${st ? CI_STATES[st].label : "cleared"}`);
@@ -6864,6 +6869,33 @@ function pageIn(){
 }
 const entranceOf = v => [...v.children].flatMap(c => c.getAnimations()).filter(a => a.animationName === "pageIn");
 
+/* A render builds #view afresh, and a fresh board starts scrolled back to its first column with
+   the focus dropped to <body>: on a phone, marking Wk 11 on Weekly Check-ins threw you back to
+   Wk 1 every time (fixed 2026-10-15). So render() notes where each board is scrolled sideways
+   (a board is known by the frame it sits in and its table: another tab's board starts at its
+   own beginning) and which square has the focus (known by what it marks: a check-in week, a
+   call's roll, an assignment), and puts both back on the new board. The scroll goes back
+   first, so the focusin nudge finds the square where it was and has nothing to do. */
+const BOARD_SQUARE = ["data-ci", "data-atcell", "data-cell"];
+function boardsOf(v){
+  const seen = {};
+  return [...v.querySelectorAll(".tbl")].map(t => {
+    const k = (t.parentElement.closest("[id]") || v).id + " " + ((t.querySelector("table") || {}).className || "");
+    seen[k] = (seen[k] || 0) + 1;
+    return [k + " " + seen[k], t];
+  });
+}
+function boardPlace(v){
+  const a = document.activeElement, attr = a && v.contains(a) && BOARD_SQUARE.find(n => a.hasAttribute(n));
+  return {scroll: new Map(boardsOf(v).filter(([, t]) => t.scrollLeft).map(([k, t]) => [k, t.scrollLeft])),
+          square: attr ? `[${attr}="${CSS.escape(a.getAttribute(attr))}"]` : null};
+}
+function backInPlace(v, {scroll, square}, focusTaken){
+  for(const [k, t] of boardsOf(v)) if(scroll.has(k)) t.scrollLeft = scroll.get(k);
+  const sq = square && !focusTaken && v.querySelector(square);
+  if(sq) sq.focus({preventScroll: true});
+}
+
 function render(){
   /* the search box, the "add a task" box and a Mentees row's Pay amount are
      rebuilt by every render (a sync, a flash fading out) — put the cursor back
@@ -6875,11 +6907,12 @@ function render(){
   if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance
   if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
   if(CI_OPEN) closeCiPop();
-  const v = $("#view");
+  const v = $("#view"), place = boardPlace(v);
   const mid = v.classList.contains("page-enter") && entranceOf(v).find(a => a.playState === "running");
   const at = mid ? mid.currentTime : null;       // read now: swapping the children cancels it
   if(!mid) v.classList.remove("page-enter");     // the entrance is over (see pageIn)
   v.innerHTML = editBanner() + currentTab().render();
+  backInPlace(v, place, focused || PENDING_FOCUS);
   if(mid) entranceOf(v).forEach(a => { a.currentTime = at; });
   if(AT.open){ if(TAB === "attend") paintRoll(); else closeRoll(); }
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";

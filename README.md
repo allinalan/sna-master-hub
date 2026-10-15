@@ -282,14 +282,16 @@ across when it's on; the boards' group labels stay in view when a board is scrol
 sideways (and show in print and in the PNG); the Assignments board's names stay put when it
 scrolls sideways; on Assignments, Weekly Check-ins and Call Attendance a square (or a roll-call
 heading) the keyboard lands on is never under the names, and a click never slides the board;
-the calendar's seasons run on across printed pages; and the Orders of Business placeholders
-wait for their row.
+marking a square on those three boards (by click, or from the keyboard), or a render landing
+while one has the focus, leaves the board where it was scrolled and the keyboard's focus on that
+square; the calendar's seasons run on across printed pages; and the Orders of Business
+placeholders wait for their row.
 
 It unlocks the coach boards with the dev server's key (`dev`), so it only runs against
 `tools/dev-server.js` on this machine: point `BASE` anywhere else and it refuses before a
 page opens. It never turns an automation switch on, even a fake one: on the real sheet that
 starts real sends. A switch's look is checked on a copy with the class set by hand.
-Anything it adds to a board (assignments, calls) lives in that page only.
+Anything it adds to a board (assignments, calls, a due-date change) lives in that page only.
 
 Exit 0 means every check passed, 1 that one failed, 2 that it couldn't run (no Playwright,
 no browser, the dev server didn't start, or something it needs isn't on the page).
@@ -687,6 +689,15 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
   under the names: the browser won't do it, because a control under a sticky column counts as
   in view. A click never slides the board. On Assignments, on paper and in the PNG it's the
   plain column it always was (nothing scrolls there).
+- **A board stays where you scrolled it.** Marking a square re-renders the whole tab, and a
+  fresh board would start back at its first column with the focus on nothing: on a phone,
+  marking Wk 11 threw you back to Wk 1. So `render()` puts each board back where it was
+  scrolled sideways, and gives the focus back to the square that had it, found again by what
+  it marks (`data-ci`, `data-atcell` or `data-cell`; a new board's squares need one of these,
+  or add its attribute to `BOARD_SQUARE`). A pick made from inside the check-in popover sends
+  the focus back to the week it was opened from. A click user sees the board where they left
+  it; a keyboard user is still on the square they marked, and Tab carries on along the row.
+  Another tab's board starts at its own beginning.
 - **Popovers share one shell**: a frosted material that springs out of whatever you clicked
   (`popOrigin()`). The drawer comes in on the iOS sheet curve over a dimmed page. Clicking the
   dimmed page closes it, unless something in it changed since it opened; then it shakes

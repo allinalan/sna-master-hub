@@ -42,6 +42,9 @@
 //   former rows too, with the group labels lined up over it; a hovered row's band runs under
 //   its name; dark mode fills it with the dark card; a square the keyboard lands on is never
 //   under it; a click doesn't slide the board. In print and the PNG it's a plain column.
+//   On a phone a name's chips go on a line under it, so the column is at most 150px of the
+//   board and every name is still whole; wider than that, in print and in the PNG, the chips
+//   stay on the name's line.
 //   The calendar's seasons run on across printed pages (a week never splits, a season's
 //   heading never sits alone at the foot of a page), so page 1 isn't just the stats.
 //   Orders of Business keeps its unset chips and "+ note" out of sight until the row is
@@ -473,7 +476,7 @@ async function stickyGroupLabels(){
 }
 
 async function frozenNames(){
-  console.log("\nAssignments — the name column stays put when the board scrolls sideways (on screen only)");
+  console.log("\nAssignments — the name column stays put when the board scrolls sideways, and is narrow on a phone (on screen only)");
   /* the header's and every row's name cell against the board's visible box, and what's drawn on top
      of each (elementFromPoint): the name, not a square scrolled under it; the same for the group labels */
   const names = page => page.evaluate(() => {
@@ -486,6 +489,28 @@ async function frozenNames(){
             labels: [...t.querySelectorAll("tr.agrp .glab")].map(g => { const r = g.getBoundingClientRect();
               return {text: g.textContent.trim(), fromEdge: Math.round(r.left - box.left), onTop: onTop(g, r)}; })};
   });
+  /* the column's width, and each name: on one line, inside its cell, not cut off (overflow, an
+     ellipsis), its last letters not drawn over, and its chips on a line under it (a phone's layout) */
+  const nameFit = page => page.evaluate(() => {
+    const t = document.querySelector("#assignBoard .tbl"), within = (a, b) => a.left >= b.left - .5 && a.right <= b.right + .5 && a.top >= b.top - .5 && a.bottom <= b.bottom + .5;
+    return {board: Math.round(t.clientWidth), col: Math.round(t.querySelector("th.mentee").getBoundingClientRect().width),
+            rows: [...t.querySelectorAll("td.an")].map(td => {
+              const b = td.querySelector("b"), text = document.createRange(), cell = td.getBoundingClientRect();
+              text.selectNodeContents(b);
+              const n = text.getBoundingClientRect(), chips = [...td.querySelectorAll(".chip")].map(c => c.getBoundingClientRect());
+              const end = document.elementFromPoint(n.right - 2, n.top + n.height / 2), cut = el => getComputedStyle(el).textOverflow === "ellipsis";
+              return {name: b.textContent, lines: b.getClientRects().length, inCell: within(n, cell) && within(n, t.getBoundingClientRect()) && chips.every(c => within(c, cell)),
+                      overflows: td.scrollWidth > td.clientWidth, ellipsis: cut(td) || cut(b), endShown: !!end && b.contains(end),
+                      under: chips.length > 0 && chips.every(c => c.top >= n.bottom - 1)};
+            })};
+  });
+  /* each name cell's chips: on the name's line, after it (wider than a phone, in print, in the PNG) */
+  const oneLine = (page, sel) => page.evaluate(sel => [...document.querySelectorAll(sel)].map(td => {
+    const n = td.querySelector("b").getBoundingClientRect(), mid = r => r.top + r.height / 2;
+    const chips = [...td.querySelectorAll(".chip")].map(c => c.getBoundingClientRect());
+    return {name: td.querySelector("b").textContent, chips: chips.length, oneLine: chips.length > 0 && chips.every(c => Math.abs(mid(c) - mid(n)) < 3 && c.left > n.right)};
+  }), sel);
+  const allOneLine = rows => rows.length > 1 && rows.some(r => r.chips === 2) && rows.every(r => r.oneLine);
   const toEnd = page => page.evaluate(() => { const t = document.querySelector("#assignBoard .tbl"); t.scrollLeft = t.scrollWidth; });
   const ready = "#assignBoard .tbl table.aboard tr.agrp";
   for(const width of [390, 600]){
@@ -502,8 +527,23 @@ async function frozenNames(){
             far.cells.some(c => c.former) && far.cells.every(c => c.onTop), far.cells.filter(c => !c.onTop));
       check(`…and the group labels sit over it, lined up with the names (14px in)`,
             far.labels.length > 0 && far.labels.every(l => l.onTop && l.fromEdge === 14), far.labels);
+      /* on a phone a name's chips go under it, so the column leaves room for ~4 squares, not ~2½ */
+      const fit = await nameFit(page);
+      check(`…it's at most 150px of the ${fit.board}px board (${fit.col}px), each name's chips on a line under it`,
+            fit.col <= 150 && fit.rows.length > 1 && fit.rows.every(r => r.under), {col: fit.col, notUnder: fit.rows.filter(r => !r.under)});
+      check(`…and every name is whole: on one line, inside its cell, nothing cut off or drawn over its end`,
+            fit.rows.every(r => r.lines === 1 && r.inCell && !r.overflows && !r.ellipsis && r.endShown),
+            fit.rows.filter(r => r.lines !== 1 || !r.inCell || r.overflows || r.ellipsis || !r.endShown));
     });
   }
+
+  /* wider than a phone, a name and its chips are the one line they always were */
+  await onPage("#assign", {width: 1280, ready: "#view .toolbar"}, async page => {
+    await page.evaluate(dozenAssignments, true);
+    await page.waitForSelector(ready);
+    const rows = await oneLine(page, "#assignBoard td.an");
+    check(`1280px: each name's chips (rep ID, "former") stay on the name's line, after it`, allOneLine(rows), rows.filter(r => !r.oneLine));
+  });
 
   await onPage("#assign", {width: 390, height: 1800, ready: "#view .toolbar"}, async page => {
     await page.evaluate(dozenAssignments, true);
@@ -577,6 +617,8 @@ async function frozenNames(){
     await page.emulateMedia({media: "print"});
     const pr = await plain("#assignBoard th.mentee, #assignBoard td.an");
     check("in print the name column is a plain column again, at the board's left, whatever the screen was scrolled to", isPlain(pr), pr);
+    const prLine = await oneLine(page, "#assignBoard td.an");
+    check("…and each name's chips are on its line, as they always were (under it is for a phone's screen only)", allOneLine(prLine), prLine.filter(r => !r.oneLine));
     await page.emulateMedia({media: "screen"});
 
     await keepPngHolder(page);
@@ -590,11 +632,12 @@ async function frozenNames(){
       wrap.id = "pngHeld";
       return {screen: document.querySelector("#assignBoard .tbl").scrollWidth};
     });
-    const held = await plain("#pngHeld th.mentee, #pngHeld td.an");
+    const held = await plain("#pngHeld th.mentee, #pngHeld td.an"), heldLine = await oneLine(page, "#pngHeld td.an");
     await page.evaluate(() => document.getElementById("pngHeld").remove());
     const pngWidth = png.readUInt32BE(16) / 2 - 56;                // drawn at 2x, with 28px either side
     check("the PNG is the whole board's width, not the slice on screen", pngWidth >= st.screen, {pngWidth, ...st});
     check("…and its name column is the plain one, at the board's left", isPlain(held), held);
+    check("…with each name's chips on its line", allOneLine(heldLine), heldLine.filter(r => !r.oneLine));
   });
 }
 

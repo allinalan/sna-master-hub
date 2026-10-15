@@ -745,6 +745,14 @@ table.aboard th.mentee{z-index:2}
 table.aboard tbody tr:hover td.an{background:var(--paper-deep)}
 .png-holder table.aboard :is(th.mentee,td.an),body.exporting table.aboard :is(th.mentee,td.an){position:static!important;background:none!important;box-shadow:none!important}
 @media print{table.aboard :is(th.mentee,td.an){position:static!important;background:none!important;box-shadow:none!important}}
+/* on a phone a name's chips (rep ID, "former") go on a line under it, as on the check-ins board,
+   so the frozen column is ~130px of the board, not ~210, and ~4 squares show beside it. Screen only,
+   and never in what's exported: Print and the PNG's measuring run under body.exporting, and the
+   PNG's copy sits outside #view, so there the chips stay on the name's line */
+@media screen and (max-width:640px){
+  body:not(.exporting) #view table.aboard td.an .an-sub{display:flex;gap:5px;margin-top:4px}
+  body:not(.exporting) #view table.aboard td.an .an-sub .chip{font-size:11px;padding:2px 7px}
+}
 table.aboard td.ac{text-align:center;padding:6px}
 table.aboard tr.agrp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
 table.aboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
@@ -3332,7 +3340,7 @@ function renderAssign(){
   if(!ASSIGN.rows){
     if(!ASSIGN.loading&&!ASSIGN.err)assignLoad(true);
     return html+(ASSIGN.err&&!ASSIGN.loading?emptyState("Couldn't load the assignments",esc(ASSIGN.err),`<button class="btn" data-assignact="reload">Try again</button>`,"err")
-                           :skelTable(ASSIGN.loadSince,SKEL_BOARD(7),"Loading the assignments…"));
+                           :skelTable(ASSIGN.loadSince,SKEL_BOARD(7,matchMedia("screen and (max-width:640px)").matches),"Loading the assignments…"));
   }
   const c=assignCounts();
   html+=toolbar(`<div class="tb-filters">
@@ -3359,7 +3367,7 @@ function assignBoardHtml(){
       return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignPrograms(a).map(p=>p[0]).join(""))} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
   const row=(r,gone)=>{
     let inN=0,appN=0;
-    h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</td>`;
+    h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="an-sub"><span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</span></td>`;
     list.forEach(a=>{
       const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
       h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":s.pastDue?" · was due ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;

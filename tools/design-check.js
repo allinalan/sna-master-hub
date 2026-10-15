@@ -42,6 +42,20 @@
 //   former rows too, with the group labels lined up over it; a hovered row's band runs under
 //   its name; dark mode fills it with the dark card; a square the keyboard lands on is never
 //   under it; a click doesn't slide the board. In print and the PNG it's a plain column.
+//   On a phone a name's chips go on a line under it, so the column is at most 150px of the
+//   board and every name is still whole; wider than that, in print and in the PNG, the chips
+//   stay on the name's line.
+//   The same on Weekly Check-ins and Call Attendance (390 and 1000px): Tab and Shift+Tab never
+//   leave a square, or a roll-call heading, under the frozen names or past the right edge; Enter
+//   on one the keyboard brought out opens its popover (or that call's roll) right there, and
+//   "Showing Wk a–b" keeps up; a click on a half-covered one opens it without the board moving.
+//   The Weekly Check-ins popover works from the keyboard like a menu: Enter or Space on a square
+//   opens it on what the square is marked (or the first option), Up / Down / Home / End move,
+//   Enter picks (the square shows it), and picking, Escape and Tab put the focus back on the
+//   square. A screen reader hears whose week it is. A click opens it and leaves the focus alone.
+//   Marking a square at 390px, scrolled well along (a check-in week by click and from inside its
+//   popover, a call's roll, an assignment's drawer), or a render landing while a square has the
+//   keyboard's focus, leaves the board where it was scrolled and the focus on that square, ring showing.
 //   The calendar's seasons run on across printed pages (a week never splits, a season's
 //   heading never sits alone at the foot of a page), so page 1 isn't just the stats.
 //   Orders of Business keeps its unset chips and "+ note" out of sight until the row is
@@ -397,6 +411,35 @@ const keepPngHolder = page => page.evaluate(() => {
     return real.call(this, node);
   };
 });
+/* (runs in the page) a call on every open week of Call Attendance, so the board is wider than the page.
+   In the page only, like the assignments above. */
+const callEveryWeek = () => {
+  DATA.calendar.forEach((r, i) => { if(!isPlanned(r) && !isOff(r) && !isBlocked(r)) r.topic = "Practice topic " + i; });
+  render();
+};
+/* the keyboard along a run of controls (a row's squares, the roll-call headings) on a board whose names are
+   frozen. The focus starts on the run's first control with the board unscrolled, or on its last with the board
+   at the far end; then `key` is pressed once per control, the last press stepping off the run onto the next
+   (or with onward false, once fewer, staying on it). After each press: where the focus is, how far it sits
+   under the frozen names (under) and past the board's right edge (past), both below 0 when it's clear. */
+const keySweep = async (page, {board, rows, row, ctl, key, from, onward = true}) => {
+  const n = await page.evaluate(([board, rows, row, ctl, from]) => {
+    const t = document.querySelector(board), run = [...t.querySelectorAll(rows)[row].querySelectorAll(ctl)];
+    t.scrollLeft = from === "end" ? t.scrollWidth : 0; (from === "end" ? run[run.length - 1] : run[0]).focus();
+    return run.length;
+  }, [board, rows, row, ctl, from]), out = [];
+  for(let i = 0; i < (onward ? n : n - 1); i++){
+    await page.keyboard.press(key);
+    out.push(await page.evaluate(board => {
+      const t = document.querySelector(board), a = document.activeElement, r = a.getBoundingClientRect();
+      return {at: t.contains(a) ? a.dataset.rollopen || a.title.split(" · ").slice(0, 2).join(" · ") : "off the board, on " + a.tagName,
+              on: t.contains(a), under: Math.round(t.querySelector("th.mentee").getBoundingClientRect().right - r.left),
+              past: Math.round(r.right - t.getBoundingClientRect().right)};
+    }, board));
+  }
+  return out;
+};
+const clearOf = s => s.on && s.under < 0 && s.past < 0;
 
 async function stickyGroupLabels(){
   console.log("\nGroup labels — stay in view when a board is scrolled sideways, and in print and the PNG");
@@ -414,10 +457,7 @@ async function stickyGroupLabels(){
   const rows = "#view .tbl table tr.grp, #view .tbl table tr.agrp";
   const boards = [
     ["Weekly Check-ins", "#checkins", 1000, rows, null],
-    ["Call Attendance", "#attend", 1000, rows, () => {          // a call on every open week, so it's wider than the page
-      DATA.calendar.forEach((r, i) => { if(!isPlanned(r) && !isOff(r) && !isBlocked(r)) r.topic = "Practice topic " + i; });
-      render();
-    }],
+    ["Call Attendance", "#attend", 1000, rows, callEveryWeek],
     ["Assignments", "#assign", 600, "#view .toolbar", dozenAssignments],
   ];
   for(const [name, hash, width, ready, widen] of boards){
@@ -473,7 +513,7 @@ async function stickyGroupLabels(){
 }
 
 async function frozenNames(){
-  console.log("\nAssignments — the name column stays put when the board scrolls sideways (on screen only)");
+  console.log("\nAssignments — the name column stays put when the board scrolls sideways, and is narrow on a phone (on screen only)");
   /* the header's and every row's name cell against the board's visible box, and what's drawn on top
      of each (elementFromPoint): the name, not a square scrolled under it; the same for the group labels */
   const names = page => page.evaluate(() => {
@@ -486,6 +526,28 @@ async function frozenNames(){
             labels: [...t.querySelectorAll("tr.agrp .glab")].map(g => { const r = g.getBoundingClientRect();
               return {text: g.textContent.trim(), fromEdge: Math.round(r.left - box.left), onTop: onTop(g, r)}; })};
   });
+  /* the column's width, and each name: on one line, inside its cell, not cut off (overflow, an
+     ellipsis), its last letters not drawn over, and its chips on a line under it (a phone's layout) */
+  const nameFit = page => page.evaluate(() => {
+    const t = document.querySelector("#assignBoard .tbl"), within = (a, b) => a.left >= b.left - .5 && a.right <= b.right + .5 && a.top >= b.top - .5 && a.bottom <= b.bottom + .5;
+    return {board: Math.round(t.clientWidth), col: Math.round(t.querySelector("th.mentee").getBoundingClientRect().width),
+            rows: [...t.querySelectorAll("td.an")].map(td => {
+              const b = td.querySelector("b"), text = document.createRange(), cell = td.getBoundingClientRect();
+              text.selectNodeContents(b);
+              const n = text.getBoundingClientRect(), chips = [...td.querySelectorAll(".chip")].map(c => c.getBoundingClientRect());
+              const end = document.elementFromPoint(n.right - 2, n.top + n.height / 2), cut = el => getComputedStyle(el).textOverflow === "ellipsis";
+              return {name: b.textContent, lines: b.getClientRects().length, inCell: within(n, cell) && within(n, t.getBoundingClientRect()) && chips.every(c => within(c, cell)),
+                      overflows: td.scrollWidth > td.clientWidth, ellipsis: cut(td) || cut(b), endShown: !!end && b.contains(end),
+                      under: chips.length > 0 && chips.every(c => c.top >= n.bottom - 1)};
+            })};
+  });
+  /* each name cell's chips: on the name's line, after it (wider than a phone, in print, in the PNG) */
+  const oneLine = (page, sel) => page.evaluate(sel => [...document.querySelectorAll(sel)].map(td => {
+    const n = td.querySelector("b").getBoundingClientRect(), mid = r => r.top + r.height / 2;
+    const chips = [...td.querySelectorAll(".chip")].map(c => c.getBoundingClientRect());
+    return {name: td.querySelector("b").textContent, chips: chips.length, oneLine: chips.length > 0 && chips.every(c => Math.abs(mid(c) - mid(n)) < 3 && c.left > n.right)};
+  }), sel);
+  const allOneLine = rows => rows.length > 1 && rows.some(r => r.chips === 2) && rows.every(r => r.oneLine);
   const toEnd = page => page.evaluate(() => { const t = document.querySelector("#assignBoard .tbl"); t.scrollLeft = t.scrollWidth; });
   const ready = "#assignBoard .tbl table.aboard tr.agrp";
   for(const width of [390, 600]){
@@ -502,8 +564,23 @@ async function frozenNames(){
             far.cells.some(c => c.former) && far.cells.every(c => c.onTop), far.cells.filter(c => !c.onTop));
       check(`…and the group labels sit over it, lined up with the names (14px in)`,
             far.labels.length > 0 && far.labels.every(l => l.onTop && l.fromEdge === 14), far.labels);
+      /* on a phone a name's chips go under it, so the column leaves room for ~4 squares, not ~2½ */
+      const fit = await nameFit(page);
+      check(`…it's at most 150px of the ${fit.board}px board (${fit.col}px), each name's chips on a line under it`,
+            fit.col <= 150 && fit.rows.length > 1 && fit.rows.every(r => r.under), {col: fit.col, notUnder: fit.rows.filter(r => !r.under)});
+      check(`…and every name is whole: on one line, inside its cell, nothing cut off or drawn over its end`,
+            fit.rows.every(r => r.lines === 1 && r.inCell && !r.overflows && !r.ellipsis && r.endShown),
+            fit.rows.filter(r => r.lines !== 1 || !r.inCell || r.overflows || r.ellipsis || !r.endShown));
     });
   }
+
+  /* wider than a phone, a name and its chips are the one line they always were */
+  await onPage("#assign", {width: 1280, ready: "#view .toolbar"}, async page => {
+    await page.evaluate(dozenAssignments, true);
+    await page.waitForSelector(ready);
+    const rows = await oneLine(page, "#assignBoard td.an");
+    check(`1280px: each name's chips (rep ID, "former") stay on the name's line, after it`, allOneLine(rows), rows.filter(r => !r.oneLine));
+  });
 
   await onPage("#assign", {width: 390, height: 1800, ready: "#view .toolbar"}, async page => {
     await page.evaluate(dozenAssignments, true);
@@ -529,27 +606,12 @@ async function frozenNames(){
 
     /* the keyboard: Shift+Tab from the far end along a row, then Tab along the next and round
        onto the one after. Each square it lands on is clear of the column and of the right edge. */
-    const sweep = async (row, key, from) => {
-      await page.evaluate(([row, from]) => {
-        const t = document.querySelector("#assignBoard .tbl"), sq = [...t.querySelectorAll("tbody tr:not(.agrp)")[row].querySelectorAll("button.sq")];
-        t.scrollLeft = from === "end" ? t.scrollWidth : 0; (from === "end" ? sq[sq.length - 1] : sq[0]).focus();
-      }, [row, from]);
-      const n = await page.locator("#assignBoard tbody tr:not(.agrp)").nth(row).locator("button.sq").count(), out = [];
-      for(let i = 0; i < n; i++){
-        await page.keyboard.press(key);
-        out.push(await page.evaluate(() => {
-          const t = document.querySelector("#assignBoard .tbl"), a = document.activeElement, r = a.getBoundingClientRect();
-          return {at: a.title.split(" · ").slice(0, 2).join(" · "), under: Math.round(a.closest("tr").querySelector("td.an").getBoundingClientRect().right - r.left),
-                  past: Math.round(r.right - t.getBoundingClientRect().right)};
-        }));
-      }
-      return out;
-    };
-    const back = await sweep(1, "Shift+Tab", "end"), fwd = await sweep(2, "Tab", "start");
+    const sq = {board: "#assignBoard .tbl", rows: "tbody tr:not(.agrp)", ctl: "button.sq"};
+    const back = await keySweep(page, {...sq, row: 1, key: "Shift+Tab", from: "end"}), fwd = await keySweep(page, {...sq, row: 2, key: "Tab", from: "start"});
     check("Shift+Tab along a row from the far end: every square it lands on is clear of the frozen names",
-          back.length > 6 && back.every(s => s.under < 0 && s.past < 0), back.filter(s => s.under >= 0 || s.past >= 0));
+          back.length > 6 && back.every(clearOf), back.filter(s => !clearOf(s)));
     check("…and Tab along a row and round onto the next one: the same, at the right edge too",
-          fwd.length > 6 && fwd.every(s => s.under < 0 && s.past < 0), fwd.filter(s => s.under >= 0 || s.past >= 0));
+          fwd.length > 6 && fwd.every(clearOf), fwd.filter(s => !clearOf(s)));
 
     /* a click on a square half under the column opens it where it is: the board doesn't slide under the pointer */
     const half = await page.evaluate(() => {
@@ -577,6 +639,8 @@ async function frozenNames(){
     await page.emulateMedia({media: "print"});
     const pr = await plain("#assignBoard th.mentee, #assignBoard td.an");
     check("in print the name column is a plain column again, at the board's left, whatever the screen was scrolled to", isPlain(pr), pr);
+    const prLine = await oneLine(page, "#assignBoard td.an");
+    check("…and each name's chips are on its line, as they always were (under it is for a phone's screen only)", allOneLine(prLine), prLine.filter(r => !r.oneLine));
     await page.emulateMedia({media: "screen"});
 
     await keepPngHolder(page);
@@ -590,11 +654,334 @@ async function frozenNames(){
       wrap.id = "pngHeld";
       return {screen: document.querySelector("#assignBoard .tbl").scrollWidth};
     });
-    const held = await plain("#pngHeld th.mentee, #pngHeld td.an");
+    const held = await plain("#pngHeld th.mentee, #pngHeld td.an"), heldLine = await oneLine(page, "#pngHeld td.an");
     await page.evaluate(() => document.getElementById("pngHeld").remove());
     const pngWidth = png.readUInt32BE(16) / 2 - 56;                // drawn at 2x, with 28px either side
     check("the PNG is the whole board's width, not the slice on screen", pngWidth >= st.screen, {pngWidth, ...st});
     check("…and its name column is the plain one, at the board's left", isPlain(held), held);
+    check("…with each name's chips on its line", allOneLine(heldLine), heldLine.filter(r => !r.oneLine));
+  });
+}
+
+async function frozenNamesKeyboard(){
+  console.log("\nWeekly Check-ins and Call Attendance — what the keyboard lands on is never under the frozen names");
+  const boards = [{name: "Weekly Check-ins", hash: "#checkins", board: "#ciBoard .tbl", widen: null},
+                  {name: "Call Attendance", hash: "#attend", board: "#atBoard .tbl", widen: callEveryWeek, heads: true}];
+  const onBoard = (b, width, fn) => onPage(b.hash, {width, height: 1800, ready: "#view .tbl table tr.grp"}, async page => {
+    if(b.widen) await page.evaluate(b.widen);
+    const st = await page.evaluate(board => { const t = document.querySelector(board);
+      return {scrolls: !!t && t.scrollWidth > t.clientWidth + 20, below: !!t && t.getBoundingClientRect().bottom > innerHeight}; }, b.board);
+    if(!st.scrolls) throw new Missing(`${b.name} isn't wider than a ${width}px page, so there's no sideways scroll to check`);
+    if(st.below) throw new Missing(`the ${b.name} board runs past the bottom of a ${width}x1800 page`);
+    await fn(page);
+  });
+  const squares = b => ({board: b.board, rows: "tbody tr:not(.grp)", ctl: "button.ci"});
+
+  /* Shift+Tab from the far end along a row, Tab along the next and round onto the one after, at a phone's
+     width and a laptop's; on Call Attendance, Tab and Shift+Tab across the roll-call headings too */
+  for(const b of boards){
+    const back = [], fwd = [], heads = [];
+    for(const width of [390, 1000]) await onBoard(b, width, async page => {
+      const w = s => ({width, ...s});
+      back.push(...(await keySweep(page, {...squares(b), row: 1, key: "Shift+Tab", from: "end"})).map(w));
+      fwd.push(...(await keySweep(page, {...squares(b), row: 2, key: "Tab", from: "start"})).map(w));
+      if(b.heads){
+        const hd = {board: b.board, rows: "thead tr", row: 0, ctl: "button.rollhd"};
+        heads.push(...(await keySweep(page, {...hd, key: "Tab", from: "start"})).map(w),
+                   ...(await keySweep(page, {...hd, key: "Shift+Tab", from: "end", onward: false})).map(w));
+      }
+    });
+    check(`${b.name} (390 and 1000px): Shift+Tab along a row from the far end, every square it lands on is clear of the frozen names`,
+          back.length > 20 && back.every(clearOf), back.filter(s => !clearOf(s)));
+    check("…and Tab along a row and round onto the next one: the same, at the right edge too",
+          fwd.length > 20 && fwd.every(clearOf), fwd.filter(s => !clearOf(s)));
+    if(b.heads) check("…and Tab and Shift+Tab across the roll-call headings (and on to the first square): the same",
+                      heads.length > 10 && heads.every(clearOf), heads.filter(s => !clearOf(s)));
+  }
+
+  /* (in the page) scroll the board so a row's square sits px under the frozen names. With focusNext, the focus
+     goes on the square after it, for a Shift+Tab onto it. Its id, and a point on the part still showing. */
+  const tuck = (page, b, row, i, px, focusNext) => page.evaluate(([board, row, i, px, focusNext]) => {
+    const t = document.querySelector(board), run = t.querySelectorAll("tbody tr:not(.grp)")[row].querySelectorAll("button.ci"), sq = run[i];
+    t.scrollLeft += sq.getBoundingClientRect().left - t.querySelector("th.mentee").getBoundingClientRect().right + px;
+    if(focusNext) run[i + 1].focus();
+    const r = sq.getBoundingClientRect();
+    return {at: t.scrollLeft, id: sq.dataset.ci || sq.dataset.atcell, under: Math.round(t.querySelector("th.mentee").getBoundingClientRect().right - r.left),
+            x: r.right - 5, y: r.top + r.height / 2};
+  }, [b.board, row, i, px, focusNext]);
+  /* (in the page) once the board's scroll events have run: where it is, what has the focus and where the square
+     `id` sits, whether the Check-ins popover or the Attendance roll is open on it, and whether "Showing Wk a–b"
+     is current */
+  const now = (page, b, id) => page.evaluate(async ([board, id]) => {
+    for(let i = 0; i < 2; i++) await new Promise(ok => requestAnimationFrame(ok));
+    await new Promise(ok => setTimeout(ok, 120));                    // openRoll finds the mentee's line 60 ms in
+    const t = document.querySelector(board), a = document.activeElement, names = t.querySelector("th.mentee").getBoundingClientRect();
+    const sq = [...t.querySelectorAll("button.ci")].find(s => (s.dataset.ci || s.dataset.atcell) === id), r = sq.getBoundingClientRect();
+    const p = document.getElementById("ciPop"), pl = parseFloat(p.style.left), pt = parseFloat(p.style.top), cap = document.getElementById("ciScroll");
+    const hint = cap && cap.textContent;
+    if(cap) ciScrollHint();
+    return {at: t.scrollLeft, focused: a === sq, under: Math.round(names.right - r.left), past: Math.round(r.right - t.getBoundingClientRect().right),
+            hint, hintCurrent: !cap || cap.textContent === hint,
+            pop: CI_OPEN && [CI_OPEN.camp, CI_OPEN.rep, CI_OPEN.week].join("|"),           // the popover's laid-out box, not its spring
+            popBy: !p.classList.contains("hidden") && (Math.abs(pt - r.bottom - 8) < 2 || Math.abs(r.top - pt - p.offsetHeight - 8) < 2)
+                   && pl <= r.left + r.width / 2 && r.left + r.width / 2 <= pl + p.offsetWidth,
+            roll: AT.open};
+  }, [b.board, id]);
+
+  await onBoard(boards[0], 390, async page => {
+    const sq = await tuck(page, boards[0], 0, 5, 12, true);
+    await page.keyboard.press("Shift+Tab");
+    const onto = await now(page, boards[0], sq.id);
+    check("Weekly Check-ins: Shift+Tab onto a square half under the names brings it out, and \"Showing Wk a–b\" under the board catches up",
+          sq.under === 12 && onto.focused && clearOf({on: true, ...onto}) && onto.at < sq.at && onto.hintCurrent && /^Showing Wk/.test(onto.hint),
+          {sq, onto});
+    await page.keyboard.press("Enter");
+    const opened = await now(page, boards[0], sq.id);
+    check("…Enter on it opens its popover right by it, and the board doesn't move",
+          opened.pop === sq.id && opened.popBy && opened.at === onto.at, {sq, onto, opened});
+    await page.keyboard.press("Escape");
+    const half = await tuck(page, boards[0], 0, 3, 12, false);
+    await page.mouse.click(half.x, half.y);
+    const clicked = await now(page, boards[0], half.id);
+    check("a click on a square half under the names opens its popover there, and the board stays where it was",
+          half.under === 12 && clicked.pop === half.id && clicked.popBy && clicked.at === half.at, {half, clicked});
+  });
+
+  await onBoard(boards[1], 390, async page => {
+    const sq = await tuck(page, boards[1], 0, 4, 12, true), call = id => String(id).split("|")[0];
+    await page.keyboard.press("Shift+Tab");
+    const onto = await now(page, boards[1], sq.id);
+    await page.keyboard.press("Enter");
+    const opened = await now(page, boards[1], sq.id);
+    check("Call Attendance: Enter on a square the keyboard brought out from under the names opens that call's roll, and the board doesn't move",
+          sq.under === 12 && onto.focused && clearOf({on: true, ...onto}) && onto.at < sq.at && opened.roll === call(sq.id) && opened.at === onto.at,
+          {sq, onto, opened});
+    await page.keyboard.press("Escape");
+    await pause(page, 400);                                          // the dimmed page fades out
+    const half = await tuck(page, boards[1], 0, 2, 12, false);
+    await page.mouse.click(half.x, half.y);
+    const clicked = await now(page, boards[1], half.id);
+    check("…a click on a square half under the names opens that call's roll, and the board stays where it was",
+          half.under === 12 && clicked.roll === call(half.id) && clicked.at === half.at, {half, clicked});
+  });
+}
+
+async function checkinPopKeyboard(){
+  console.log("\nWeekly Check-ins' popover from the keyboard — like a menu: the arrows move, Enter picks, Escape and Tab close");
+  /* (in the page) whether the popover is open and on which square, where the focus is (an option by its label,
+     the square `id`, or something else), what that square shows, and whether it's clear of the frozen names */
+  const ci = (page, id) => page.evaluate(id => {
+    const pop = document.getElementById("ciPop"), a = document.activeElement;
+    const sq = [...document.querySelectorAll("#ciBoard button[data-ci]")].find(b => b.dataset.ci === id);
+    const t = sq.closest(".tbl"), r = sq.getBoundingClientRect();
+    return {open: !pop.classList.contains("hidden"), on: CI_OPEN && [CI_OPEN.camp, CI_OPEN.rep, CI_OPEN.week].join("|"),
+            focus: pop.contains(a) ? "option:" + (a.matches(".cp-opt") ? a.querySelector("span").firstChild.textContent : a.tagName)
+                 : a === sq ? "square" : a && a.dataset && a.dataset.ci ? "square " + a.dataset.ci : a ? a.tagName : null,
+            shows: CI_ORDER.find(k => sq.classList.contains(k)) || "blank",
+            clear: r.left > t.querySelector("th.mentee").getBoundingClientRect().right && r.right < t.getBoundingClientRect().right};
+  }, id);
+  await onPage("#checkins", {width: 390, height: 1800, ready: "#view .tbl table tr.grp"}, async page => {
+    /* the 7th square of the first row: on a phone it's off to the right until the keyboard brings it out */
+    const id = await page.evaluate(() => {
+      const t = document.querySelector("#ciBoard .tbl"), run = t.querySelectorAll("tbody tr:not(.grp)")[0].querySelectorAll("button.ci");
+      run[5].focus();
+      return run[6].dataset.ci;
+    });
+    need("an unmarked square on the Check-ins board", id);
+    await page.keyboard.press("Tab");
+    const blank = await ci(page, id);
+    await page.keyboard.press("Enter");
+    const opened = await ci(page, id);
+    check("Enter on an unmarked square opens its popover with the focus on the first option",
+          blank.focus === "square" && blank.shows === "blank" && opened.open && opened.on === id && opened.focus === "option:Check-in call",
+          {blank, opened});
+    const walk = [];
+    for(const key of ["ArrowDown", "End", "ArrowDown", "ArrowUp", "Home", "ArrowUp", "ArrowDown", "ArrowDown"]){
+      await page.keyboard.press(key);
+      walk.push(key + " → " + (await ci(page, id)).focus.replace("option:", ""));
+    }
+    check("…Down, End, Down, Up, Home, Up, Down, Down move between the options, and round from either end",
+          walk.join(" · ") === "ArrowDown → 1-1 call · End → Clear · ArrowDown → Check-in call · ArrowUp → Clear · Home → Check-in call" +
+                               " · ArrowUp → Clear · ArrowDown → Check-in call · ArrowDown → 1-1 call", walk);
+    await page.keyboard.press("Enter");
+    const picked = await ci(page, id);
+    check("…Enter picks it: the popover closes, the square shows 1-1 call, and the focus is back on the square, in view",
+          !picked.open && picked.shows === "one" && picked.focus === "square" && picked.clear, picked);
+    await page.keyboard.press("Enter");
+    const again = await ci(page, id);
+    check("Enter on a marked square opens the popover with the focus on what it's marked",
+          again.open && again.on === id && again.focus === "option:1-1 call", again);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Escape");
+    const esc = await ci(page, id);
+    check("…Escape closes it, picks nothing, and puts the focus back on the square",
+          !esc.open && esc.shows === "one" && esc.focus === "square", esc);
+    await page.keyboard.press("Space");
+    const sp = await ci(page, id);
+    await page.keyboard.press("Tab");
+    const tab = await ci(page, id);
+    check("Space opens it too, and Tab closes it and puts the focus back on the square, not on to the next one",
+          sp.open && sp.focus === "option:1-1 call" && !tab.open && tab.focus === "square", {sp, tab});
+    /* (in the page) what a screen reader is told about the square and, while it's open, the popover */
+    const told = () => page.evaluate(id => {
+      const pop = document.getElementById("ciPop"), sq = [...document.querySelectorAll("#ciBoard button[data-ci]")].find(b => b.dataset.ci === id);
+      const [camp, rep, week] = id.split("|");
+      return {haspopup: sq.getAttribute("aria-haspopup"), expanded: sq.getAttribute("aria-expanded"),
+              role: pop.getAttribute("role"), label: pop.getAttribute("aria-label") || "",
+              who: TEAM.rows.find(m => m.RepID === rep).Name, week: weekLabel(camp, week),
+              current: [...pop.querySelectorAll(".cp-opt[aria-current='true']")].map(o => o.dataset.cistate),
+              glyphsHidden: [...pop.querySelectorAll(".cp-opt i.ci")].every(i => i.getAttribute("aria-hidden") === "true")};
+    }, id);
+    await page.keyboard.press("Enter");
+    const open = await told();
+    await page.keyboard.press("Escape");
+    const shut = await told();
+    check("…and a screen reader is told: the square opens a dialog, the dialog is named for the mentee and the week, the current option is marked",
+          open.haspopup === "dialog" && open.expanded === "true" && shut.expanded === "false" && open.role === "dialog" &&
+          open.label.includes(open.who) && open.label.includes(open.week) && open.current.join() === "one" && open.glyphsHidden, {open, shut});
+    const other = await page.evaluate(() => {
+      const t = document.querySelector("#ciBoard .tbl"), sq = t.querySelectorAll("tbody tr:not(.grp)")[1].querySelectorAll("button.ci")[0];
+      t.scrollLeft = 0;                                                // Wk 1, just right of the names
+      const r = sq.getBoundingClientRect();
+      return {id: sq.dataset.ci, x: r.left + r.width / 2, y: r.top + r.height / 2};
+    });
+    await page.mouse.click(other.x, other.y);
+    const clicked = await ci(page, other.id);
+    check("A click opens it and leaves the focus out of it",
+          clicked.open && clicked.on === other.id && !clicked.focus.startsWith("option:"), clicked);
+  });
+}
+
+async function boardsKeepTheirPlace(){
+  console.log("\nMarking a square — the board stays where it was scrolled, and a keyboard user stays on the square");
+  /* (in the page) once the render has settled: how far the board is scrolled, which square has the focus
+     (its data-ci / data-atcell / data-cell) and whether its ring shows, what the square `id` says, whether
+     the Check-ins popover is open, and "Showing Wk a–b" */
+  const place = (page, board, id) => page.evaluate(async ([board, id]) => {
+    for(let i = 0; i < 2; i++) await new Promise(ok => requestAnimationFrame(ok));
+    const t = document.querySelector(board), a = document.activeElement, cap = document.getElementById("ciScroll");
+    const key = el => el && (el.dataset.ci || el.dataset.atcell || el.dataset.cell);
+    const sq = id && [...t.querySelectorAll("button")].find(b => key(b) === id);
+    return {at: Math.round(t.scrollLeft), far: Math.round(t.scrollWidth - t.clientWidth),
+            focus: key(a) || (a ? a.tagName : null), ring: !!a && a !== document.body && a.matches(":focus-visible"),
+            sq: sq ? sq.className : null, pop: !document.getElementById("ciPop").classList.contains("hidden"), hint: cap ? cap.textContent : null};
+  }, [board, id]);
+  /* (in the page) scroll the board to its far end (or, with `last`, until the last of a row's `ctl` squares
+     sits 40px in from the right edge) and say where square i of row `row` is, and which square comes after it.
+     With `from`, the focus goes on that next one, for a Shift+Tab onto it. */
+  const aim = (page, {board, rows, ctl, row, i, last, from}) => page.evaluate(([board, rows, ctl, row, i, last, from]) => {
+    const t = document.querySelector(board), run = [...t.querySelectorAll(rows)[row].querySelectorAll("button")];
+    const mine = run.filter(b => b.matches(ctl)), sq = last ? mine[mine.length - 1] : mine[i < 0 ? mine.length + i : i];
+    t.scrollLeft = t.scrollWidth;
+    if(last){ const r = sq.getBoundingClientRect(), box = t.getBoundingClientRect(); t.scrollLeft += r.right - (box.right - 40); }
+    const after = run[run.indexOf(sq) + 1], key = el => el && (el.dataset.ci || el.dataset.atcell || el.dataset.cell);
+    if(from) after.focus();
+    const r = sq.getBoundingClientRect();
+    return {id: key(sq), next: key(after), at: Math.round(t.scrollLeft), x: r.left + r.width / 2, y: r.top + r.height / 2};
+  }, [board, rows, ctl, row, i, !!last, !!from]);
+  const scrolled = (b, s) => { if(s.at < 100) throw new Missing(`${b} doesn't scroll far enough sideways at 390px to check (${s.at}px)`); };
+
+  await onPage("#checkins", {width: 390, height: 1800, ready: "#view .tbl table tr.grp"}, async page => {
+    const b = {board: "#ciBoard .tbl", rows: "tbody tr:not(.grp)", ctl: "button.ci"};
+    /* a click on the next-to-last week of the first row, at the far end, then a pick from its popover */
+    const sq = await aim(page, {...b, row: 0, i: -2});
+    scrolled("Weekly Check-ins", sq);
+    const before = await place(page, b.board, sq.id);
+    await page.mouse.click(sq.x, sq.y);
+    await page.click("#ciPop [data-cistate='yes']");
+    const after = await place(page, b.board, sq.id);
+    check("Weekly Check-ins (390px), scrolled to the far end: a week marked with clicks is marked, and the board stays where it was",
+          !/ yes\b/.test(before.sq) && / yes\b/.test(after.sq) && !after.pop && after.at === before.at && before.at === before.far, {sq, before, after});
+    check("…and \"Showing Wk a–b\" still names the weeks in view", /^Showing Wk/.test(after.hint) && after.hint === before.hint, {before: before.hint, after: after.hint});
+
+    /* the keyboard: Shift+Tab onto the next-to-last week of the second row, Enter opens its popover, and the pick
+       is made from inside it (the focus put on the option, as the keyboard has it there, then Enter) */
+    const kq = await aim(page, {...b, row: 1, i: -2, from: true});
+    await page.keyboard.press("Shift+Tab");
+    const onto = await place(page, b.board, kq.id);
+    await page.keyboard.press("Enter");
+    if(!(await place(page, b.board)).pop) throw new Missing("Enter on a Weekly Check-ins square didn't open its popover");
+    await page.focus("#ciPop [data-cistate='text']");
+    await page.keyboard.press("Enter");
+    const picked = await place(page, b.board, kq.id);
+    check("…a week marked from the keyboard is marked, the board stays where it was, and the focus is back on that square, ring showing",
+          onto.focus === kq.id && !/ text\b/.test(onto.sq) && / text\b/.test(picked.sq) && !picked.pop && picked.at === onto.at && onto.at === onto.far && picked.focus === kq.id && picked.ring,
+          {kq, onto, picked});
+    await page.keyboard.press("Tab");
+    const next = await place(page, b.board);
+    check("…and Tab from there goes on to the next week along the row", !!kq.next && next.focus === kq.next, {from: kq.id, want: kq.next, next});
+  });
+
+  await onPage("#attend", {width: 390, height: 1800, ready: "#view .tbl table tr.grp"}, async page => {
+    await page.evaluate(callEveryWeek);
+    const b = {board: "#atBoard .tbl", rows: "tbody tr:not(.grp)", ctl: "button.ci[data-atcell]"};
+    /* a click on the last call that has happened, on the first row, then a tick on its roll */
+    const sq = await aim(page, {...b, row: 0, last: true});
+    scrolled("Call Attendance", sq);
+    const before = await place(page, b.board, sq.id);
+    await page.mouse.click(sq.x, sq.y);
+    await page.click(`#adrawer [data-rollmark="${sq.id.split("|")[1]}|on"]`);
+    const after = await place(page, b.board, sq.id);
+    check("Call Attendance (390px): ticking someone on a call's roll marks their square, and the board stays where it was",
+          !/ yes\b/.test(before.sq) && / yes\b/.test(after.sq) && after.at === before.at, {sq, before, after});
+    await page.click("#adrawer [data-roll='close']");
+
+    /* the keyboard: Shift+Tab onto the last call that has happened on the second row, Enter opens its roll,
+       and a render lands while the square has the focus (a sync pull or a sheet load does that) */
+    const kq = await aim(page, {...b, row: 1, last: true, from: true});
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Enter");
+    const onto = await place(page, b.board, kq.id);
+    await page.evaluate(() => render());
+    const landed = await place(page, b.board, kq.id);
+    check("…on a square the keyboard opened a roll from, a render leaves the focus on that square, ring showing, and the board where it was",
+          onto.focus === kq.id && landed.focus === kq.id && landed.ring && landed.at === onto.at && onto.at > 100, {kq, onto, landed});
+  });
+
+  await onPage("#assign", {width: 390, height: 1800, ready: "#view .toolbar"}, async page => {
+    await page.evaluate(dozenAssignments, false);
+    await page.waitForSelector("#assignBoard .tbl table.aboard tr.agrp");
+    /* every program by the names the board reads ("The Dojo" reads as The Path), so every square starts open */
+    const dozen = await page.evaluate(() => { const d = ASSIGN.rows.assignments.filter(a => /^DC/.test(a.AssignmentID));
+      d.forEach(a => { a.Programs = "Dojo, Path, Masters"; }); render(); return d; });
+    /* the board's writes and reloads stay in the page: a due-date change is answered here, and a reload hands back
+       the dozen assignments, so nothing reaches the dev server and the board stays as wide */
+    const overrides = [];
+    await page.route("**/__team", async route => {
+      const body = JSON.parse(route.request().postData() || "{}");
+      if(body.action === "setOverride"){ overrides.push({AssignmentID: body.assignmentId, RepID: body.repId, DueDate: body.dueDate}); return route.fulfill({json: {ok: true}}); }
+      if(body.action !== "assignmentBoard") return route.continue();
+      const out = await (await route.fetch()).json();
+      out.assignments = [...out.assignments, ...dozen]; out.overrides = [...out.overrides, ...overrides];
+      return route.fulfill({json: out});
+    });
+    const idle = () => page.waitForFunction(() => !ASSIGN.busy && !ASSIGN.loading);
+    const b = {board: "#assignBoard .tbl", rows: "tbody tr:not(.agrp)", ctl: "button.sq"};
+    /* a click on the last assignment of the first row, at the far end, then "not applicable" saved from its drawer */
+    const sq = await aim(page, {...b, row: 0, i: -1});
+    scrolled("Assignments", sq);
+    const before = await place(page, b.board, sq.id);
+    await page.mouse.click(sq.x, sq.y);
+    await page.click("#adrawer .ad-more summary");
+    await page.check("#adrawer #adNA");
+    await page.click("#adrawer [data-override='save']");
+    await idle();
+    const after = await place(page, b.board, sq.id);
+    check("Assignments (390px), scrolled to the far end: a square marked not applicable from its drawer is marked, and the board stays where it was",
+          overrides.length === 1 && !/ na\b/.test(before.sq) && / na\b/.test(after.sq) && after.at === before.at && before.at === before.far, {sq, before, after, overrides});
+    await page.click("#adrawer [data-assignact='close']");
+
+    /* the keyboard: Shift+Tab onto the next-to-last assignment of the second row, Enter opens its drawer, and the
+       board reloads (Refresh, or the minute-old copy being fetched again) while the square has the focus */
+    const kq = await aim(page, {...b, row: 1, i: -2, from: true});
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Enter");
+    const onto = await place(page, b.board, kq.id);
+    await page.evaluate(() => assignLoad(true));
+    await idle();
+    const landed = await place(page, b.board, kq.id);
+    check("…on a square the keyboard opened, a reload leaves the focus on that square, ring showing, and the board where it was",
+          onto.focus === kq.id && landed.focus === kq.id && landed.ring && landed.at === onto.at && onto.at === onto.far, {kq, onto, landed});
   });
 }
 
@@ -702,6 +1089,9 @@ async function bizPlaceholders(){
     await switchLook();
     await stickyGroupLabels();
     await frozenNames();
+    await frozenNamesKeyboard();
+    await checkinPopKeyboard();
+    await boardsKeepTheirPlace();
     await calendarPrint();
     await bizPlaceholders();
     console.log("\nScript errors");

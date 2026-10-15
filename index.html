@@ -745,6 +745,14 @@ table.aboard th.mentee{z-index:2}
 table.aboard tbody tr:hover td.an{background:var(--paper-deep)}
 .png-holder table.aboard :is(th.mentee,td.an),body.exporting table.aboard :is(th.mentee,td.an){position:static!important;background:none!important;box-shadow:none!important}
 @media print{table.aboard :is(th.mentee,td.an){position:static!important;background:none!important;box-shadow:none!important}}
+/* on a phone a name's chips (rep ID, "former") go on a line under it, as on the check-ins board,
+   so the frozen column is ~130px of the board, not ~210, and ~4 squares show beside it. Screen only,
+   and never in what's exported: Print and the PNG's measuring run under body.exporting, and the
+   PNG's copy sits outside #view, so there the chips stay on the name's line */
+@media screen and (max-width:640px){
+  body:not(.exporting) #view table.aboard td.an .an-sub{display:flex;gap:5px;margin-top:4px}
+  body:not(.exporting) #view table.aboard td.an .an-sub .chip{font-size:11px;padding:2px 7px}
+}
 table.aboard td.ac{text-align:center;padding:6px}
 table.aboard tr.agrp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
 table.aboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
@@ -942,6 +950,8 @@ table.ciboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
   padding:7px 8px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink);line-height:1.3}
 .cp-opt:hover{background:var(--hover)}
 .cp-opt.on{background:var(--accent-soft)}
+.cp-opt:focus-visible{outline-offset:-2px}            /* the ring inside the row, round its corners */
+.cp-opt:not(.on):focus-visible{background:var(--hover)}
 .cp-opt .ci{width:20px;height:20px;border-radius:5px;font-size:11px;flex:none}
 .cp-opt .ci:hover{transform:none;box-shadow:none}
 .cp-opt small{display:block;font-size:12px;color:var(--ink-soft)}
@@ -2985,7 +2995,7 @@ function renderCheckins(){
           if(w <= todayMon){ if(CI_DONE.has(s)) rd++; if(s !== "off") rn++; }
           const cls = s ? s : "blank" + (cur ? " cur" : past ? " due" : " fut");
           const st = CI_STATES[s];
-          html += `<td class="cc${cur ? " cur" : ""}${mcls(w)}"><button class="ci ${cls}" data-ci="${esc(camp)}|${esc(r.RepID)}|${w}"
+          html += `<td class="cc${cur ? " cur" : ""}${mcls(w)}"><button class="ci ${cls}" data-ci="${esc(camp)}|${esc(r.RepID)}|${w}" aria-haspopup="dialog" aria-expanded="false"
             title="${esc(r.Name)} · ${weekLabel(camp, w)} · ${st ? st.label : "not marked yet"}">${st ? st.glyph : ""}</button></td>`;
         }
         html += `<td class="tot" title="checked in / weeks that needed one, so far">${rd}/${rn}</td></tr>`;
@@ -2999,17 +3009,27 @@ function renderCheckins(){
 }
 
 /* ── the pick-a-colour popover. Lives outside #view so a background sync
-   render can't wipe it mid-click. ── */
-function openCiPop(btn){
+   render can't wipe it mid-click.
+   From the keyboard it works like a menu (see openMenu): Enter or Space on a square
+   opens it with the focus on what the square is marked (or the first option); Up /
+   Down / Home / End move, Enter or Space picks one, and Escape or Tab closes it.
+   Each of those puts the focus back on the square, so Tab never leaves it open on
+   the square before. A click opens it and leaves the focus where it was. ── */
+const ciKey = o => [o.camp, o.rep, o.week].join("|");
+const ciSquare = key => [...document.querySelectorAll("#view button[data-ci]")].find(b => b.dataset.ci === key);
+const ciOpts = () => [...$("#ciPop").querySelectorAll(".cp-opt")];
+function openCiPop(btn, fromKeys){
   const [camp, rep, week] = btn.dataset.ci.split("|");
   const row = (TEAM.rows || []).find(r => r.RepID === rep);
   if(!row) return;
+  if(CI_OPEN){ const was = ciSquare(ciKey(CI_OPEN)); if(was) was.setAttribute("aria-expanded", "false"); }
   CI_OPEN = {camp, rep, week};
   const cur = getCheckin(camp, rep, week);
   const pop = $("#ciPop");
+  pop.setAttribute("aria-label", `${row.Name} · ${weekLabel(camp, week)} · mark the check-in`);
   pop.innerHTML = `<div class="cp-head"><b>${esc(row.Name)}</b>${esc(weekLabel(camp, week))} · ${esc(camp)}</div>` +
-    CI_ORDER.map(k => `<button class="cp-opt${cur === k ? " on" : ""}" data-cistate="${k}"><i class="ci ${k}">${CI_STATES[k].glyph}</i><span>${CI_STATES[k].label}<small>${CI_STATES[k].hint}</small></span></button>`).join("") +
-    `<button class="cp-opt" data-cistate=""><i class="ci blank"></i><span>Clear<small>back to not marked</small></span></button>`;
+    CI_ORDER.map(k => `<button class="cp-opt${cur === k ? " on" : ""}" data-cistate="${k}" tabindex="-1"${cur === k ? ' aria-current="true"' : ""}><i class="ci ${k}" aria-hidden="true">${CI_STATES[k].glyph}</i><span>${CI_STATES[k].label}<small>${CI_STATES[k].hint}</small></span></button>`).join("") +
+    `<button class="cp-opt" data-cistate="" tabindex="-1"><i class="ci blank" aria-hidden="true"></i><span>Clear<small>back to not marked</small></span></button>`;
   pop.classList.remove("hidden");
   const r = btn.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
   const left = Math.max(8, Math.min(r.left + r.width / 2 - pw / 2, innerWidth - pw - 8));
@@ -3017,8 +3037,24 @@ function openCiPop(btn){
   if(top + ph > innerHeight - 8) top = Math.max(8, r.top - ph - 8);
   pop.style.left = left + "px"; pop.style.top = top + "px";
   popOrigin(pop, r);
+  btn.setAttribute("aria-expanded", "true");
+  if(fromKeys) (pop.querySelector(".cp-opt.on") || ciOpts()[0]).focus({preventScroll: true});
 }
-function closeCiPop(){ $("#ciPop").classList.add("hidden"); CI_OPEN = null; }
+/* refocus: put the focus back on the square. By default it does whenever the popover
+   holds the focus as it closes, which covers a render closing it too (a background
+   sync, or the render after a pick). The square is looked up again a moment later,
+   once any render has rebuilt it, unless something else has taken the focus by then. */
+function closeCiPop(refocus = $("#ciPop").contains(document.activeElement)){
+  if(!CI_OPEN) return;
+  const key = ciKey(CI_OPEN), pop = $("#ciPop"), sq = ciSquare(key);
+  pop.classList.add("hidden"); CI_OPEN = null;
+  if(sq) sq.setAttribute("aria-expanded", "false");
+  if(refocus !== true) return;
+  queueMicrotask(() => {
+    const a = document.activeElement, back = ciSquare(key);
+    if(back && !CI_OPEN && (!a || a === document.body || pop.contains(a))) back.focus();
+  });
+}
 /* 17 lanes at a readable size are wider than the page, so the board scrolls
    sideways under the frozen name column. Say which weeks are in view so
    nobody wonders where Wk 16 went. */
@@ -3038,21 +3074,46 @@ function ciScrollHint(){
 document.addEventListener("scroll", e => { if(e.target && e.target.classList && e.target.classList.contains("citbl")) ciScrollHint(); }, true);
 window.addEventListener("resize", ciScrollHint);
 document.addEventListener("click", e => {
+  /* Enter or Space on a button is a click with no pointer behind it: detail 0 */
   const b = e.target.closest("button[data-ci]");
-  if(b){ e.preventDefault(); openCiPop(b); return; }
+  if(b){ e.preventDefault(); openCiPop(b, e.detail === 0); return; }
   const o = e.target.closest("button[data-cistate]");
   if(o && CI_OPEN){
     const {camp, rep, week} = CI_OPEN, st = o.dataset.cistate;
     const row = (TEAM.rows || []).find(r => r.RepID === rep);
+    /* picked from the keyboard (Enter or Space make a click with no click count): the focus goes
+       back to the week it was opened from, and render() keeps it there, so the next Tab carries on
+       along the row. A mouse pick leaves the focus alone, as the menus do. */
+    const back = e.detail === 0 && $(`#view [data-ci="${CSS.escape([camp, rep, week].join("|"))}"]`);
+    if(back) back.focus({preventScroll: true});
     setCheckin(camp, rep, week, st);
-    closeCiPop(); render();
+    closeCiPop(e.detail === 0); render();
     toast(`${row ? row.Name.split(" ")[0] : rep} · ${weekLabel(camp, week)} · ${st ? CI_STATES[st].label : "cleared"}`);
     return;
   }
   const pop = $("#ciPop");
-  if(!pop.classList.contains("hidden") && !pop.contains(e.target)) closeCiPop();
+  if(!pop.classList.contains("hidden") && !pop.contains(e.target)) closeCiPop(false);
 });
-document.addEventListener("keydown", e => { if(e.key === "Escape" && CI_OPEN) closeCiPop(); });
+document.addEventListener("keydown", e => {
+  if(!CI_OPEN) return;
+  const a = document.activeElement, inPop = $("#ciPop").contains(a), onSq = a === ciSquare(ciKey(CI_OPEN));
+  if(e.key === "Escape"){ closeCiPop(inPop || onSq); return; }
+  if(e.key === "Tab"){
+    if(inPop){ e.preventDefault(); closeCiPop(true); } else closeCiPop(false);   // from anywhere else, Tab carries on as usual
+    return;
+  }
+  if(!inPop && !onSq) return;
+  const opts = ciOpts(), at = opts.indexOf(a);
+  const to = {ArrowDown: at + 1, ArrowUp: at < 0 ? -1 : at - 1, Home: 0, End: -1}[e.key];
+  if(to === undefined) return;
+  e.preventDefault();
+  opts[(to + opts.length) % opts.length].focus({preventScroll: true});
+});
+/* once the keyboard is in the popover, the pointer moves the focus with it, so only one option is lit */
+$("#ciPop").addEventListener("mousemove", e => {
+  const o = e.target.closest(".cp-opt"), pop = e.currentTarget;
+  if(o && pop.contains(document.activeElement) && document.activeElement !== o) o.focus({preventScroll: true});
+});
 document.addEventListener("change", e => {
   const s = e.target.closest("select[data-cicamp]");
   if(s){ UI.ciCampaign = s.value; render(); }
@@ -3332,7 +3393,7 @@ function renderAssign(){
   if(!ASSIGN.rows){
     if(!ASSIGN.loading&&!ASSIGN.err)assignLoad(true);
     return html+(ASSIGN.err&&!ASSIGN.loading?emptyState("Couldn't load the assignments",esc(ASSIGN.err),`<button class="btn" data-assignact="reload">Try again</button>`,"err")
-                           :skelTable(ASSIGN.loadSince,SKEL_BOARD(7),"Loading the assignments…"));
+                           :skelTable(ASSIGN.loadSince,SKEL_BOARD(7,matchMedia("screen and (max-width:640px)").matches),"Loading the assignments…"));
   }
   const c=assignCounts();
   html+=toolbar(`<div class="tb-filters">
@@ -3359,7 +3420,7 @@ function assignBoardHtml(){
       return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignPrograms(a).map(p=>p[0]).join(""))} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
   const row=(r,gone)=>{
     let inN=0,appN=0;
-    h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</td>`;
+    h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="an-sub"><span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</span></td>`;
     list.forEach(a=>{
       const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
       h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":s.pastDue?" · was due ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
@@ -3516,9 +3577,11 @@ document.addEventListener("change",e=>{
 });
 /* the browser scrolls a square the keyboard lands on into view only when none of it is inside
    the board's box, and one under the frozen names is inside it, just covered (as is one half
-   off the right edge). By focusin it has done its scrolling: finish the job. */
+   off the right edge). By focusin it has done its scrolling: finish the job. Every board with
+   frozen names: Assignments' squares, Check-ins' and Attendance's, and Attendance's roll-call
+   headings, which scroll under the Mentee heading the same way. */
 document.addEventListener("focusin",e=>{
-  const sq=e.target.closest&&e.target.closest("table.aboard button.sq");
+  const sq=e.target.closest&&e.target.closest(":is(table.aboard,table.ciboard) :is(button.sq,button.ci,button.rollhd)");
   if(!sq||!sq.matches(":focus-visible"))return;          // a click: the square is where you pointed, leave it
   const tbl=sq.closest(".tbl"),th=tbl.querySelector("th.mentee");if(!th)return;
   const r=sq.getBoundingClientRect(),ring=6;              // the focus ring sits 4px outside
@@ -6862,6 +6925,33 @@ function pageIn(){
 }
 const entranceOf = v => [...v.children].flatMap(c => c.getAnimations()).filter(a => a.animationName === "pageIn");
 
+/* A render builds #view afresh, and a fresh board starts scrolled back to its first column with
+   the focus dropped to <body>: on a phone, marking Wk 11 on Weekly Check-ins threw you back to
+   Wk 1 every time (fixed 2026-10-15). So render() notes where each board is scrolled sideways
+   (a board is known by the frame it sits in and its table: another tab's board starts at its
+   own beginning) and which square has the focus (known by what it marks: a check-in week, a
+   call's roll, an assignment), and puts both back on the new board. The scroll goes back
+   first, so the focusin nudge finds the square where it was and has nothing to do. */
+const BOARD_SQUARE = ["data-ci", "data-atcell", "data-cell"];
+function boardsOf(v){
+  const seen = {};
+  return [...v.querySelectorAll(".tbl")].map(t => {
+    const k = (t.parentElement.closest("[id]") || v).id + " " + ((t.querySelector("table") || {}).className || "");
+    seen[k] = (seen[k] || 0) + 1;
+    return [k + " " + seen[k], t];
+  });
+}
+function boardPlace(v){
+  const a = document.activeElement, attr = a && v.contains(a) && BOARD_SQUARE.find(n => a.hasAttribute(n));
+  return {scroll: new Map(boardsOf(v).filter(([, t]) => t.scrollLeft).map(([k, t]) => [k, t.scrollLeft])),
+          square: attr ? `[${attr}="${CSS.escape(a.getAttribute(attr))}"]` : null};
+}
+function backInPlace(v, {scroll, square}, focusTaken){
+  for(const [k, t] of boardsOf(v)) if(scroll.has(k)) t.scrollLeft = scroll.get(k);
+  const sq = square && !focusTaken && v.querySelector(square);
+  if(sq) sq.focus({preventScroll: true});
+}
+
 function render(){
   /* the search box, the "add a task" box and a Mentees row's Pay amount are
      rebuilt by every render (a sync, a flash fading out) — put the cursor back
@@ -6873,11 +6963,12 @@ function render(){
   if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance
   if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
   if(CI_OPEN) closeCiPop();
-  const v = $("#view");
+  const v = $("#view"), place = boardPlace(v);
   const mid = v.classList.contains("page-enter") && entranceOf(v).find(a => a.playState === "running");
   const at = mid ? mid.currentTime : null;       // read now: swapping the children cancels it
   if(!mid) v.classList.remove("page-enter");     // the entrance is over (see pageIn)
   v.innerHTML = editBanner() + currentTab().render();
+  backInPlace(v, place, focused || PENDING_FOCUS);
   if(mid) entranceOf(v).forEach(a => { a.currentTime = at; });
   if(AT.open){ if(TAB === "attend") paintRoll(); else closeRoll(); }
   $("#dashWrap").style.display = TAB === "perf" ? "" : "none";

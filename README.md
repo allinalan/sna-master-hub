@@ -281,15 +281,17 @@ shakes one you've typed in; popovers spring out of what you clicked; a switch's 
 across when it's on; the boards' group labels stay in view when a board is scrolled
 sideways (and show in print and in the PNG); the Assignments board's names stay put when it
 scrolls sideways; on Assignments, Weekly Check-ins and Call Attendance a square (or a roll-call
-heading) the keyboard lands on is never under the names, and a click never slides the board; on
-a phone the Assignments name column is narrow, with every name whole; the calendar's seasons run
-on across printed pages; and the Orders of Business placeholders wait for their row.
+heading) the keyboard lands on is never under the names, and a click never slides the board;
+marking a square on those three boards (by click, or from the keyboard), or a render landing
+while one has the focus, leaves the board where it was scrolled and the keyboard's focus on that
+square; on a phone the Assignments name column is narrow, with every name whole; the calendar's
+seasons run on across printed pages; and the Orders of Business placeholders wait for their row.
 
 It unlocks the coach boards with the dev server's key (`dev`), so it only runs against
 `tools/dev-server.js` on this machine: point `BASE` anywhere else and it refuses before a
 page opens. It never turns an automation switch on, even a fake one: on the real sheet that
 starts real sends. A switch's look is checked on a copy with the class set by hand.
-Anything it adds to a board (assignments, calls) lives in that page only.
+Anything it adds to a board (assignments, calls, a due-date change) lives in that page only.
 
 Exit 0 means every check passed, 1 that one failed, 2 that it couldn't run (no Playwright,
 no browser, the dev server didn't start, or something it needs isn't on the page).
@@ -693,6 +695,15 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
   under it (`.an-sub`, as on Weekly Check-ins), so the column stays narrow and the squares get
   the room; Assignments does that on screens 640px and narrower only, so print and the PNG keep
   the one line.
+- **A board stays where you scrolled it.** Marking a square re-renders the whole tab, and a
+  fresh board would start back at its first column with the focus on nothing: on a phone,
+  marking Wk 11 threw you back to Wk 1. So `render()` puts each board back where it was
+  scrolled sideways, and gives the focus back to the square that had it, found again by what
+  it marks (`data-ci`, `data-atcell` or `data-cell`; a new board's squares need one of these,
+  or add its attribute to `BOARD_SQUARE`). A pick made from inside the check-in popover sends
+  the focus back to the week it was opened from. A click user sees the board where they left
+  it; a keyboard user is still on the square they marked, and Tab carries on along the row.
+  Another tab's board starts at its own beginning.
 - **Popovers share one shell**: a frosted material that springs out of whatever you clicked
   (`popOrigin()`). The drawer comes in on the iOS sheet curve over a dimmed page. Clicking the
   dimmed page closes it, unless something in it changed since it opened; then it shakes

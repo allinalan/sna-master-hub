@@ -737,6 +737,14 @@ table.aboard th.ah{text-align:center;max-width:120px;white-space:normal;vertical
 table.aboard th.ah .at{font-family:var(--sans);font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 table.aboard th.ah small{display:block;font-size:11px;color:var(--ink-faint);margin-top:3px;letter-spacing:0;text-transform:none}
 table.aboard td.an{white-space:nowrap}
+/* the name column holds at the left edge when the board scrolls sideways (on a phone, or
+   with a long list), as the check-in boards' does, so a row's squares never lose its name.
+   Paper and the PNG don't scroll: there it's the plain column it always was. */
+table.aboard th.mentee,table.aboard td.an{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--line)}
+table.aboard th.mentee{z-index:2}
+table.aboard tbody tr:hover td.an{background:var(--paper-deep)}
+.png-holder table.aboard :is(th.mentee,td.an),body.exporting table.aboard :is(th.mentee,td.an){position:static!important;background:none!important;box-shadow:none!important}
+@media print{table.aboard :is(th.mentee,td.an){position:static!important;background:none!important;box-shadow:none!important}}
 table.aboard td.ac{text-align:center;padding:6px}
 table.aboard tr.agrp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
 table.aboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
@@ -3346,7 +3354,7 @@ function assignBoardHtml(){
   const inProg=r=>UI.assignProg==="all"||r.Tier===UI.assignProg;
   const reps=assignReps().filter(inProg), former=UI.assignFormer?assignFormerReps().filter(inProg):[];
   if(!list.length)return emptyState(`No assignments for ${esc(ASSIGN.campaign)} yet`,"Add one in the Catalog and it shows up here.",`<button class="btn" data-seg="assignView" data-val="catalog">Open the Catalog</button>`);
-  let h=`<div class="tbl"><table class="grid aboard"><thead><tr><th>Mentee</th>${list.map(a=>{
+  let h=`<div class="tbl"><table class="grid aboard"><thead><tr><th class="mentee">Mentee</th>${list.map(a=>{
       const d=dueISO(a.DueDate);
       return `<th class="ah" title="${esc(a.Title)} · ${esc(assignPrograms(a).join(", "))}${d?" · due "+esc(d):""}"><div class="at">${esc(a.Title)}</div><small>${esc(assignPrograms(a).map(p=>p[0]).join(""))} · ${d?esc(fmtDueHub(d)):"no date"}</small></th>`;}).join("")}<th></th></tr></thead><tbody>`;
   const row=(r,gone)=>{
@@ -3505,6 +3513,17 @@ document.addEventListener("change",e=>{
   const cb=e.target.closest("#aform input[data-prog]"); if(!cb||!cb.checked)return;
   const r=tierRank(cb.dataset.prog);
   document.querySelectorAll("#aform input[data-prog]").forEach(o=>{if(tierRank(o.dataset.prog)>r)o.checked=true;});
+});
+/* the browser scrolls a square the keyboard lands on into view only when none of it is inside
+   the board's box, and one under the frozen names is inside it, just covered (as is one half
+   off the right edge). By focusin it has done its scrolling: finish the job. */
+document.addEventListener("focusin",e=>{
+  const sq=e.target.closest&&e.target.closest("table.aboard button.sq");
+  if(!sq||!sq.matches(":focus-visible"))return;          // a click: the square is where you pointed, leave it
+  const tbl=sq.closest(".tbl"),th=tbl.querySelector("th.mentee");if(!th)return;
+  const r=sq.getBoundingClientRect(),ring=6;              // the focus ring sits 4px outside
+  const under=th.getBoundingClientRect().right+ring-r.left,past=r.right+ring-tbl.getBoundingClientRect().right;
+  if(under>0)tbl.scrollLeft-=under;else if(past>0)tbl.scrollLeft+=past;
 });
 document.addEventListener("click",async e=>{
   const cell=e.target.closest("[data-cell]");

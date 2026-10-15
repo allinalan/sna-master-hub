@@ -39,7 +39,8 @@ On any tab, **Export** opens a small menu:
 - **Save as PNG** — downloads a PNG of just that board (no toolbars, no browser chrome). Fonts are embedded, so it looks exactly like the screen. Filter to one campaign first if you want something short enough to read in a text.
 - **Print or save as PDF** — opens the print dialog. Choose "Save as PDF" for a multi-page version.
 
-Both always give you the light board, even with the Mac in dark mode.
+Both always give you the light board, even with the Mac in dark mode. From the keyboard,
+tab to **Export** and press Enter (or the down arrow), then the arrows and Enter.
 
 ---
 
@@ -104,7 +105,8 @@ so sorting always puts the sharpest items first.
 | **Importance** | Critical | High | Medium | Low | Minor |
 
 Each item shows three small chips under its title: **topic**, **urgency**, **importance**.
-Click one to set it. Unset chips sit faintly until you hover the row, and they never
+Click one to set it. Unset chips, and an empty note's "+ note", stay out of sight until you
+hover the row or tab into it (on a phone or an iPad they always show), and they never
 print or export. A topic is a free tag (`Recruiting`, `Curriculum`, whatever you like):
 the picker lists every topic already on the board so the spelling stays consistent, and
 has a box for a new one. Topics aren't sections — a section is where an item lives, a
@@ -262,6 +264,32 @@ installed Google Chrome instead of Playwright's Chromium; `--headed` lets you wa
 It needs Playwright, which this repo doesn't install. It uses the copy in
 `~/projects/road-to-hyrox`, or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
 points at. It doesn't cover Safari: check that one by hand.
+
+### Testing how it looks and behaves
+
+```bash
+node tools/design-check.js
+```
+
+The same kind of run (its own dev server, a real browser, the same Playwright lookup,
+`--chrome` and `--headed`), for the design rules in **How it looks** below: Export is a menu
+whose Save as PNG downloads a PNG and whose Print calls the print dialog; the menus work from
+the keyboard; Edit's **+ Add…** shows only on the week under the pointer and *Add a note
+under …* leaves the caret in the new note; **+ Income** is Money's one primary and **⋯**
+holds Splits, Buyout and Refresh; clicking the dimmed page closes an untouched drawer but
+shakes one you've typed in; popovers spring out of what you clicked; a switch's knob moves
+across when it's on; the boards' group labels stay in view when a board is scrolled
+sideways (and show in print and in the PNG); the calendar's seasons run on across printed
+pages; and the Orders of Business placeholders wait for their row.
+
+It unlocks the coach boards with the dev server's key (`dev`), so it only runs against
+`tools/dev-server.js` on this machine: point `BASE` anywhere else and it refuses before a
+page opens. It never turns an automation switch on, even a fake one: on the real sheet that
+starts real sends. A switch's look is checked on a copy with the class set by hand.
+Anything it adds to a board (assignments, calls) lives in that page only.
+
+Exit 0 means every check passed, 1 that one failed, 2 that it couldn't run (no Playwright,
+no browser, the dev server didn't start, or something it needs isn't on the page).
 
 ## Money
 
@@ -639,6 +667,16 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
 - **One primary per page** (filled ink, like **+ Income**). Everything else is a grey filled
   button or a plain tinted one. Rare actions go in a menu (`menuButton()`), whose buttons wait
   in a `<template>` and keep their `data-*` attributes, so the usual click handlers run them.
+  Menus work from the keyboard: Enter, Space or an arrow on the button opens one with an item
+  focused, the arrows, Home and End move, Enter runs one, and Escape or Tab closes it and puts
+  the focus back on the button. A click opens it without moving the focus.
+- **Placeholders wait for their row.** A board with a placeholder on every row (Orders of
+  Business' dashed topic / urgency / importance chips and its "+ note") shows them only on the
+  row under the pointer or holding the focus, like Edit's week tools; on a touch screen they
+  always show. What's set always shows. They keep their room while hidden, so nothing jumps.
+- **A board's group label stays put.** "Alan's mentees · 2", "The Dojo": the label sits in a
+  `.glab` that holds at the left edge when the board scrolls sideways. Wrap a new group row's
+  label the same way.
 - **Popovers share one shell**: a frosted material that springs out of whatever you clicked
   (`popOrigin()`). The drawer comes in on the iOS sheet curve over a dimmed page. Clicking the
   dimmed page closes it, unless something in it changed since it opened; then it shakes
@@ -646,6 +684,9 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
 - **No coloured stripes down the side of things.** Tier is a dot before the topic, and a money
   card's state is the colour of its amount.
 - **On screen, cards separate from the paper by fill. In print they get a hairline edge back.**
+- **Print fills the page.** A week, a card or a table row never splits, and a heading (a
+  season's, a section's) never sits alone at the foot of a page, but a whole season or list
+  is never held together: that pushed each season to a fresh page.
 - **Every colour is a token** at the top of the stylesheet; a component rule never carries a hex
   of its own. `--accent` is the brand vermilion (active tab, links, the one thing that's hot);
   `--bad` is for errors and overdue only. The solid squares and badges on the boards are
@@ -669,8 +710,9 @@ The design system lives at the top of `index.html`'s stylesheet. A few rules hol
 - **One underline per tab row**, outside what `paintTabs()` rebuilds, so it slides from the tab
   you were on to the one you picked. Don't give tabs underlines of their own.
 
-The checks for all of it: `node tools/dev-server.js`, then `BASE=http://localhost:8830/ node
-tools/edit-focus-check.js`, and Export / Print a board with the Mac in dark mode.
+The checks for all of it: `node tools/design-check.js` and `node tools/edit-focus-check.js`
+(each starts its own dev server; with `node tools/dev-server.js` already running, add
+`BASE=http://localhost:8830/`), and Export / Print a board with the Mac in dark mode.
 
 ## Adding a tab
 

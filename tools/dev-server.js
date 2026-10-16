@@ -28,6 +28,7 @@
 //                                           "tab":"Test Splits" to edit a tab other than the ledger
 //   curl -X POST localhost:8830/__submit -d '{"repId":"t02","assignmentId":"A1","text":"posted it"}'
 //                                           a mentee turns something in from their dashboard
+//                                           (add "at":"2026-10-14T22:05:00Z" to date it in the past)
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -160,7 +161,7 @@ http.createServer((req, res) => {
         try{
           const b = JSON.parse(data), prior = BOARD.submissions.filter(x => x.AssignmentID === b.assignmentId && x.RepID === b.repId).length;
           BOARD.submissions.push({SubmissionID:"S" + (++nextSub), AssignmentID:b.assignmentId, RepID:b.repId, Version:String(prior + 1), Text:b.text || "",
-            LinkURL:"", FileURL:"", FileName:"", SubmittedAt:new Date().toISOString(), Status:"submitted", Feedback:"", ReviewedBy:"", ReviewedAt:""});
+            LinkURL:"", FileURL:"", FileName:"", SubmittedAt:b.at || new Date().toISOString(), Status:"submitted", Feedback:"", ReviewedBy:"", ReviewedAt:""});
           return send(200, "text/plain", `${b.repId} turned in ${b.assignmentId}\n`);
         }catch(e){ return send(400, "text/plain", String(e.message) + "\n"); }
       }

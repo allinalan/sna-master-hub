@@ -754,6 +754,11 @@ table.aboard tbody tr:hover td.an{background:var(--paper-deep)}
   body:not(.exporting) #view table.aboard td.an .an-sub .chip{font-size:11px;padding:2px 7px}
 }
 table.aboard td.ac{text-align:center;padding:6px}
+table.aboard td.ac .asd{display:block;margin-top:3px;font-size:10.5px;line-height:1;color:var(--ink-faint);white-space:nowrap;font-variant-numeric:tabular-nums}
+table.asubs td{vertical-align:middle}
+table.asubs tbody tr{cursor:pointer}
+.alink{background:none;border:none;padding:0;font:inherit;font-weight:600;color:var(--ink);text-align:left;cursor:pointer}
+.alink:hover{text-decoration:underline;text-underline-offset:2px}
 table.aboard tr.agrp td{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);padding:14px 14px 6px;background:var(--paper-deep)}
 table.aboard td.tot{font-size:12px;color:var(--ink-soft);white-space:nowrap}
 .sq{position:relative;display:inline-grid;place-items:center;width:28px;height:28px;border-radius:7px;border:none;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;line-height:1;color:var(--on-mark)}
@@ -1765,6 +1770,7 @@ const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:
              bizUrg:[], bizImp:[], bizDue:"", bizSec:"", bizTopic:"", bizSort:"pri",   // Orders of Business filters + sort
              bizDraft:"",                                        // what's typed in its "add a task" box — outlives a re-render
              tier:"all", assignView:"board", assignProg:"all", assignFormer:false,   // show ticked-off items too — hiding them reads as deletion
+             assignSubSort:"new", assignSubState:"all",           // Assignments ▸ Submissions: date order + status filter
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"",     // Mentees ▸ Weekly Check-ins
              atProgs:[],   atCoaches:[],   atGroup:"coach", atCampaign:"",     // Mentees ▸ Call Attendance
@@ -3380,6 +3386,30 @@ function assignCounts(){
     s.versions.forEach(v=>{if(String(v.SubmittedAt||"")>=weekAgo)c.week++;});}));
   return c;
 }
+/*ASUBS_BEGIN*/
+/* Assignments ▸ Submissions: everything turned in, one row per mentee per
+   assignment, dated by its latest version, so a resubmit moves back up the list.
+   Newest first, or oldest first to work the queue in the order it came in; a row
+   whose stamp can't be read sinks to the bottom either way. The tab hands it the
+   people, the assignments and the board's own cellState, so a row's status is
+   always the square's. tests/asubs.test.js runs this block as is. */
+function subStamp(v){const t=Date.parse(String((v&&v.SubmittedAt)||""));return isNaN(t)?0:t;}
+function subDay(v){const t=subStamp(v);return t?new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"";}
+function subRows(reps,list,stateOf,opts){
+  const o=opts||{}, rows=[];
+  reps.forEach(r=>list.forEach(a=>{
+    const s=stateOf(r,a);
+    if(!s.latest||s.state==="na")return;
+    if(o.state&&o.state!=="all"&&s.state!==o.state)return;
+    rows.push({rep:r,a,s,at:subStamp(s.latest)});
+  }));
+  const dir=o.order==="old"?1:-1;
+  return rows.sort((x,y)=>{
+    const undated=(!x.at)-(!y.at); if(undated)return undated;
+    return (x.at-y.at)*dir||String(x.rep.Name||"").localeCompare(String(y.rep.Name||""))||String(x.a.Title||"").localeCompare(String(y.a.Title||""));
+  });
+}
+/*ASUBS_END*/
 function fmtDueHub(iso){const p=String(iso||"").split("-");return p.length<3?String(iso||""):MONTHS[+p[1]-1]+" "+(+p[2]);}
 const CELL_GLYPH={waiting:"●",revise:"✎",approved:"✓",open:"",late:"",na:""};
 const CELL_TITLE={open:"not submitted",late:"overdue",waiting:"submitted · waiting on you",revise:"feedback posted · waiting on them",approved:"approved",na:"not applicable"};
@@ -3397,16 +3427,18 @@ function renderAssign(){
   }
   const c=assignCounts();
   html+=toolbar(`<div class="tb-filters">
-      ${seg("assignView",[{v:"board",l:"Board"},{v:"catalog",l:"Catalog"}],UI.assignView)}
+      ${seg("assignView",[{v:"board",l:"Board"},{v:"subs",l:"Submissions",t:"Everything turned in, by date"},{v:"catalog",l:"Catalog"}],UI.assignView)}
       <select class="btn sm" data-assigncamp style="padding:5px 8px">${assignCampaigns().map(x=>`<option${x===ASSIGN.campaign?" selected":""}>${esc(x)}</option>`).join("")}</select>
       ${seg("assignProg",[{v:"all",l:"All"},{v:"Dojo",l:"Dojo"},{v:"Path",l:"Path"},{v:"Masters",l:"Masters"}],UI.assignProg)}
-      ${UI.assignView==="board"?`<button class="btn ${UI.assignFormer?"on":""}" data-assignact="former">Show former</button>`:""}
+      ${UI.assignView==="subs"?seg("assignSubSort",[{v:"new",l:"Newest first"},{v:"old",l:"Oldest first",t:"Work the queue in the order it came in"}],UI.assignSubSort)
+        +seg("assignSubState",[{v:"all",l:"Any status"},{v:"waiting",l:"Waiting on you"},{v:"revise",l:"Waiting on them"},{v:"approved",l:"Approved"}],UI.assignSubState):""}
+      ${UI.assignView!=="catalog"?`<button class="btn ${UI.assignFormer?"on":""}" data-assignact="former">Show former</button>`:""}
     </div>
     <div class="tb-actions"><button class="btn" data-assignact="reload" title="Re-pull from the sheet">Refresh</button>${exportButtons("assignBoard","Assignments")}</div>`);
   html+=`<div id="assignBoard" class="export-frame">`;
   html+=printHead("Assignments · "+ASSIGN.campaign,`${c.waiting} from the ${ASSIGN_REQUIRED} waiting on a coach · printed ${fmtFull(todayISO())}`);
   html+=`<div class="stats">${statBox("Waiting on you",c.waiting,`${ASSIGN_REQUIRED} only · `+(c.waiting?"open a cell to review":"inbox clear"),c.waiting>0)}${statBox("Overdue",c.late,`${ASSIGN_REQUIRED} only · not turned in, past due`,c.late>0)}${statBox("Submitted this week",c.week,"")}${statBox("Approved",c.approved,ASSIGN.campaign)}</div>`;
-  html+=UI.assignView==="board"?assignBoardHtml():assignCatalogHtml();
+  html+=UI.assignView==="board"?assignBoardHtml():UI.assignView==="subs"?assignSubsHtml():assignCatalogHtml();
   html+=`</div>`;
   return html;
 }
@@ -3423,7 +3455,8 @@ function assignBoardHtml(){
     h+=`<tr${gone?' style="opacity:.55"':""}><td class="an"><b>${esc(r.Name)}</b> <span class="an-sub"><span class="chip">${esc(r.RepID)}</span>${gone?' <span class="chip">former</span>':""}</span></td>`;
     list.forEach(a=>{
       const s=cellState(r,a); if(s.state!=="na")appN++; if(s.versions.length)inN++;
-      h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${s.due?(s.state==="late"?" since ":s.pastDue?" · was due ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button></td>`;
+      const inOn=s.latest?subDay(s.latest):"";   // the day the latest version came in, under its square
+      h+=`<td class="ac"><button class="sq ${s.state}" data-cell="${esc(r.RepID)}|${esc(a.AssignmentID)}" title="${esc(r.Name)} · ${esc(a.Title)} · ${CELL_TITLE[s.state]}${inOn?" · turned in "+fmtStamp(s.latest.SubmittedAt):""}${s.due?(s.state==="late"?" since ":s.pastDue?" · was due ":" · due ")+esc(fmtDueHub(s.due)):""}">${CELL_GLYPH[s.state]}</button>${inOn?`<small class="asd">${esc(inOn)}</small>`:""}</td>`;
     });
     h+=`<td class="tot">${inN}/${appN} in</td></tr>`;
   };
@@ -3439,6 +3472,30 @@ function assignBoardHtml(){
   h+=`</tbody></table></div>`;
   h+=`<div class="alegend"><span><i class="sq open"></i> not turned in yet</span><span><i class="sq late"></i> overdue (Dojo only)</span><span><i class="sq na"></i> not applicable</span><span><i class="sq waiting">●</i> waiting on you</span><span><i class="sq revise">✎</i> waiting on them</span><span><i class="sq approved">✓</i> approved</span></div>`;
   return h;
+}
+/* the same people and assignments as the board (program filter, Show former), as one
+   dated list. Click a row for the drawer, the same one a square opens. */
+function assignSubsHtml(){
+  const list=assignList().filter(a=>!isArchived(a)).filter(a=>UI.assignProg==="all"||assignPrograms(a).includes(UI.assignProg));
+  const inProg=r=>UI.assignProg==="all"||r.Tier===UI.assignProg;
+  const reps=assignReps().filter(inProg).concat(UI.assignFormer?assignFormerReps().filter(inProg):[]);
+  const rows=subRows(reps,list,cellState,{order:UI.assignSubSort,state:UI.assignSubState});
+  if(!rows.length){
+    const st=UI.assignSubState==="all"?"":` ${CELL_TITLE[UI.assignSubState].split(" · ").pop()}`;
+    return emptyState(`Nothing${st} in ${esc(ASSIGN.campaign)}${UI.assignProg==="all"?"":" for The "+esc(UI.assignProg)}`,
+      UI.assignSubState==="all"?"When a mentee turns something in from their dashboard, it shows up here.":"",
+      UI.assignSubState==="all"?"":`<button class="btn" data-seg="assignSubState" data-val="all">Show any status</button>`);
+  }
+  let h=`<div class="tbl"><table class="grid asubs"><thead><tr><th>Turned in</th><th>Mentee</th><th>Assignment</th><th>Status</th></tr></thead><tbody>`;
+  rows.forEach(({rep,a,s})=>{
+    const gone=!assignIsActive(rep), key=`${esc(rep.RepID)}|${esc(a.AssignmentID)}`;
+    h+=`<tr data-subcell="${key}"${gone?' style="opacity:.55"':""}>
+      <td class="dt">${s.latest.SubmittedAt?fmtStamp(s.latest.SubmittedAt):"&ndash;"}</td>
+      <td><b>${esc(rep.Name)}</b> <span class="chip">${esc(rep.Tier)}</span>${gone?' <span class="chip">former</span>':""}</td>
+      <td><button class="alink" data-cell="${key}">${esc(a.Title)}</button>${s.versions.length>1?` <span class="chip" title="${s.versions.length} versions turned in">v${esc(s.latest.Version)}</span>`:""}</td>
+      <td><span class="apill ${s.state}">${CELL_TITLE[s.state]}</span></td></tr>`;
+  });
+  return h+`</tbody></table></div>`;
 }
 function assignBaseOf(progs){return progs.slice().sort((x,y)=>tierRank(x)-tierRank(y))[0]||"Path";}
 function assignCatalogHtml(){
@@ -3589,8 +3646,8 @@ document.addEventListener("focusin",e=>{
   if(under>0)tbl.scrollLeft-=under;else if(past>0)tbl.scrollLeft+=past;
 });
 document.addEventListener("click",async e=>{
-  const cell=e.target.closest("[data-cell]");
-  if(cell){const [r,a]=cell.dataset.cell.split("|");openCell(r,a);return;}
+  const cell=e.target.closest("[data-cell]")||e.target.closest("tr[data-subcell]");   // a square, or anywhere on a Submissions row
+  if(cell){const [r,a]=(cell.dataset.cell||cell.dataset.subcell).split("|");openCell(r,a);return;}
   if(!ASSIGN.open)return;
   const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===ASSIGN.open.repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===ASSIGN.open.aId);
   if(!rep||!a)return;

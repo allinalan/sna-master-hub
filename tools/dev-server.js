@@ -20,6 +20,8 @@
 //   NO_KEY=1 node tools/dev-server.js        the money script has no MONEY_KEY set at all
 //   NO_PAY=1 node tools/dev-server.js        the check-in script predates the Pay column: the roster
 //                                           carries no Pay and setPayPlan is an unknown action
+//   NO_PROGRAM=1 node tools/dev-server.js    the check-in script can't move programs: no programEdit
+//                                           on the roster, and setProgram is an unknown action
 //   FAIL_HISTORY=1 node tools/dev-server.js  every History write fails (the entry itself still saves)
 //   curl -X POST localhost:8830/__fail -d 2  the next 2 money calls get an HTML error page,
 //                                           the way Apps Script's /exec sometimes answers
@@ -71,6 +73,7 @@ const ROSTER = [
    (its PAYPLAN block): the words in the cell, and {kind, amount, text} from them.
    t07's cell was typed by hand and doesn't read as a plan. */
 const NO_PAY = !!process.env.NO_PAY;
+const NO_PROGRAM = !!process.env.NO_PROGRAM;
 const payMoney = n => { const c = Math.round(n * 100), f = c % 100; return String(Math.floor(c / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (f ? "." + String(f).padStart(2, "0") : ""); };
 const payText = (kind, amount) => kind === "pct" ? (amount === null ? "" : String(amount)) + "% of sales" : "$" + payMoney(amount) + (kind === "full" ? " in full" : "/mo");
 const pay = (kind, amount) => ({kind, amount, text:payText(kind, amount)});
@@ -92,7 +95,21 @@ let failNext = 0;
 function team(body){
   if(body.key !== KEY) return {ok:false, error:"bad key"};
   if(body.action === "coachRoster") return Object.assign({ok:true, reps:ROSTER, coaches:[{Name:"Alan", Phone:""}, {Name:"Ben", Phone:""}]},
-    NO_PAY ? {} : {payPresets:PAY_PRESETS});
+    NO_PAY ? {} : {payPresets:PAY_PRESETS}, NO_PROGRAM ? {} : {programEdit:true});
+  /* a move writes both cells, the way the check-in script's setProgram_ does:
+     Contacts ▸ Program ("The Path") and Roster ▸ Tier ("Path") */
+  if(body.action === "setProgram" && !NO_PROGRAM){
+    const r = ROSTER.find(x => x.RepID === String(body.repId || "").trim());
+    if(/^coach/i.test(String(body.repId || ""))) return {ok:false, error:"not a mentee"};
+    if(!r) return {ok:false, error:"unknown rep"};
+    const k = String(body.program || "").trim().replace(/^the\s+/i, "").toLowerCase();
+    const tier = {dojo:"Dojo", path:"Path", masters:"Masters"}[k];
+    if(!tier || !Object.prototype.hasOwnProperty.call({dojo:1, path:1, masters:1}, k)) return {ok:false, error:"unknown program"};
+    r.Tier = tier; r.Program = "The " + tier;
+    console.log(`[program] ${r.RepID} → ${r.Program}`);
+    return {ok:true, repId:r.RepID, program:r.Program, tier:r.Tier, onRoster:true};
+  }
+  if(body.action === "setProgram") return {ok:false, error:"unknown action"};
   if(body.action === "setRepSwitch"){
     const r = ROSTER.find(x => x.RepID === body.repId);
     if(!r) return {ok:false, error:"unknown rep"};

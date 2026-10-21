@@ -2306,7 +2306,8 @@ const TEAM = {
   rows: null, coaches: [], loading: false, err: "",
   sw: null, swErr: "", swBusy: {}, repSwBusy: {},
   payPresets: {},                   // the one-click plans per program, as coachRoster hands them over
-  payEdit: null, payBusy: {}        // the one row whose Pay editor is open ({repId, kind, amount, err}) · rows mid-save
+  payEdit: null, payBusy: {},       // the one row whose Pay editor is open ({repId, kind, amount, err}) · rows mid-save
+  programEdit: false, progBusy: {}  // the script can move a mentee's program (coachRoster says so) · rows mid-move, to where
 };
 
 async function teamCall(body){
@@ -2323,7 +2324,7 @@ async function teamLoad(){
   swLoad();   // the switches don't need the roster — ask for both at once (they used to wait for it, +2 s)
   try{
     const out = await teamCall({action: "coachRoster"});
-    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; TEAM.payPresets = out.payPresets || {}; }
+    if(out.ok){ TEAM.rows = out.reps; TEAM.coaches = out.coaches || []; TEAM.payPresets = out.payPresets || {}; TEAM.programEdit = out.programEdit === true; }
     else if(out.error === "bad key"){
       TEAM.key = ""; localStorage.removeItem("sna_coach_key");
       TEAM.err = "That key wasn't right — ask Alan for the current one.";
@@ -2676,11 +2677,50 @@ function coachCellHtml(r){
       ${coachNames().map(n => `<option value="${esc(n)}"${coach.split(" ")[0] === n ? " selected" : ""}>${esc(n)}</option>`).join("")}
     </select>`;
 }
+/*PROG_BEGIN*/
+/* Moving a mentee to another program (2026-10-21). The sheet keeps a program in
+   two cells: Contacts ▸ Program ("The Path", the onboarding form's words, which
+   this tab shows) and Roster ▸ Tier ("Path", what assignments, the due-date texts
+   and the mentee's dashboard go by). setProgram (coach key) writes both and answers
+   with what both now hold. coachRoster says the script can do it (programEdit:true);
+   against one that can't, the cell stays a plain chip. */
+const PROGRAMS = ["Dojo", "Path", "Masters"];
+/* what the confirm says before a move, as lines. m = {name, from, to, coach, pay, active}:
+   from/to are Dojo | Path | Masters (from may be ""), coach is the first name on the
+   row, pay the Pay chip's words, both "" when there's none. */
+function programMoveNote(m){
+  const first = String(m.name || "").split(" ")[0] || "They";
+  const lines = [m.from ? `Move ${m.name} from The ${m.from} to The ${m.to}?` : `Put ${m.name} in The ${m.to}?`, ""];
+  lines.push(`• The assignments they owe (on their dashboard and the Assignments board) and their due-date texts go by The ${m.to} from now on.`);
+  if(m.to === "Dojo"){
+    if(m.from !== "Dojo") lines.push(`• The Dojo doesn't get check-in calls, so ${first} leaves the Weekly Check-ins board.`);
+    if(m.coach) lines.push(`• The Dojo has no coach: ${m.coach}'s name stays on the row, faded, with a clear link.`);
+  }else if(m.from === "Dojo" || !m.from){
+    lines.push(m.coach ? `• ${m.coach}'s name is already on the row, so ${m.coach} is their coach.`
+                       : `• The ${m.to} gets a coach: ${first} shows as Unassigned until you pick one.`);
+    if(m.from === "Dojo") lines.push(`• ${first} joins the Weekly Check-ins board.`);
+  }else if(m.coach) lines.push(`• ${m.coach} stays their coach.`);
+  if(m.pay) lines.push(`• Pay stays ${m.pay}. Change it on the Pay chip if the move changes it.`);
+  if(m.active === false) lines.push("", `${first} is marked former, so nothing is sent to them either way.`);
+  lines.push("", "The Contacts sheet and the Roster both change.");
+  return lines.join("\n");
+}
+/*PROG_END*/
+function programCell(r){
+  const raw = String(r.Program || r.Tier || "");
+  if(!TEAM.programEdit) return raw ? `<span class="chip">${esc(raw)}</span>` : "";
+  const busy = TEAM.progBusy[r.RepID], cur = busy || programOf(r), first = esc(r.Name.split(" ")[0]);
+  return `<select class="btn sm" data-program="${esc(r.RepID)}" style="padding:3px 6px" ${busy ? "disabled aria-busy=\"true\"" : ""}
+      aria-label="Program for ${esc(r.Name)}" title="${busy ? "Saving…" : `The program ${first} is in. Pick another to move them.`}">
+      ${cur ? "" : `<option value="" selected>—</option>`}
+      ${PROGRAMS.map(p => `<option value="${p}"${cur === p ? " selected" : ""}>The ${p}</option>`).join("")}
+    </select>`;
+}
 function teamRowHtml(r){
   return `<tr${r.Active ? "" : ` style="opacity:.55"`}>
     <td><b>${esc(r.Name)}</b> <span class="chip">${esc(r.RepID)}</span>${r.Active ? "" : ` <span class="chip">former</span>`}
         <div style="font-size:12px;color:var(--ink-faint);margin-top:2px">${esc(r.Division || "")}${r.CutcoRepNo ? " · Cutco #" + esc(r.CutcoRepNo) : ""}</div></td>
-    <td>${(r.Program || r.Tier) ? `<span class="chip">${esc(r.Program || r.Tier)}</span>` : ""}</td>
+    <td>${programCell(r)}</td>
     <td>${payCell(r)}</td>
     <td class="dt">${fmtCareer(r.CareerSales) ? `<span title="${esc(r.CareerSales)}">${fmtCareer(r.CareerSales)}</span>` : (r.CareerSales ? esc(r.CareerSales) : `<span style="color:var(--ink-faint)">&ndash;</span>`)}</td>
     <td style="font-size:12px">${r.Phone ? esc(r.Phone) : `<span class="chip" style="color:var(--bad)">no phone</span>`}
@@ -2724,7 +2764,7 @@ function renderTeam(){
       <div class="lede">Everyone on Sharp Ninja Academy, straight from the private contacts sheet —
         onboarding form submissions land here on their own. Filter by program or coach (light up more than one to
         see them side by side), group the board by who's coaching, pick a coach on any Path or Masters row to assign
-        the mentorship, and click a row's Pay chip to put in what they pay. The Dojo doesn't get check-in calls, so nobody there has a coach until they graduate to The Path.</div>
+        the mentorship, move someone to another program from the Program column, and click a row's Pay chip to put in what they pay. The Dojo doesn't get check-in calls, so nobody there has a coach until they graduate to The Path.</div>
     </div>
   </div>`;
 
@@ -2781,7 +2821,7 @@ function renderTeam(){
         inactive && !former ? `<button class="btn" data-teamact="former">Show former</button>` : "");
   else{
     html += `<div class="tbl"><table class="grid"><thead><tr>
-      <th>Mentee</th><th>Program</th><th title="What they pay: a flat amount a month, paid in full, or a percent of sales. Click a row's chip to set or change it.">Pay</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export" title="Per-mentee switches: a send needs the program switch above AND the mentee's own">Automations</th><th class="no-print no-export"></th>
+      <th>Mentee</th><th title="The program each mentee is in. Pick another on a row to move them: the Contacts sheet and the Roster both change.">Program</th><th title="What they pay: a flat amount a month, paid in full, or a percent of sales. Click a row's chip to set or change it.">Pay</th><th>Career sales</th><th>Contact</th><th>Manager</th><th>Joined</th><th>Coach</th><th class="no-print no-export" title="Per-mentee switches: a send needs the program switch above AND the mentee's own">Automations</th><th class="no-print no-export"></th>
     </tr></thead><tbody>`;
     for(const g of groups){
       if(g.label) html += `<tr class="grp"><td colspan="10"><span class="glab">${esc(g.label)} <span class="n">· ${g.rows.length}</span></span></td></tr>`;
@@ -3207,6 +3247,50 @@ async function assignCoachUI(repId, coach){
     if(row) row.Coach = before;
     render(); toast(`Couldn't ${coach ? "give " + repId + " to " + coach : "unassign " + repId} — the sheet didn't answer.`, {err:true, retry:() => assignCoachUI(repId, coach)});
   }
+}
+/* move one mentee to another program: say what follows, then the row takes whatever
+   both cells hold after the write. The select is put back if the move is called off. */
+document.addEventListener("change", e => {
+  const sel = e.target.closest("select[data-program]");
+  if(!sel) return;
+  const repId = sel.dataset.program, to = sel.value;
+  const row = (TEAM.rows || []).find(r => r.RepID === repId);
+  if(!row || !PROGRAMS.includes(to) || to === programOf(row) || TEAM.progBusy[repId]){ render(); return; }
+  const note = programMoveNote({name: row.Name, from: programOf(row), to, coach: coachOf(row),
+    pay: row.Pay ? payLabel(row.Pay) : "", active: !!row.Active});
+  if(!confirm(note)){ sel.value = programOf(row); return; }
+  setProgramUI(repId, to);
+});
+async function setProgramUI(repId, to){
+  const row = (TEAM.rows || []).find(r => r.RepID === repId);
+  if(!row || TEAM.progBusy[repId]) return;
+  const first = row.Name.split(" ")[0];
+  TEAM.progBusy[repId] = to; render();
+  const out = await teamCall({action: "setProgram", repId, program: to}).catch(() => ({ok:false}));
+  delete TEAM.progBusy[repId];
+  if(out.ok && "program" in out){
+    row.Program = out.program;
+    if(out.onRoster) row.Tier = out.tier;
+    /* the Assignments board keeps its own copy of each Tier: move it there too, and
+       have the board ask the sheet again the next time it's opened */
+    const ar = ASSIGN.rows && (ASSIGN.rows.reps || []).find(x => String(x.RepID) === repId);
+    if(ar && out.onRoster) ar.Tier = out.tier;
+    ASSIGN.loadedAt = 0;
+    const got = programOf({Program: out.program}), tier = out.onRoster ? programOf({Tier: out.tier}) : got;
+    if(got !== to || tier !== to)
+      toast(`${first} wasn't moved cleanly: the Contacts sheet says ${out.program || "nothing"}, the Roster says ${out.onRoster ? out.tier || "nothing" : "no row"}. Try again.`,
+            {err:true, retry:() => setProgramUI(repId, to)});
+    else toast(`${first} → The ${to}${out.onRoster ? "" : " (not on the Roster tab, so only the Contacts sheet changed)"}`);
+  }else if(out.error === "unknown action"){
+    toast("The sheet's script can't move programs yet — nothing changed.", {err:true});
+  }else{
+    toast(out.error && out.error !== "bad key" ? `Couldn't move ${first} to The ${to}: ${out.error}. Refresh to see where it stands.`
+                                               : `Couldn't move ${first} to The ${to} — the sheet didn't answer. Refresh to see where it stands.`,
+          {err:true, retry:() => setProgramUI(repId, to)});
+  }
+  render();
+  /* a keyboard user lands back on the row's picker, unless they've moved on meanwhile */
+  if(document.activeElement === document.body){ const s = document.querySelector(`select[data-program="${CSS.escape(repId)}"]`); if(s) s.focus(); }
 }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-swkey]");

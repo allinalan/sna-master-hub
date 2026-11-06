@@ -3590,13 +3590,14 @@ function assignCatalogHtml(){
     h+=`<div class="sec-title">The ${p} <span class="n">${rows.length} assignment${rows.length===1?"":"s"}</span></div>`;
     if(ASSIGN.editing&&!ASSIGN.editing.id&&assignBaseOf(ASSIGN.editing.programs)===p)h+=assignFormHtml(ASSIGN.editing);
     if(rows.length){
-      h+=`<div class="tbl"><table class="grid acat"><thead><tr><th>Assignment</th><th>Programs</th><th>Due</th><th>Materials</th><th class="no-print no-export"></th></tr></thead><tbody>`;
+      h+=`<div class="tbl"><table class="grid acat"><thead><tr><th>Assignment</th><th>Programs</th><th>Due</th><th>Submissions email</th><th>Materials</th><th class="no-print no-export"></th></tr></thead><tbody>`;
       rows.forEach(a=>{
-        if(ASSIGN.editing&&ASSIGN.editing.id===a.AssignmentID){h+=`<tr><td colspan="5">${assignFormHtml(ASSIGN.editing)}</td></tr>`;return;}
+        if(ASSIGN.editing&&ASSIGN.editing.id===a.AssignmentID){h+=`<tr><td colspan="6">${assignFormHtml(ASSIGN.editing)}</td></tr>`;return;}
         const arch=isArchived(a), instr=String(a.Instructions||"");
         h+=`<tr${arch?' style="opacity:.55"':""}><td><b>${esc(a.Title)}</b>${arch?' <span class="chip">archived</span>':""}<div class="ainstr">${esc(instr.slice(0,140))}${instr.length>140?"…":""}</div></td>
           <td>${assignPrograms(a).map(x=>`<span class="chip">${esc(x)}</span>`).join(" ")}</td>
           <td class="dt">${dueISO(a.DueDate)?esc(fmtDueHub(dueISO(a.DueDate))):`<span style="color:var(--ink-faint)">&ndash;</span>`}</td>
+          <td>${ownerCell(a)}</td>
           <td class="dt">${a.MaterialsURL?`<a href="${esc(a.MaterialsURL)}" target="_blank" rel="noopener">link ↗</a>`:""}</td>
           <td class="no-print no-export" style="white-space:nowrap"><button class="btn sm" data-assignact="edit" data-id="${esc(a.AssignmentID)}">edit</button> <button class="btn sm" data-assignact="${arch?"restore":"archive"}" data-id="${esc(a.AssignmentID)}">${arch?"restore":"archive"}</button></td></tr>`;
       });
@@ -3616,6 +3617,10 @@ function assignFormHtml(f){
       <label class="ad-sub">Due ${dbtn("field", "", f.dueDate || "", f.dueDate ? fmtFull(f.dueDate) : "",
         {id:"afDue", cls:"always", ph:"pick a date"})}</label>
       <label class="ad-sub">Campaign <input class="search" id="afCamp" value="${esc(f.campaign||ASSIGN.campaign)}" style="width:120px"></label></div>
+    <div class="ad-row"><label class="ad-sub">Submissions email <select class="btn sm" id="afOwner" style="padding:3px 6px">
+        <option value=""${f.owner?"":" selected"}>Auto · whoever ran the call</option>
+        ${OWNER_OPTS.map(o=>`<option value="${esc(o)}"${f.owner===o?" selected":""}>${esc(o)}</option>`).join("")}</select></label>
+      <span class="sw-hint">${(()=>{const o=f.id&&ownerInfo(f.id);return o&&!f.owner?"auto picks "+esc(o.name)+" ("+esc(ownerWhy(o))+")":"auto = the host of the latest Dojo call on the calendar (a make-up goes to its own call's host); nobody found = both of you";})()}</span></div>
     <label class="ad-sub" style="display:grid;gap:4px">Materials link <input class="search" id="afUrl" value="${esc(f.materialsUrl||"")}" placeholder="https://…"></label>
     <label class="ad-sub" style="display:grid;gap:4px">Instructions <textarea id="afInstr" placeholder="What to do, how to submit it, what good looks like.">${esc(f.instructions||"")}</textarea></label>
     <div class="ad-row"><button class="btn primary" data-assignact="save"${ASSIGN.busy?" disabled":""}>${f.id?"Save":"Add assignment"}</button><button class="btn" data-assignact="cancel">Cancel</button></div>
@@ -3640,13 +3645,31 @@ async function assignWrite(body,okMsg,onOk){
 async function assignSaveForm(){
   const progs=[...document.querySelectorAll("#aform input[data-prog]:checked")].map(i=>i.dataset.prog);
   const a={id:ASSIGN.editing.id,programs:progs,campaign:$("#afCamp").value.trim(),title:$("#afTitle").value.trim(),dueDate:$("#afDue").dataset.iso||"",
-           materialsUrl:$("#afUrl").value.trim(),instructions:$("#afInstr").value.trim(),active:ASSIGN.editing.active!==false};
+           materialsUrl:$("#afUrl").value.trim(),instructions:$("#afInstr").value.trim(),active:ASSIGN.editing.active!==false,owner:$("#afOwner").value};
   if(!progs.length)return toast("Tick at least one program");
   if(!a.title)return toast("Give it a title");
   if(a.materialsUrl&&!/^https?:\/\//i.test(a.materialsUrl))return toast("The materials link needs to start with http:// or https://");
   await assignWrite({action:"saveAssignment",a},ASSIGN.editing.id?"Saved":"Added");
 }
-function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a)};}
+function editingFrom(a){return {id:a.AssignmentID,programs:assignPrograms(a),campaign:a.Campaign,title:a.Title,instructions:a.Instructions,materialsUrl:a.MaterialsURL,dueDate:dueISO(a.DueDate),active:!isArchived(a),owner:String(a.Owner||"").trim()};}
+/* who a submission emails (2026-11-06): the coach who ran the call it came from.
+   The web app works it out (assignment Owner, else a make-up's own call, else the
+   latest Dojo call on the hub calendar on or before the day it was made). */
+const OWNER_OPTS=["Alan","Ben","Alan & Ben"];
+function ownerInfo(id){const o=ASSIGN.rows&&ASSIGN.rows.owners;return o&&o[id]||null;}
+function ownerWhy(o){
+  if(!o)return "";
+  const d=o.call?fmtDueHub(o.call.date):"";
+  if(o.how==="set")return "set here";
+  if(o.how==="replay")return `make-up for the ${d} call`;
+  if(o.how==="call")return `ran the ${d} Dojo call`;
+  return o.hubRead===false?"couldn't read the calendar":"no host on the calendar";
+}
+function ownerCell(a){
+  const o=ownerInfo(a.AssignmentID);
+  if(!o)return `<span style="color:var(--ink-faint)">&ndash;</span>`;
+  return `<span class="chip">${esc(o.name)}</span><div class="ainstr">${esc(ownerWhy(o))}</div>`;
+}
 function fmtStamp(iso){const d=new Date(iso);return isNaN(d)?esc(String(iso||"")):MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit",hour12:true});}
 function openCell(repId,aId){
   const rep=(ASSIGN.rows.reps||[]).find(r=>r.RepID===repId), a=(ASSIGN.rows.assignments||[]).find(x=>x.AssignmentID===aId);

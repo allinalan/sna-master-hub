@@ -10,7 +10,7 @@ Built to be printed: plan the calls, then export a clean image.
 ## What's in it
 
 The bold tabs across the top: **Campaign Calendar** · **Performance** · **Mentees** ·
-**Assignments** · **Orders of Business** · **Money**. A tab with more than one page grows a row
+**Assignments** · **Scripts** · **Orders of Business** · **Money**. A tab with more than one page grows a row
 of sub-tabs under it.
 
 | Tab | What it's for |
@@ -23,6 +23,7 @@ of sub-tabs under it.
 | ↳ Weekly Check-ins | One coloured square per Path/Masters mentee per Vector week (Tuesday to Monday) of the campaign, each column headed "Wk 1 · 9/1–9/7" (The Dojo doesn't get check-in calls, so it isn't on this board). Click a square: **green** check-in call · **purple** 1-1 call · **blue** voice note / texts · **red** missed · **black** not needed (vacation etc.). Same filters and grouping as the roster; the board starts clean each campaign and older campaigns stay in the picker. Marks are shared between Alan and Ben. A **purple** square also counts as that mentee's formal 1-on-1 for the month on the Performance tab's Calls board (booked while the week is running, completed once it ends) — so Ben's calls, which book on his calendar and never reach the Calls sheet, still show up there. |
 | ↳ Call Attendance | A roll for every group call: one row per mentee, one column per call this campaign. Click a call to take its roll — tick who's **on**, mark anyone **excused** — and press **Roll's in**. Anyone the call was for who wasn't on it (excused included) gets a **make-up** on their dashboard: watch the recording, post takeaways in the GroupMe, then say what they posted, due the **Friday after the call at midnight**. Replays never count as attendance. You read and approve make-ups right on this board. Details in [Call attendance](#call-attendance). |
 | **Assignments** | The homework loop, behind the coach key. **Catalog**: what each program owes this campaign (tick which programs an assignment applies to — a Dojo assignment pre-ticks Path and Masters). **Board**: one row per mentee, one column per assignment — yellow not turned in yet, red overdue (only a Dojo square goes red: Path and Masters aren't required to turn assignments in, so theirs stay yellow; their own dashboards still say overdue), black not applicable, green submitted (● waiting on you · ✎ waiting on them · ✓ approved), with the day it came in under the square (the latest version's; hover for the time). **Submissions**: everything turned in as one list, dated, **newest first** or **oldest first** (to work the queue in the order it came in), filtered by status (waiting on you, waiting on them, approved) and by the same program and Show former as the board; a resubmit moves back up with its new date, and a row opens the same drawer as its square. Click a cell to read the work, post feedback, approve, set a per-mentee due date, or email a reminder. Only the Dojo is required to turn assignments in, so **Waiting on you** and **Overdue** count the Dojo only; Path and Masters cells still show on the board and still count toward Submitted this week and Approved. The tab itself carries no count. Mentees submit from their dashboard; they get an email when you reply. Each submission emails **the coach who ran the call it came from**, not both of you: the Catalog's **Submissions email** column says who and why. Left on **Auto**, a make-up goes to its own call's host and anything else to the host of the latest Dojo call on the calendar on or before the day it was made; pick Alan, Ben or Alan & Ben on the form to set it yourself (do that for an assignment posted *before* its call). No host on the calendar means both of you. Mark someone **former** on the roster and they drop off the board and out of its counts straight away; their work stays in the sheet, and **reactivate** brings them back. **Show former** lists them at the foot of the board, faded and never counted, so you can still look up what they turned in — their cells open read only, so nobody emails someone who has left. |
+| **Scripts** | The sales-script library every mentee reads on their dashboard's **Scripts** tab — behind the coach key. Folders go two levels deep, a category and its sub-folders, and start as **Booth**, **Demo** and **Service Call Scripts** (each with Cookware, Flatware and Business Gifts; Booth and Demo also with New Customer and Past Customer), **Phoning Scripts** and **Other Scripts**. **+ Script** uploads a file (PDF, Word, slides or a photo, 10 MB at most) or takes a pasted Google Doc or Drive link, with a title, an optional note, the programs that see it (all three unless you untick one) and a **Hide from mentees for now** box. **Edit** on a script changes any of that, moves it to another folder, swaps its file, or removes it; ↑ ↓ reorder it. A folder's **⋯** (or **Folder settings**) renames it, moves it into another category or makes it a category of its own, reorders it, or deletes it once it's empty. Details in [Scripts](#scripts). |
 | **Money** | What came in, what went out, and who owes whom — behind the coach key. **+ Income** from a mentee as **% of commission sales** (type the sales and the rate; the hub does the multiplying) or **flat**, received by Ben unless you pick Alan; **+ Expense** with who paid, a category and a receipt photo or PDF; **Settle up**. Every entry starts from its campaign's split — **Ben 62.5 · Alan 37.5** (year 1–2 of the contract) until a later year's split goes in under **Splits** — and any one entry can still be changed on its own. Pick a campaign for its income, expenses, profit, each share and a card saying who owes whom; when the campaign ends, **Record settle-up** and the card reads **Settled ✓**. **Buyout** prices the contract's buyout from the last twelve months, with its terms kept on the private sheet. Details in [Money](#money). |
 | ↳ Topic Bank | All 71 topics we can teach, by category. Each is auto-checked against the archive and the calendar, so you can see what's been run, what's still scheduled, and what's never been touched. A call that has already happened counts as run, automatically. |
 | ↳ Call Archive | Every group call back to Dec 2024 — so we don't repeat a topic by accident. |
@@ -262,8 +263,17 @@ all. `--chrome` runs it in the
 installed Google Chrome instead of Playwright's Chromium; `--headed` lets you watch.
 
 It needs Playwright, which this repo doesn't install. It uses the copy in
-`~/projects/road-to-hyrox`, or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
+`~/projects/road-to-hyrox` (the MacBook), then the one in `~/.local/share/playwright` (the mini: `npm install playwright` there), or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
 points at. It doesn't cover Safari: check that one by hand.
+
+**On the mini, never run `npx playwright install` in a new folder without checking the cache
+afterwards.** On 2026-11-17 the install for these checks deleted Chromium builds 1223 and 1234
+from `~/Library/Caches/ms-playwright`, which csp-autopilot, rsd-shift-picking, rsd-events-intake,
+rsd-event-analyzer and The Block's VectorConnect worker launch. Playwright prunes every build
+no registered install claims, and those projects' installs had never registered. They were put
+back within minutes by running `./node_modules/.bin/playwright install chromium` inside
+rsd-shift-picking and csp-autopilot, which also registers them, so a later install leaves them
+alone. If a browser job ever fails with "Executable doesn't exist", that's the fix.
 
 ### Testing how it looks and behaves
 
@@ -295,6 +305,48 @@ Anything it adds to a board (assignments, calls, a due-date change) lives in tha
 
 Exit 0 means every check passed, 1 that one failed, 2 that it couldn't run (no Playwright,
 no browser, the dev server didn't start, or something it needs isn't on the page).
+
+## Scripts
+
+### What a mentee sees
+
+Their dashboard's **Scripts** tab (`?rep=…&tab=scripts` opens straight onto it): every script
+that isn't hidden or removed and is ticked for their program, grouped by category and
+sub-folder, with a search box, a pill per category, and **New** on anything added in the last
+14 days. A tap opens the script in Drive's own viewer over the page (**Open ↗** for the full
+Drive or Docs app); a plain web link just opens. A coach on Performance ▸ Rep sees what the
+mentee they picked sees.
+
+**A pasted Google Doc has to be shared "Anyone with the link can view"**, or a mentee gets
+Google's "request access" page. Uploaded files are shared that way by the script itself; if
+Drive ever refuses, the save still goes through and the hub says so in a red toast.
+
+### Nothing disappears
+
+**Remove from library** takes a script off every dashboard but keeps its row (`Removed` = Y)
+and leaves its file in Drive. Replacing a script's file keeps the old file in Drive too. A
+folder deletes only when nothing is in it, and its row is kept the same way. The **SNA Scripts**
+Drive folder is the one place files pile up; tidy it by hand if it ever matters.
+
+### Where it lives
+
+| What | Where |
+|---|---|
+| The library | Tabs **ScriptFolders** and **Scripts** in the **SNA Dashboard Data** sheet (the one the dashboard already reads). The first time the hub asks for the library, the script creates both tabs and seeds the folders. |
+| The files | Drive folder **SNA Scripts** (its ID is the check-in script's `SCRIPTS_FOLDER_ID` property), shared "anyone with the link can view" |
+| The code | The check-in script, `appsscript/SharpNinja-Setup.gs` in the private **sharpninja** repo: the `scripts` action (coach key), with its rules in the `SCRIPTS_BEGIN`/`SCRIPTS_END` block, tested by `node appsscript/tests/scripts.test.js` there |
+
+Hidden scripts are hidden on the dashboard, not secret: the sheet is link-readable, like the
+rest of the dashboard's data.
+
+### Testing it
+
+`node tools/dev-server.js` serves the tab at `http://localhost:8830/#scripts` (coach key `dev`)
+running the check-in script's own `SCRIPTS` block on an in-memory library; uploaded files are
+served back from memory. It finds the script in a `sharpninja` checkout beside this repo, then
+in `~/automations/sharpninja`; `SNA_GS=/path/to/SharpNinja-Setup.gs` points it anywhere else.
+Without one, the tab says the check-in script needs the Scripts version deployed, which is what
+the live hub would say too.
 
 ## Money
 

@@ -23,6 +23,11 @@
 //   NO_PROGRAM=1 node tools/dev-server.js    the check-in script can't move programs: no programEdit
 //                                           on the roster, and setProgram is an unknown action
 //   FAIL_HISTORY=1 node tools/dev-server.js  every History write fails (the entry itself still saves)
+//   SNA_GS=/path/SharpNinja-Setup.gs ...     where the check-in script lives, for the Scripts tab: its
+//                                           SCRIPTS block runs on an in-memory library (default: a
+//                                           sharpninja checkout next to this repo, then ~/automations).
+//                                           No such block = Scripts answers "unknown action", like
+//                                           the live script before the library was deployed
 //   curl -X POST localhost:8830/__fail -d 2  the next 2 money calls get an HTML error page,
 //                                           the way Apps Script's /exec sometimes answers
 //   curl -X POST localhost:8830/__cell -d '{"book":"test","row":2,"col":5,"value":"lots"}'
@@ -91,6 +96,30 @@ const PAY_PRESETS = {
 const BOARD = {assignments:[], overrides:[], submissions:[]};
 let nextAssign = 0, nextSub = 0;
 let failNext = 0;
+/* the Scripts library: the check-in script's own pure half, on an in-memory library.
+   Uploaded files stay in memory and are served back at /__scriptfile/<id>. */
+const SCRIPTS_GS = [process.env.SNA_GS, path.join(ROOT, "..", "sharpninja", "appsscript", "SharpNinja-Setup.gs"),
+  path.join(require("os").homedir(), "automations", "sharpninja", "appsscript", "SharpNinja-Setup.gs")]
+  .filter(Boolean).find(f => { try{ return fs.readFileSync(f, "utf8").includes("/*SCRIPTS_BEGIN*/"); }catch(e){ return false; } });
+const SC = SCRIPTS_GS ? new Function(fs.readFileSync(SCRIPTS_GS, "utf8").match(/\/\*SCRIPTS_BEGIN\*\/([\s\S]*?)\/\*SCRIPTS_END\*\//)[1] +
+  ";return {scriptSeedRows_, scriptsApply_, scriptsOut_, SCRIPT_FILE_MAX};")() : null;
+const SC_LIB = SC ? {folders:SC.scriptSeedRows_(new Date().toISOString()), scripts:[]} : null;
+const SC_FILES = {};
+function scripts(b){
+  if(!SC) return {ok:false, error:"unknown action"};
+  if((b.op || "list") === "list") return {ok:true, library:SC.scriptsOut_(SC_LIB)};
+  const file = b.file && b.file.b64 ? b.file : null;
+  if(file && String(file.b64).length > SC.SCRIPT_FILE_MAX * 4 / 3 + 4) return {ok:false, error:"file too big (10 MB at most)"};
+  const res = SC.scriptsApply_(SC_LIB, {op:b.op, name:b.name, parentId:b.parentId, id:b.id, dir:b.dir, script:b.script},
+    {now:new Date().toISOString(), by:b.by, file:file ? {name:file.name, type:file.type} : null});
+  if(res.error) return {ok:false, error:res.error, library:SC.scriptsOut_(SC_LIB)};
+  if(file){
+    const id = "dev" + (Object.keys(SC_FILES).length + 1);
+    SC_FILES[id] = {type:file.type || "application/octet-stream", buf:Buffer.from(file.b64, "base64")};
+    res.script.FileID = id; res.script.URL = "/__scriptfile/" + id;
+  }
+  return {ok:true, id:res.id, warning:"", library:SC.scriptsOut_(SC_LIB)};
+}
 
 function team(body){
   if(body.key !== KEY) return {ok:false, error:"bad key"};
@@ -162,6 +191,7 @@ function team(body){
     Object.assign(sub, {Status:body.status, Feedback:body.feedback || "", ReviewedBy:body.by || "", ReviewedAt:new Date().toISOString()});
     return {ok:true, emailed:false, hasEmail:false};
   }
+  if(body.action === "scripts") return scripts(body);
   if(body.action === "remindAssignment") return {ok:true, emailed:false, hasEmail:false};
   return {ok:false, error:"the dev server doesn't fake " + body.action};
 }
@@ -205,9 +235,14 @@ http.createServer((req, res) => {
     });
     return;
   }
+  if(req.method === "GET" && url.pathname.startsWith("/__scriptfile/")){
+    const f = SC_FILES[url.pathname.split("/").pop()];
+    return f ? (res.writeHead(200, {"Content-Type":f.type, "Cache-Control":"no-store"}), res.end(f.buf)) : send(404, "text/plain", "no such file");
+  }
   if(req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")){
     try{ return send(200, "text/html; charset=utf-8", page()); }
     catch(e){ return send(500, "text/plain", e.message); }
   }
   send(404, "text/plain", "not found");
-}).listen(PORT, () => console.log(`hub with fake backends: http://localhost:${PORT}/#money · coach key "${KEY}" · data lives in memory until this stops`));
+}).listen(PORT, () => console.log(`hub with fake backends: http://localhost:${PORT}/#money · coach key "${KEY}" · data lives in memory until this stops` +
+  (SCRIPTS_GS ? `\nScripts tab runs the SCRIPTS block of ${SCRIPTS_GS}` : "\nScripts tab: no check-in script with a SCRIPTS block found, so it answers unknown action")));

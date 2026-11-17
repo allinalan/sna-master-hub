@@ -266,6 +266,15 @@ It needs Playwright, which this repo doesn't install. It uses the copy in
 `~/projects/road-to-hyrox` (the MacBook), then the one in `~/.local/share/playwright` (the mini: `npm install playwright` there), or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
 points at. It doesn't cover Safari: check that one by hand.
 
+**On the mini, never run `npx playwright install` in a new folder without checking the cache
+afterwards.** On 2026-11-17 the install for these checks deleted Chromium builds 1223 and 1234
+from `~/Library/Caches/ms-playwright`, which csp-autopilot, rsd-shift-picking, rsd-events-intake,
+rsd-event-analyzer and The Block's VectorConnect worker launch. Playwright prunes every build
+no registered install claims, and those projects' installs had never registered. They were put
+back within minutes by running `./node_modules/.bin/playwright install chromium` inside
+rsd-shift-picking and csp-autopilot, which also registers them, so a later install leaves them
+alone. If a browser job ever fails with "Executable doesn't exist", that's the fix.
+
 ### Testing how it looks and behaves
 
 ```bash

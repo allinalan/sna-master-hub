@@ -805,6 +805,52 @@ body:has(#adrawer.on)::before{opacity:1;pointer-events:auto}
 .ad-ver .vt{white-space:pre-wrap}
 .ad-fb{margin-top:8px;border-left:3px solid var(--accent);padding:6px 10px;background:var(--accent-soft);border-radius:0 8px 8px 0}
 .ad-form{display:grid;gap:8px}
+/* Scripts: a folder list beside the open folder's scripts */
+.sc-wrap{display:grid;grid-template-columns:232px minmax(0,1fr);gap:32px;align-items:start;margin-top:4px}
+.sc-tree{display:grid;gap:1px;position:sticky;top:16px}
+.sc-nrow{display:flex;align-items:center;border-radius:8px}
+.sc-nrow:hover{background:var(--hover)}
+.sc-nrow.on{background:var(--accent-soft)}
+.sc-node{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;text-align:left;padding:8px 4px 8px 10px;border:0;background:none;
+  font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;border-radius:8px}
+.sc-node.sub{padding-left:26px;font-size:13px;font-weight:500;color:var(--ink-soft)}
+.sc-nrow.on .sc-node{color:var(--accent-ink)}
+.sc-node .n{margin-left:auto;font-size:12px;font-weight:500;color:var(--ink-soft)}
+.sc-gear{border:0;background:none;color:var(--ink-soft);font-size:14px;line-height:1;padding:6px 8px;border-radius:6px;cursor:pointer;opacity:0}
+.sc-nrow:hover .sc-gear,.sc-nrow.on .sc-gear,.sc-gear:focus-visible{opacity:1}
+.sc-gear:hover{background:var(--fill-hover);color:var(--ink)}
+@media (hover:none){.sc-gear{opacity:1}}
+.sc-head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.sc-head .t{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.015em}
+.sc-list{display:grid;gap:8px}
+.sc-row{background:var(--card);border-radius:var(--radius);padding:12px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center}
+.sc-row.hid{opacity:.72}
+.sc-kind{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:5px 0;width:52px;text-align:center;border-radius:6px;
+  background:var(--brass-soft);color:var(--brass)}
+.sc-t{font-family:var(--serif);font-size:16px;font-weight:600;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.sc-t:hover{color:var(--accent);text-decoration:underline}
+.sc-note{font-size:13px;color:var(--ink-soft);margin-top:3px;line-height:1.45}
+.sc-meta{font-size:12px;color:var(--ink-soft);margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sc-acts{display:flex;gap:6px}
+.sc-glab{display:flex;gap:8px;align-items:center;margin:26px 0 10px}
+.sc-glink{border:0;background:none;padding:0;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);cursor:pointer}
+.sc-glink:hover{color:var(--ink)}
+.sc-none{font-size:13px;color:var(--ink-soft);padding:2px 0 4px}
+.sc-form .ad-sub{margin-top:8px}
+.sc-form .search,.sc-form select{width:100%}
+.sc-opt{text-transform:none;letter-spacing:0;font-weight:500}
+.sc-drop{display:grid;gap:6px;padding:12px;border:1px dashed var(--line-strong);border-radius:10px;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.sc-drop:hover{background:var(--hover)}
+.sc-chk{font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.sc-btns{margin-top:14px}
+.sc-btns .grow{flex:1}
+@media screen and (max-width:760px){
+  .sc-wrap{grid-template-columns:1fr;gap:20px}
+  .sc-tree{position:static}
+  .sc-nrow.shut{display:none}
+  .sc-row{grid-template-columns:minmax(0,1fr);gap:8px}
+  .sc-kind{justify-self:start;width:auto;padding:4px 8px}
+}
 details.ad-more{border-top:1px solid var(--line);padding-top:10px}
 details.ad-more summary{cursor:pointer;font-family:var(--monof);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
 .pp-head{display:flex;gap:8px;padding:10px;border-bottom:1px solid var(--line)}
@@ -1774,7 +1820,8 @@ const UI = { year:new Date().getFullYear(), season:"all", presenter:"all", open:
              teamProgs:[], teamCoaches:[], teamGroup:"none",      // Mentees ▸ Roster: multi-select filters + grouping
              ciProgs:[],   ciCoaches:[],   ciGroup:"coach", ciCampaign:"",     // Mentees ▸ Weekly Check-ins
              atProgs:[],   atCoaches:[],   atGroup:"coach", atCampaign:"",     // Mentees ▸ Call Attendance
-             moneyKind:"all", moneyWho:"all", moneyCat:"", moneyVoid:false };  // Money filters
+             moneyKind:"all", moneyWho:"all", moneyCat:"", moneyVoid:false,    // Money filters
+             scProg:"all", scQ:"", scSel:"" };                    // Scripts: program filter, search, open folder
 /* Check-in marks made since the last successful sync, and how many other
    kinds of edit happened alongside them. Two coaches marking the same board
    on the same call is the normal case, so a colliding save replays these on
@@ -3175,13 +3222,13 @@ document.addEventListener("click", async e => {
     const v = ($("#teamKey") || {}).value || "";
     if(!v.trim()) return;
     TEAM.key = v.trim(); localStorage.setItem("sna_coach_key", TEAM.key);
-    TEAM.rows = null; ASSIGN.rows = null; MONEY.entries = null; MONEY.err = ""; teamLoad();
+    TEAM.rows = null; ASSIGN.rows = null; SCRIPTS.lib = null; SCRIPTS.err = ""; MONEY.entries = null; MONEY.err = ""; teamLoad();
   }
   if(kind === "reload"){ TEAM.rows = null; teamLoad(); }
   if(kind === "swretry"){ TEAM.sw = null; TEAM.swErr = ""; swLoad(); }
   if(kind === "former"){ UI.teamFormer = !UI.teamFormer; render(); }
   if(kind === "lock"){
-    TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; MONEY.entries = null; MONEY.err = ""; localStorage.removeItem("sna_coach_key");
+    TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; SCRIPTS.lib = null; SCRIPTS.form = null; MONEY.entries = null; MONEY.err = ""; localStorage.removeItem("sna_coach_key");
     render(); toast("Key forgotten on this device");
   }
 });
@@ -4894,7 +4941,7 @@ async function moneyRefused(out){
   if(out.error === "bad key"){
     const team = await teamCall({action:"getSettings"}).catch(() => null);
     if(team && team.error === "bad key"){
-      TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; MONEY.entries = null; MONEY.err = "";
+      TEAM.key = ""; TEAM.rows = null; ASSIGN.rows = null; SCRIPTS.lib = null; SCRIPTS.form = null; MONEY.entries = null; MONEY.err = "";
       localStorage.removeItem("sna_coach_key");
       TEAM.err = "That key wasn't right — ask Alan for the current one.";
       return;
@@ -5958,6 +6005,7 @@ const SECTIONS = [
   {id:"team", label:"Mentees",
    count:()=>TEAM.rows ? TEAM.rows.filter(r => r.Active).length + " active" : ""},
   {id:"assign", label:"Assignments"},
+  {id:"scripts", label:"Scripts", count:()=>SCRIPTS.lib ? String(SCRIPTS.lib.scripts.length) : ""},
   {id:"business", label:"Orders of Business",
    count:()=>Object.values(DATA.business).flat().filter(i => !i.done).length + " open"},
   {id:"money", label:"Money", count:moneyNavCount}
@@ -6001,6 +6049,9 @@ const TABS = [
 
   {id:"assign", label:"Assignments", sub:"", section:"assign", printable:true,
    render:renderAssign},
+
+  {id:"scripts", label:"Scripts", sub:"", section:"scripts",
+   count:()=>SCRIPTS.lib ? String(SCRIPTS.lib.scripts.length) : "", render:renderScripts},
 
   {id:"money", label:"Money", sub:"", section:"money", printable:true,
    count:moneyNavCount, render:renderMoney}
@@ -7121,11 +7172,12 @@ function render(){
      rebuilt by every render (a sync, a flash fading out) — put the cursor back
      where it was */
   const act = document.activeElement;
-  const focused = act && (act.id === "q" || act.id === "bizAdd" || act.id === "payAmt") ? act.id : null;
+  const focused = act && (act.id === "q" || act.id === "bizAdd" || act.id === "payAmt" || act.id === "scQ") ? act.id : null;
   const caret = focused ? act.selectionStart : null;
   paintTabs();
   if(TAB!=="assign"&&TAB!=="attend"&&ASSIGN.open)closeCell();   // a make-up's review opens from Call Attendance
   if(TAB !== "money" && MONEY.form){ if(MONEY.busy) moneyHideDrawer(); else moneyCloseForm(); }
+  if(TAB !== "scripts" && SCRIPTS.form && !SCRIPTS.busy) scCloseForm();
   if(CI_OPEN) closeCiPop();
   const v = $("#view"), place = boardPlace(v);
   const mid = v.classList.contains("page-enter") && entranceOf(v).find(a => a.playState === "running");
@@ -8168,6 +8220,318 @@ document.addEventListener("click", e => {
   b.textContent = open ? "Hide how this works" : "How this works"; b.setAttribute("aria-expanded", String(open));
 });
 
+/* ═══════════ SCRIPTS ═══════════
+   The sales-script library (2026-11-17, Alan): booth, demo, phoning and service-call
+   scripts, by product. Folders are two levels (category › sub-folder). It lives in the
+   check-in script's sheet (ScriptFolders + Scripts tabs) and its "SNA Scripts" Drive
+   folder, behind the coach key here; every mentee's dashboard reads it on its own
+   Scripts tab, minus anything hidden or not ticked for their program. Nothing is
+   deleted: removing a script takes it off the library and leaves its file in Drive. */
+const SCRIPTS = {lib:null, loading:false, err:"", loadSince:0, loadedAt:0, form:null, busy:false};
+const SCRIPT_PROGS = ["Dojo", "Path", "Masters"];
+const SCRIPT_MAX = 10 * 1024 * 1024;
+async function scriptsLoad(force){
+  if(SCRIPTS.loading || !TEAM.key) return;
+  if(!force && SCRIPTS.lib && Date.now() - SCRIPTS.loadedAt < 60000) return;
+  SCRIPTS.loading = true; SCRIPTS.loadSince = Date.now(); SCRIPTS.err = ""; render();
+  for(let attempt = 1; attempt <= 3; attempt++){
+    try{
+      const out = await teamCall({action:"scripts", op:"list"});
+      if(out.ok && out.library){ SCRIPTS.lib = out.library; SCRIPTS.loadedAt = Date.now(); break; }
+      if(out.error === "bad key"){ TEAM.key = ""; localStorage.removeItem("sna_coach_key"); TEAM.err = "That key wasn't right — ask Alan for the current one."; break; }
+      SCRIPTS.err = out.error === "unknown action"
+        ? "The check-in script doesn't know about Scripts yet: it needs the version with the Scripts library deployed."
+        : (out.error || "The scripts feed said no."); break;
+    }catch(e){ SCRIPTS.err = "Couldn't reach the scripts feed — it's usually temporary."; if(attempt < 3) await new Promise(r => setTimeout(r, attempt * 3000)); }
+  }
+  SCRIPTS.loading = false; render();
+}
+const scFolder = id => SCRIPTS.lib.folders.find(f => f.id === id);
+const scCats   = () => SCRIPTS.lib.folders.filter(f => !f.parentId);
+const scKids   = id => SCRIPTS.lib.folders.filter(f => f.parentId === id);
+const scIn     = id => SCRIPTS.lib.scripts.filter(s => s.folderId === id && scShows(s));
+const scShows  = s => UI.scProg === "all" || s.programs.includes(UI.scProg);
+const scCount  = id => scIn(id).length + scKids(id).reduce((n, k) => n + scIn(k.id).length, 0);
+const scPath   = f => f ? (f.parentId && scFolder(f.parentId) ? scFolder(f.parentId).name + " › " : "") + f.name : "";
+function scKind(s){
+  if(s.kind === "link"){
+    const u = String(s.url || "");
+    return /docs\.google\.com\/document/.test(u) ? "Doc" : /docs\.google\.com\/presentation/.test(u) ? "Slides"
+         : /docs\.google\.com\/spreadsheets/.test(u) ? "Sheet" : /drive\.google\.com/.test(u) ? "Drive" : "Link";
+  }
+  const n = String(s.fileName || "").toLowerCase(), t = String(s.mimeType || "");
+  return /pdf/.test(t) || /\.pdf$/.test(n) ? "PDF" : /word|\.docx?$/.test(t + n) ? "Word" : /image\//.test(t) ? "Image"
+       : /presentation|\.pptx?$/.test(t + n) ? "Slides" : "File";
+}
+function scDay(iso){ const d = new Date(iso); return isNaN(d) ? "" : MONTHS[d.getMonth()] + " " + d.getDate(); }
+function scSel(){
+  const lib = SCRIPTS.lib;
+  if(!UI.scSel || !scFolder(UI.scSel)) UI.scSel = (scCats()[0] || {}).id || "";
+  return scFolder(UI.scSel);
+}
+function scRow(s, withPath){
+  const progs = s.programs.length === SCRIPT_PROGS.length ? "" : `<span class="chip">${esc(s.programs.join(" · "))} only</span>`;
+  const f = scFolder(s.folderId), sibs = scIn(s.folderId), i = sibs.indexOf(s), dis = SCRIPTS.busy ? " disabled" : "";
+  return `<div class="sc-row${s.hidden ? " hid" : ""}">
+    <span class="sc-kind">${scKind(s)}</span>
+    <div class="sc-mid">
+      <a class="sc-t" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>
+      ${s.note ? `<div class="sc-note">${esc(s.note)}</div>` : ""}
+      <div class="sc-meta">${withPath && f ? `<span class="chip sec">${esc(scPath(f))}</span>` : ""}${s.hidden ? `<span class="chip note">Hidden from mentees</span>` : ""}${progs}
+        <span>added ${esc(scDay(s.addedAt))}${s.addedBy && s.addedBy !== "someone" ? " by " + esc(s.addedBy) : ""}</span></div>
+    </div>
+    <div class="sc-acts no-print">
+      ${withPath ? "" : `<button class="btn sm" data-scact="up" data-id="${esc(s.id)}" aria-label="Move ${esc(s.title)} up"${i <= 0 ? " disabled" : dis}>↑</button>
+      <button class="btn sm" data-scact="down" data-id="${esc(s.id)}" aria-label="Move ${esc(s.title)} down"${i < 0 || i >= sibs.length - 1 ? " disabled" : dis}>↓</button>`}
+      <button class="btn sm" data-scact="edit" data-id="${esc(s.id)}">Edit</button>
+    </div></div>`;
+}
+function scList(list, empty, withPath){
+  return list.length ? `<div class="sc-list">${list.map(s => scRow(s, withPath)).join("")}</div>` : empty;
+}
+function renderScripts(){
+  let html = `<div class="page-head no-export no-print"><div>
+    <div class="eyebrow">What to say, wherever they are</div><div class="big serif">Scripts</div>
+    <div class="lede">Booth, demo, phoning and service-call scripts, by product. Everything here shows on every mentee's dashboard under <b>Scripts</b>, for the programs you tick, unless you hide it.</div></div></div>`;
+  if(!TEAM.key) return html + keyGateHtml("The script library is for coaches to edit, so it stays locked.");
+  if(!SCRIPTS.lib){
+    if(!SCRIPTS.loading && !SCRIPTS.err) scriptsLoad(true);
+    return html + (SCRIPTS.err && !SCRIPTS.loading
+      ? emptyState("Couldn't load the scripts", esc(SCRIPTS.err), `<button class="btn" data-scact="reload">Try again</button>`, "err")
+      : skelTable(SCRIPTS.loadSince, ["52px", {w:"60%", two:true}, "120px"], "Loading the scripts…"));
+  }
+  const sel = scSel(), q = String(UI.scQ || "").trim().toLowerCase();
+  html += toolbar(`<div class="tb-filters">
+      <input class="search" id="scQ" type="search" placeholder="Search every script" value="${esc(UI.scQ || "")}" aria-label="Search every script">
+      ${seg("scProg", [{v:"all", l:"All"}, {v:"Dojo", l:"Dojo"}, {v:"Path", l:"Path"}, {v:"Masters", l:"Masters"}], UI.scProg)}
+    </div>
+    <div class="tb-actions"><button class="btn primary" data-scact="new" data-folder="${esc(sel ? sel.id : "")}">+ Script</button>
+      ${menuButton("⋯", `<button data-scact="newcat">New category</button><button data-scact="reload">Refresh</button>`, "btn", `aria-label="More"`)}</div>`);
+  const openCat = sel ? (sel.parentId || sel.id) : "";
+  const tree = scCats().map(c => {
+    /* on a phone only the open category shows its sub-folders, so the scripts aren't a screen away */
+    const node = (f, sub) => `<div class="sc-nrow${sub ? " sub" + (c.id !== openCat ? " shut" : "") : ""}${UI.scSel === f.id && !q ? " on" : ""}">
+        <button class="sc-node${sub ? " sub" : ""}" data-scact="sel" data-id="${esc(f.id)}"${UI.scSel === f.id && !q ? ` aria-current="true"` : ""}>${esc(f.name)}<span class="n">${scCount(f.id) || ""}</span></button>
+        <button class="sc-gear" data-scact="folder" data-id="${esc(f.id)}" aria-label="Folder settings for ${esc(f.name)}" title="Rename, move or delete">⋯</button></div>`;
+    return node(c, false) + scKids(c.id).map(k => node(k, true)).join("");
+  }).join("");
+  let main;
+  if(q){
+    const hits = SCRIPTS.lib.scripts.filter(s => scShows(s) && (s.title + " " + s.note + " " + scPath(scFolder(s.folderId))).toLowerCase().includes(q));
+    main = `<div class="sc-head"><div class="t">${hits.length} script${hits.length === 1 ? "" : "s"} for “${esc(UI.scQ.trim())}”</div></div>` +
+      scList(hits, emptyState("No script matches that", "Try fewer words, or another program.", `<button class="btn" data-scact="clearq">Clear search</button>`), true);
+  } else if(!sel){
+    main = emptyState("No folders yet", "Start with a category.", `<button class="btn" data-scact="newcat">New category</button>`);
+  } else {
+    const kids = sel.parentId ? [] : scKids(sel.id), own = scIn(sel.id);
+    main = `<div class="sc-head"><div class="t">${esc(scPath(sel))}</div>
+        <div class="ad-row no-print"><button class="btn sm" data-scact="new" data-folder="${esc(sel.id)}">+ Script here</button>
+        ${sel.parentId ? "" : `<button class="btn sm" data-scact="newsub" data-parent="${esc(sel.id)}">+ Sub-folder</button>`}
+        <button class="btn sm" data-scact="folder" data-id="${esc(sel.id)}">Folder settings</button></div></div>`;
+    const noneHere = UI.scProg === "all" ? "Nothing here yet." : `Nothing here for The ${esc(UI.scProg)}.`;
+    if(own.length || !kids.length)
+      main += scList(own, emptyState(noneHere, kids.length ? "" : "Add the first script, or upload one from another folder and move it here.",
+        `<button class="btn" data-scact="new" data-folder="${esc(sel.id)}">+ Script here</button>`, "sm"), false);
+    kids.forEach(k => {
+      main += `<div class="sc-glab"><button class="sc-glink" data-scact="sel" data-id="${esc(k.id)}">${esc(k.name)}</button><span class="chip count">${scIn(k.id).length}</span></div>` +
+        scList(scIn(k.id), `<div class="sc-none">${noneHere}</div>`, false);
+    });
+  }
+  return html + `<div class="sc-wrap"><nav class="sc-tree" aria-label="Script folders">${tree}</nav><div class="sc-main">${main}</div></div>`;
+}
+
+/* ── the drawer: a script (add / edit / move / remove) or a folder (add / rename / move / reorder / delete) ── */
+function scFolderOptions(cur){
+  return scCats().map(c => `<option value="${esc(c.id)}"${c.id === cur ? " selected" : ""}>${esc(c.name)}</option>` +
+    scKids(c.id).map(k => `<option value="${esc(k.id)}"${k.id === cur ? " selected" : ""}>&nbsp;&nbsp;&nbsp;${esc(c.name)} › ${esc(k.name)}</option>`).join("")).join("");
+}
+function scOpenScript(s, folderId){
+  SCRIPTS.form = s
+    ? {mode:"script", id:s.id, title:s.title, folderId:s.folderId, note:s.note, link:s.kind === "link" ? s.url : "", programs:s.programs.slice(),
+       hidden:s.hidden, kind:s.kind, fileName:s.fileName, url:s.url, file:null}
+    : {mode:"script", id:"", title:"", folderId:folderId || UI.scSel || "", note:"", link:"", programs:SCRIPT_PROGS.slice(), hidden:false, kind:"", file:null};
+  scPaintDrawer();
+}
+function scOpenFolder(f, parentId){
+  SCRIPTS.form = f ? {mode:"folder", id:f.id, name:f.name, parentId:f.parentId || ""} : {mode:"folder", id:"", name:"", parentId:parentId || ""};
+  scPaintDrawer();
+  setTimeout(() => { const n = $("#sfName"); if(n && !f) n.focus(); }, 60);
+}
+function scCloseForm(){
+  SCRIPTS.form = null;
+  const d = $("#adrawer"); if(d){ d.classList.remove("on"); d.setAttribute("aria-hidden", "true"); }
+}
+function scHarvest(){
+  const f = SCRIPTS.form; if(!f) return;
+  const v = id => { const el = $("#" + id); return el ? el.value : null; };
+  if(f.mode === "script"){
+    if(v("scTitle") !== null) f.title = v("scTitle");
+    if(v("scFolder") !== null) f.folderId = v("scFolder");
+    if(v("scLink") !== null) f.link = v("scLink");
+    if(v("scNote") !== null) f.note = v("scNote");
+    const boxes = [...document.querySelectorAll("#adrawer input[data-scprog]")];
+    if(boxes.length) f.programs = boxes.filter(b => b.checked).map(b => b.dataset.scprog);
+    const h = $("#scHidden"); if(h) f.hidden = h.checked;
+  } else {
+    if(v("sfName") !== null) f.name = v("sfName");
+    if(v("sfParent") !== null) f.parentId = v("sfParent");
+  }
+}
+function scPaintDrawer(){
+  const f = SCRIPTS.form, d = $("#adrawer"); if(!f) return;
+  const dis = SCRIPTS.busy ? " disabled" : "", spin = SCRIPTS.busy ? ` aria-busy="true"` : "";
+  let head, body;
+  if(f.mode === "script"){
+    const cur = f.id && f.kind === "file" ? `<div class="sw-hint">Now: <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.fileName || "the uploaded file")}</a>. Choose a file to replace it, or paste a link to use that instead.</div>` : "";
+    head = f.id ? "Edit script" : "Add a script";
+    body = `<div class="ad-form sc-form">
+      <label class="ad-sub" for="scTitle">Title</label>
+      <input class="search" id="scTitle" value="${esc(f.title)}" placeholder="e.g. Booth opener: first-time customer" maxlength="120">
+      <label class="ad-sub" for="scFolder">Folder</label>
+      <select class="btn sm" id="scFolder">${scFolderOptions(f.folderId)}</select>
+      <div class="ad-sub">The script</div>
+      ${cur}
+      <label class="sc-drop"><input type="file" id="scFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.rtf,.png,.jpg,.jpeg,.gif,.webp,.heic,application/pdf,image/*">
+        <span id="scFileName">${f.file ? esc(f.file.name) + " · " + Math.max(1, Math.round(f.file.size / 1024)) + " KB, ready to upload" : "Upload a file: PDF, Word, slides or a photo, 10 MB at most"}</span></label>
+      <input class="search" id="scLink" value="${esc(f.link)}" placeholder="…or paste a Google Doc or Drive link (https://…)">
+      <label class="ad-sub" for="scNote">Note <span class="sc-opt">optional, one line</span></label>
+      <input class="search" id="scNote" value="${esc(f.note)}" placeholder="When to use it, who it's for" maxlength="300">
+      <div class="ad-sub">Who sees it</div>
+      <div class="ad-row">${SCRIPT_PROGS.map(p => `<label class="sc-chk"><input type="checkbox" data-scprog="${p}"${f.programs.includes(p) ? " checked" : ""}> ${p}</label>`).join("")}</div>
+      <label class="sc-chk"><input type="checkbox" id="scHidden"${f.hidden ? " checked" : ""}> Hide from mentees for now</label>
+      <div class="ad-row sc-btns"><button class="btn primary" data-scact="save"${dis}${spin}>${f.id ? "Save" : "Add script"}</button><button class="btn" data-scact="cancel"${dis}>Cancel</button>
+        ${f.id ? `<span class="grow"></span><button class="btn" data-scact="remove"${dis}>Remove from library</button>` : ""}</div>
+      ${f.id ? `<div class="sw-hint">Removing takes it off every dashboard. ${f.kind === "file" ? "The file stays in the SNA Scripts folder in Drive." : ""}</div>` : ""}
+    </div>`;
+  } else {
+    const me = f.id ? scFolder(f.id) : null, kids = me ? scKids(me.id) : [], cats = scCats().filter(c => !me || c.id !== me.id);
+    const sibs = me ? (me.parentId ? scKids(me.parentId) : scCats()) : [], i = me ? sibs.indexOf(me) : -1;
+    const n = me ? scIn(me.id).length + kids.length : 0;
+    head = me ? "Folder settings" : (f.parentId ? "New sub-folder" : "New category");
+    body = `<div class="ad-form sc-form">
+      <label class="ad-sub" for="sfName">Name</label>
+      <input class="search" id="sfName" value="${esc(f.name)}" placeholder="${f.parentId ? "e.g. Cookware" : "e.g. Recruiting Scripts"}" maxlength="80">
+      <label class="ad-sub" for="sfParent">Inside</label>
+      <select class="btn sm" id="sfParent"${kids.length ? " disabled" : ""}>
+        <option value=""${!f.parentId ? " selected" : ""}>Nothing: it's a category of its own</option>
+        ${cats.map(c => `<option value="${esc(c.id)}"${c.id === f.parentId ? " selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
+      ${kids.length ? `<div class="sw-hint">It has folders inside it, so it stays a category.</div>` : ""}
+      ${me ? `<div class="ad-sub">Order</div><div class="ad-row">
+        <button class="btn sm" data-scact="fup"${i <= 0 ? " disabled" : dis}>Move up</button>
+        <button class="btn sm" data-scact="fdown"${i < 0 || i >= sibs.length - 1 ? " disabled" : dis}>Move down</button></div>` : ""}
+      <div class="ad-row sc-btns"><button class="btn primary" data-scact="fsave"${dis}${spin}>${me ? "Save" : "Add folder"}</button><button class="btn" data-scact="cancel"${dis}>Cancel</button>
+        ${me ? `<span class="grow"></span><button class="btn" data-scact="fdelete"${n ? " disabled" : dis}>Delete folder</button>` : ""}</div>
+      ${me && n ? `<div class="sw-hint">To delete it, first move or remove what's in it (${n} ${n === 1 ? "thing" : "things"}).</div>` : ""}
+    </div>`;
+  }
+  d.innerHTML = `<div class="ad-head"><div><div class="t">${head}</div></div>
+    <button class="btn sm" data-scact="cancel" title="Close" aria-label="Close"${dis}>✕</button></div><div class="ad-body">${body}</div>`;
+  d.classList.add("on"); d.setAttribute("aria-hidden", "false");
+}
+async function scReadFile(file){
+  const name = file.name || "script";
+  const type = file.type || (/\.pdf$/i.test(name) ? "application/pdf" : /\.docx$/i.test(name) ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    : /\.doc$/i.test(name) ? "application/msword" : "application/octet-stream");
+  if(file.size > SCRIPT_MAX) throw new Error("That file is too big — 10 MB at most. Upload it to Google Drive and paste its link instead.");
+  const b64 = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(new Error("Couldn't read that file — try choosing it again."));
+    r.readAsDataURL(file);
+  });
+  return {name, type, b64, size:file.size};
+}
+/* one write; the reply carries the whole library, so the page never guesses */
+async function scWrite(body, okMsg){
+  if(SCRIPTS.busy) return null;
+  if(whoAmI() === "someone") askWho(true);
+  scHarvest(); SCRIPTS.busy = true; render(); scPaintDrawer();
+  const out = await teamCall(Object.assign({action:"scripts", by:whoAmI()}, body)).catch(() => ({ok:false, error:"network"}));
+  SCRIPTS.busy = false;
+  if(out.library){ SCRIPTS.lib = out.library; SCRIPTS.loadedAt = Date.now(); }
+  if(!out.ok){
+    if(out.error === "network") toast("Couldn't reach the sheet, so that didn't save.", {err:true, retry:() => scWrite(body, okMsg)});
+    else toast("The sheet didn't save that: " + out.error, {err:true});
+    render(); scPaintDrawer(); return null;
+  }
+  if(out.warning) toast(out.warning, {err:true});
+  else if(okMsg) toast(okMsg);
+  render();
+  return out;
+}
+async function scSaveScript(){
+  scHarvest();
+  const f = SCRIPTS.form, link = f.link.trim();
+  if(!f.title.trim()) return toast("Give it a title");
+  if(!f.folderId) return toast("Pick a folder");
+  if(!f.programs.length) return toast("Tick at least one program");
+  if(f.file && link && link !== (f.kind === "link" ? f.url : "")) return toast("Pick a file or a link, not both — clear one of them");
+  if(link && !/^https?:\/\//i.test(link)) return toast("The link needs to start with http:// or https://");
+  if(!f.file && !link && !(f.id && f.kind === "file")) return toast("Upload a file or paste a link");
+  const script = {id:f.id, title:f.title.trim(), folderId:f.folderId, note:f.note.trim(), programs:f.programs, hidden:f.hidden, link:f.file ? "" : link};
+  const out = await scWrite(Object.assign({op:"saveScript", script}, f.file ? {file:{name:f.file.name, type:f.file.type, b64:f.file.b64}} : {}),
+    f.id ? "Saved" : (f.hidden ? "Added, hidden from mentees" : "Added — it's on the dashboards now"));
+  if(out){ UI.scSel = f.folderId; scCloseForm(); render(); }
+}
+async function scSaveFolder(){
+  scHarvest();
+  const f = SCRIPTS.form, name = f.name.trim();
+  if(!name) return toast("Give the folder a name");
+  if(!f.id){
+    const out = await scWrite({op:"addFolder", name, parentId:f.parentId}, "Folder added");
+    if(out){ UI.scSel = out.id; scCloseForm(); render(); }
+    return;
+  }
+  const me = scFolder(f.id); if(!me) return scCloseForm();
+  if(name !== me.name && !(await scWrite({op:"renameFolder", id:f.id, name}, ""))) return;
+  if((f.parentId || "") !== (me.parentId || "") && !(await scWrite({op:"moveFolder", id:f.id, parentId:f.parentId}, ""))) return;
+  toast("Saved"); scCloseForm(); render();
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-scact]"); if(!b || b.disabled) return;
+  e.preventDefault();
+  const k = b.dataset.scact, id = b.dataset.id, f = SCRIPTS.form;
+  if(k === "reload"){ if(SCRIPTS.loading) return; SCRIPTS.lib = null; scriptsLoad(true); }
+  else if(k === "sel"){ UI.scSel = id; UI.scQ = ""; render(); }
+  else if(k === "clearq"){ UI.scQ = ""; render(); }
+  else if(k === "new") scOpenScript(null, b.dataset.folder);
+  else if(k === "edit"){ const s = SCRIPTS.lib.scripts.find(x => x.id === id); if(s) scOpenScript(s); }
+  else if(k === "folder"){ const fo = scFolder(id); if(fo) scOpenFolder(fo); }
+  else if(k === "newcat") scOpenFolder(null, "");
+  else if(k === "newsub") scOpenFolder(null, b.dataset.parent);
+  else if(k === "up" || k === "down") scWrite({op:"reorderScript", id, dir:k === "up" ? -1 : 1}, "");
+  else if(k === "cancel") scCloseForm();
+  else if(k === "save") scSaveScript();
+  else if(k === "fsave") scSaveFolder();
+  else if(k === "fup" || k === "fdown"){ const out = await scWrite({op:"reorderFolder", id:f.id, dir:k === "fup" ? -1 : 1}, ""); if(out) scPaintDrawer(); }
+  else if(k === "remove"){
+    if(!confirm(`Remove "${f.title}" from the library? It comes off every mentee's dashboard.${f.kind === "file" ? " The file stays in the SNA Scripts folder in Drive." : ""}`)) return;
+    if(await scWrite({op:"removeScript", id:f.id}, "Removed")){ scCloseForm(); render(); }
+  }
+  else if(k === "fdelete"){
+    if(!confirm(`Delete the folder "${f.name}"?`)) return;
+    if(await scWrite({op:"deleteFolder", id:f.id}, "Folder deleted")){ if(UI.scSel === f.id) UI.scSel = ""; scCloseForm(); render(); }
+  }
+});
+document.addEventListener("change", async e => {
+  if(e.target.id !== "scFile" || !SCRIPTS.form) return;
+  const file = e.target.files && e.target.files[0], lab = $("#scFileName");
+  if(!file) return;
+  try{
+    SCRIPTS.form.file = await scReadFile(file);
+    if(!SCRIPTS.form.title.trim() && !$("#scTitle").value.trim()) $("#scTitle").value = file.name.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ");
+    if(lab) lab.textContent = file.name + " · " + Math.max(1, Math.round(file.size / 1024)) + " KB, ready to upload";
+  }catch(err){
+    SCRIPTS.form.file = null; e.target.value = "";
+    if(lab) lab.textContent = "Upload a file: PDF, Word, slides or a photo, 10 MB at most";
+    toast(err.message, {err:true});
+  }
+});
+document.addEventListener("input", e => {
+  if(e.target.id !== "scQ") return;
+  UI.scQ = e.target.value; render();
+});
+
 /* The drawer (assignment review, roll call, money entry) sits over a dimmed page;
    a click on the dimmed page closes it — unless something in it has changed since
    it opened, or a save is in flight. Then nothing is thrown away: the drawer
@@ -8175,6 +8539,7 @@ document.addEventListener("click", e => {
 let DRAWER_SNAP = null;                          // {owner, state} from when its current contents first showed
 function drawerOwner(){
   if(MONEY.form && moneyDrawerMine()) return "money:" + MONEY.form.mode + ":" + (MONEY.form.id || "");
+  if(SCRIPTS.form) return "scripts:" + SCRIPTS.form.mode + ":" + (SCRIPTS.form.id || "");
   if(ASSIGN.open) return "cell:" + ASSIGN.open.repId + ":" + ASSIGN.open.aId;
   if(AT.open) return "roll:" + AT.open;
   return "";
@@ -8195,7 +8560,7 @@ new MutationObserver(() => {
 document.addEventListener("click", e => {
   const d = $("#adrawer");
   if(e.target !== document.body || !d.classList.contains("on")) return;   // the dimmed page is body::before
-  const busy = MONEY.busy || ASSIGN.busy || AT.busy;
+  const busy = MONEY.busy || ASSIGN.busy || AT.busy || SCRIPTS.busy;
   const changed = DRAWER_SNAP && DRAWER_SNAP.owner === drawerOwner() && DRAWER_SNAP.state !== drawerState();
   if(busy || changed){
     d.classList.remove("nope"); void d.offsetWidth; d.classList.add("nope");
@@ -8203,6 +8568,7 @@ document.addEventListener("click", e => {
     return;
   }
   if(MONEY.form && moneyDrawerMine()) moneyCloseForm();
+  else if(SCRIPTS.form) scCloseForm();
   else if(ASSIGN.open) closeCell();
   else if(AT.open) closeRoll();
 });

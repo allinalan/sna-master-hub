@@ -14,7 +14,7 @@
 //
 // Playwright isn't a dependency of this repo. It's looked for in this order:
 //   $PLAYWRIGHT (the package folder) · a normal require("playwright") ·
-//   ~/projects/road-to-hyrox/node_modules/playwright
+//   ~/projects/road-to-hyrox/node_modules/playwright · ~/.local/share/playwright/node_modules/playwright (the mini)
 //
 // What it guards (PR #22):
 //   Enter, Tab or Escape finishes a field, and no later render (a sync pull) puts the
@@ -47,7 +47,8 @@ function die(msg){ console.error("edit-focus-check: " + msg); process.exit(2); }
 function loadPlaywright(){
   const tried = [];
   const candidates = [process.env.PLAYWRIGHT, "playwright",
-                      path.join(os.homedir(), "projects/road-to-hyrox/node_modules/playwright")];
+                      path.join(os.homedir(), "projects/road-to-hyrox/node_modules/playwright"),
+                      path.join(os.homedir(), ".local/share/playwright/node_modules/playwright")];
   for(const c of candidates){
     if(!c) continue;
     try{ return {pw: require(c), from: c}; }

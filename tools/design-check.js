@@ -23,7 +23,7 @@
 //
 // Playwright isn't a dependency of this repo. It's looked for in this order:
 //   $PLAYWRIGHT (the package folder) · a normal require("playwright") ·
-//   ~/projects/road-to-hyrox/node_modules/playwright
+//   ~/projects/road-to-hyrox/node_modules/playwright · ~/.local/share/playwright/node_modules/playwright (the mini)
 //
 // What it guards (PRs #34 and #35, and the follow-ups after them):
 //   Export is a menu: Save as PNG downloads a PNG, Print or save as PDF calls window.print.
@@ -76,7 +76,8 @@ function die(msg){ console.error("design-check: " + msg); process.exit(2); }
 function loadPlaywright(){
   const tried = [];
   const candidates = [process.env.PLAYWRIGHT, "playwright",
-                      path.join(os.homedir(), "projects/road-to-hyrox/node_modules/playwright")];
+                      path.join(os.homedir(), "projects/road-to-hyrox/node_modules/playwright"),
+                      path.join(os.homedir(), ".local/share/playwright/node_modules/playwright")];
   for(const c of candidates){
     if(!c) continue;
     try{ return {pw: require(c), from: c}; }

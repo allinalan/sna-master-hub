@@ -263,7 +263,7 @@ all. `--chrome` runs it in the
 installed Google Chrome instead of Playwright's Chromium; `--headed` lets you watch.
 
 It needs Playwright, which this repo doesn't install. It uses the copy in
-`~/projects/road-to-hyrox`, or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
+`~/projects/road-to-hyrox` (the MacBook), then the one in `~/.local/share/playwright` (the mini: `npm install playwright` there), or whichever one `PLAYWRIGHT=/path/to/node_modules/playwright`
 points at. It doesn't cover Safari: check that one by hand.
 
 ### Testing how it looks and behaves

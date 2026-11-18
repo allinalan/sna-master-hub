@@ -33,6 +33,9 @@
 // And: Escape puts a field back to what it held when you clicked in, even after the
 //   save-as-you-type has saved some of it, and a renamed topic keeps its old name and tier.
 //   It used to only re-render, so what you'd typed was saved anyway.
+// And: clicking the middle of a calendar week's "+ open — click to plan" with Edit on
+//   lands the typing in it. Blanking that wide placeholder shrank the field out from
+//   under the click, so the caret went to the text it had just lost.
 "use strict";
 const net = require("net");
 const os = require("os");
@@ -314,7 +317,7 @@ async function clickingAPlaceholder(){
   const targets = [
     ["orders + note, Edit off", "#business", false, "noteSlot", "notes", ["left", "middle", "right"]],
     ["orders + note, Edit on", "#business", true, "noteSlot", "notes", ["middle"]],
-    ["calendar + open, Edit on", "#calendar", true, "openWeek", "topics", ["middle"]],
+    ["calendar + open, Edit on", "#calendar", true, "openWeek", "topics", ["left", "middle", "right"]],
   ];
   for(const [name, hash, edit, slot, otherKind, spots] of targets){
     for(const [first, doFirst] of Object.entries(before)){

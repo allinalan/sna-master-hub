@@ -7278,6 +7278,19 @@ document.addEventListener("focusin", e => {
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
   }
 });
+/* Blanking a wide placeholder ("+ open — click to plan") shrinks the field to its
+   44px minimum, out from under the pointer, so the browser's own caret for the
+   click lands in the placeholder text it just lost and typing went nowhere
+   (fixed 2026-11-17). Once the click is done, a focused field whose caret isn't
+   in it gets one, at the end. A click inside the field leaves its caret alone. */
+document.addEventListener("mouseup", () => {
+  const el = document.activeElement;
+  if(!el || !el.matches || !el.matches("[data-edit]") || !(EDITING || el.hasAttribute("data-live"))) return;
+  const sel = getSelection();
+  if(sel.rangeCount && el.contains(sel.anchorNode)) return;
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+  sel.removeAllRanges(); sel.addRange(r);
+});
 /* Optional fields disappear when emptied, rather than leaving a blank chip behind. */
 const OPTIONAL_FIELDS = new Set(["track","note","second","secondPresenter","secondTime","detail","proposed","alt",
                                  "series","call","hotSeat","hotSeatPresenter","hotSeatTime","lastAsked","day","speaker"]);
